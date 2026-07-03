@@ -2252,6 +2252,71 @@
       "ochoco-reservoir": { lat: 44.30, lon: -120.72, reportKey: "Ochoco Reservoir" }
     };
 
+    const waterCoordinates = {
+      "lower-deschutes": { lat: 45.21, lon: -121.05 },
+      "middle-deschutes": { lat: 44.43, lon: -121.29 },
+      "upper-deschutes": { lat: 43.87, lon: -121.47 },
+      metolius: { lat: 44.55, lon: -121.63 },
+      crooked: { lat: 44.12, lon: -120.79 },
+      "fall-river": { lat: 43.80, lon: -121.47 },
+      whychus: { lat: 44.30, lon: -121.55 },
+      tumalo: { lat: 44.03, lon: -121.37 },
+      "little-deschutes": { lat: 43.67, lon: -121.50 },
+      "crane-prairie": { lat: 43.76, lon: -121.78 },
+      "east-lake": { lat: 43.73, lon: -121.20 },
+      paulina: { lat: 43.72, lon: -121.27 },
+      hosmer: { lat: 43.96, lon: -121.79 },
+      lava: { lat: 43.92, lon: -121.77 },
+      "little-lava": { lat: 43.91, lon: -121.77 },
+      wickiup: { lat: 43.69, lon: -121.69 },
+      davis: { lat: 43.58, lon: -121.82 },
+      "three-creek": { lat: 44.19, lon: -121.63 },
+      "north-twin": { lat: 43.73, lon: -121.61 },
+      "south-twin": { lat: 43.70, lon: -121.59 },
+      cultus: { lat: 43.82, lon: -121.86 },
+      devils: { lat: 44.04, lon: -121.76 },
+      suttle: { lat: 44.43, lon: -121.74 },
+      shevlin: { lat: 44.07, lon: -121.36 },
+      "lake-billy-chinook": { lat: 44.58, lon: -121.31 },
+      simtustus: { lat: 44.66, lon: -121.27 },
+      "prineville-reservoir": { lat: 44.13, lon: -120.73 },
+      "ochoco-reservoir": { lat: 44.30, lon: -120.72 },
+      haystack: { lat: 44.50, lon: -121.14 },
+      "blue-lake": { lat: 44.40, lon: -121.77 },
+      "big-lake": { lat: 44.37, lon: -121.88 },
+      "scout-lake": { lat: 44.42, lon: -121.75 },
+      "clear-lake": { lat: 44.37, lon: -121.99 },
+      walton: { lat: 44.40, lon: -120.33 },
+      ollalie: { lat: 44.81, lon: -121.79 },
+      "deer-lake": { lat: 44.23, lon: -121.77 },
+      "elkhorn-lake": { lat: 44.43, lon: -120.41 },
+      "antelope-flat": { lat: 44.16, lon: -120.38 },
+      "shelvock-pond": { lat: 44.27, lon: -121.19 },
+      "pine-nursery": { lat: 44.08, lon: -121.27 },
+      "hat-rock-pond": { lat: 44.25, lon: -121.17 },
+      "spark-lake": { lat: 44.02, lon: -121.74 },
+      "elk-lake": { lat: 43.99, lon: -121.81 },
+      "little-cultus": { lat: 43.80, lon: -121.86 },
+      "crescent-lake": { lat: 43.49, lon: -121.97 },
+      "odell-lake": { lat: 43.58, lon: -121.97 },
+      "crescent-creek": { lat: 43.47, lon: -121.93 },
+      "spring-river": { lat: 43.88, lon: -121.44 },
+      "paulina-creek": { lat: 43.72, lon: -121.33 },
+      "bridge-creek": { lat: 44.47, lon: -120.38 },
+      "ochoco-creek": { lat: 44.31, lon: -120.83 },
+      "firemans-pond": { lat: 44.28, lon: -121.17 },
+      "prineville-youth": { lat: 44.30, lon: -120.84 },
+      "jefferson-county-pond": { lat: 44.63, lon: -121.13 },
+      "todd-lake": { lat: 44.03, lon: -121.69 },
+      "blow-lake": { lat: 43.98, lon: -121.84 },
+      "doris-lake": { lat: 43.84, lon: -121.90 },
+      "lucky-lake": { lat: 43.83, lon: -121.88 },
+      "rosary-lakes": { lat: 43.70, lon: -122.01 },
+      "square-lake": { lat: 44.48, lon: -121.86 },
+      "little-three-creeks": { lat: 44.19, lon: -121.65 },
+      "yoran-lake": { lat: 43.57, lon: -122.08 }
+    };
+
     const localIntelSources = [
       {
         label: "ODFW Central Zone",
@@ -2294,6 +2359,7 @@
     const reportLinks = localIntelSources.map((source) => [source.label, source.url]);
 
     const WATER_REPORT_CACHE_KEY = "riseWaterReports.v1";
+    const USER_LOCATION_KEY = "riseUserLocation.v1";
     const LIVE_FETCH_TIMEOUT_MS = 6500;
     const BULK_SYNC_CONCURRENCY = 4;
     const liveReports = { byWater: {}, lastRequested: null, cache: null, bulkStatus: "" };
@@ -2504,6 +2570,9 @@
     let activeWaterFlyByWater = {};
     let waterFilter = "All";
     let waterQuery = "";
+    let waterSortMode = "Best";
+    let userLocation = null;
+    let locationStatus = "idle";
     let activeBug = bugs[0].id;
     let activeKnot = knots[0].id;
     let knotStep = 0;
@@ -2935,6 +3004,109 @@
 
     function clampScore(score) {
       return Math.max(1, Math.min(10, score));
+    }
+
+    function readUserLocation() {
+      try {
+        const saved = localStorage.getItem(USER_LOCATION_KEY);
+        return saved ? JSON.parse(saved) : null;
+      } catch {
+        return null;
+      }
+    }
+
+    function saveUserLocation(location) {
+      userLocation = location;
+      localStorage.setItem(USER_LOCATION_KEY, JSON.stringify(location));
+    }
+
+    function waterCoords(water) {
+      return waterCoordinates[water.id] || liveSources[water.id] || null;
+    }
+
+    function milesBetween(a, b) {
+      if (!a || !b) return null;
+      const toRad = (value) => value * Math.PI / 180;
+      const earthMiles = 3958.8;
+      const dLat = toRad(b.lat - a.lat);
+      const dLon = toRad(b.lon - a.lon);
+      const lat1 = toRad(a.lat);
+      const lat2 = toRad(b.lat);
+      const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
+      return 2 * earthMiles * Math.asin(Math.min(1, Math.sqrt(h)));
+    }
+
+    function distanceToWater(water) {
+      return milesBetween(userLocation, waterCoords(water));
+    }
+
+    function distanceLabel(water) {
+      const miles = distanceToWater(water);
+      if (miles === null) return "";
+      if (miles < 1) return `${Math.max(.1, miles).toFixed(1)} mi`;
+      if (miles < 10) return `${miles.toFixed(1)} mi`;
+      return `${Math.round(miles)} mi`;
+    }
+
+    function locationFreshnessLabel() {
+      if (!userLocation?.updatedAt) return "";
+      return `Last location ${formatSavedTime(userLocation.updatedAt)}`;
+    }
+
+    function locationSummary() {
+      if (locationStatus === "loading") return "Finding your location...";
+      if (locationStatus === "error") return "Location unavailable. Check permission or service.";
+      if (userLocation) return `${locationFreshnessLabel()} - distance is straight-line`;
+      return "Use location to rank nearby water as you move.";
+    }
+
+    function proximityScore(water) {
+      const miles = distanceToWater(water);
+      if (miles === null) return 0;
+      if (miles <= 5) return 1.6;
+      if (miles <= 15) return 1.1;
+      if (miles <= 30) return .65;
+      if (miles <= 60) return .25;
+      if (miles <= 100) return 0;
+      return -.35;
+    }
+
+    function rankedScore(water) {
+      const score = Number(fishScore(water));
+      if (waterSortMode !== "Near" || !userLocation) return score;
+      return clampScore(score + proximityScore(water));
+    }
+
+    function requestUserLocation() {
+      if (!navigator.geolocation) {
+        locationStatus = "error";
+        renderWaters();
+        bindDynamic();
+        return;
+      }
+      locationStatus = "loading";
+      renderWaters();
+      bindDynamic();
+      navigator.geolocation.getCurrentPosition((position) => {
+        saveUserLocation({
+          lat: position.coords.latitude,
+          lon: position.coords.longitude,
+          accuracy: position.coords.accuracy,
+          updatedAt: new Date().toISOString()
+        });
+        waterSortMode = "Near";
+        locationStatus = "ready";
+        renderWaters();
+        bindDynamic();
+      }, () => {
+        locationStatus = "error";
+        renderWaters();
+        bindDynamic();
+      }, {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 5 * 60 * 1000
+      });
     }
 
     function fishScore(water) {
@@ -3697,7 +3869,9 @@
       const ref = flyRefFor(selectedFly);
       const cardClass = isTop ? "top-water-card selectable" : "water-card ranked-water-card selectable";
       const score = fishScore(water);
+      const sortScore = rankedScore(water);
       const hatches = predictedHatches(water);
+      const distance = distanceLabel(water);
       return `
         <div class="${cardClass} ${water.id === activeWater ? "active" : ""}" data-water="${water.id}">
           <div class="water-card-main">
@@ -3713,7 +3887,8 @@
             <div class="water-fly-badges" aria-label="${water.name} recommended flies">
               ${flies.map((fly) => `<button class="water-fly-badge ${fly === selectedFly ? "active" : ""}" data-water-fly="${fly}" data-water-id="${water.id}">${fly}</button>`).join("")}
             </div>
-            <div class="line-row"><span>Fishability</span><b>${score}</b></div>
+            <div class="line-row"><span>${waterSortMode === "Near" && userLocation ? "Nearby rank" : "Fishability"}</span><b>${waterSortMode === "Near" && userLocation ? `${sortScore.toFixed(1)} (${score})` : score}</b></div>
+            ${distance ? `<div class="line-row"><span>Distance</span><b>${distance}</b></div>` : ""}
             <div class="subtle">${scoreSourceLabel(water)}</div>
           </div>
           <div class="water-fly-preview" style="background-image:url('${ref.plate}');background-position:${ref.pos};background-size:${ref.size || "200% 200%"};" role="img" aria-label="${selectedFly} artificial fly reference"></div>
@@ -3819,7 +3994,12 @@
         const matchesType = waterFilter === "All" || water.type === waterFilter;
         const searchable = `${water.name} ${water.section} ${water.hatch.join(" ")} ${predictedHatches(water).join(" ")}`.toLowerCase();
         return matchesType && (!query || searchable.includes(query));
-      }).sort((a, b) => Number(fishScore(b)) - Number(fishScore(a)));
+      }).sort((a, b) => {
+        const scoreDelta = rankedScore(b) - rankedScore(a);
+        if (Math.abs(scoreDelta) > .05) return scoreDelta;
+        if (waterSortMode === "Near" && userLocation) return (distanceToWater(a) ?? 9999) - (distanceToWater(b) ?? 9999);
+        return Number(fishScore(b)) - Number(fishScore(a));
+      });
       const topWater = filtered[0] || baseSelected;
       const rankedRest = filtered.slice(1);
       const selected = filtered.find((water) => water.id === activeWater) || topWater;
@@ -3834,11 +4014,16 @@
           <div>
             <p class="eyebrow">Waters</p>
             <h1>${topWater.name}</h1>
-            <p class="subtle">Highest rated today - ${fishScore(topWater)} fishability - ${scoreSourceLabel(topWater)} - ${topWater.section}</p>
+            <p class="subtle">${waterSortMode === "Near" && userLocation ? "Best nearby water" : "Highest rated today"} - ${fishScore(topWater)} fishability${distanceLabel(topWater) ? ` - ${distanceLabel(topWater)} away` : ""} - ${scoreSourceLabel(topWater)} - ${topWater.section}</p>
             <p class="subtle">${syncing ? "Updating local cache for all waters..." : cacheSummary()}</p>
+            <p class="subtle">${locationSummary()}</p>
           </div>
           <div class="toolbar">
             <button class="ghost-btn" data-refresh-all>${syncing ? "Updating..." : "Update Waters"}</button>
+            <button class="ghost-btn" data-use-location>${locationStatus === "loading" ? "Locating..." : userLocation ? "Update Location" : "Use Location"}</button>
+            <div class="segmented">
+              ${["Best", "Near"].map((label) => `<button class="${waterSortMode === label ? "active" : ""}" data-water-sort="${label}">${label === "Near" ? "Near Me" : "Best"}</button>`).join("")}
+            </div>
             <div class="segmented">
               ${["All", "River", "Lake"].map((label) => `<button class="${waterFilter === label ? "active" : ""}" data-water-filter="${label}">${label}</button>`).join("")}
             </div>
@@ -3854,7 +4039,7 @@
             <div class="panel-head">
               <div>
                 <h2>Ranked Waters</h2>
-                <p class="subtle">${filtered.length} visible, sorted by today's 1-10 fishability rating.</p>
+                <p class="subtle">${filtered.length} visible, sorted by ${waterSortMode === "Near" && userLocation ? "fishability plus proximity." : "today's 1-10 fishability rating."}</p>
               </div>
             </div>
             <div class="water-list">
@@ -3883,6 +4068,7 @@
               <div class="metric"><span>Water</span><strong>${liveDisplayValue(selected, "temp")}</strong></div>
               <div class="metric"><span>Air</span><strong>${liveDisplayValue(selected, "air")}</strong></div>
               <div class="metric"><span>Wind</span><strong>${liveDisplayValue(selected, "wind")}</strong></div>
+              <div class="metric"><span>Distance</span><strong>${distanceLabel(selected) || "Use location"}</strong></div>
             </div>
             <div style="height: 14px"></div>
             ${liveReportPanel(selected)}
@@ -4637,6 +4823,20 @@
       all("[data-refresh-all]").forEach((button) => {
         button.addEventListener("click", () => refreshAllWaterReports("manual"));
       });
+      all("[data-use-location]").forEach((button) => {
+        button.addEventListener("click", () => requestUserLocation());
+      });
+      all("[data-water-sort]").forEach((button) => {
+        button.addEventListener("click", () => {
+          waterSortMode = button.dataset.waterSort;
+          if (waterSortMode === "Near" && !userLocation) {
+            requestUserLocation();
+            return;
+          }
+          renderWaters();
+          bindDynamic();
+        });
+      });
       all("[data-water-filter]").forEach((button) => {
         button.addEventListener("click", () => {
           waterFilter = button.dataset.waterFilter;
@@ -4788,6 +4988,7 @@
       button.addEventListener("click", () => activateTab(button.dataset.tab));
     });
 
+    userLocation = readUserLocation();
     hydrateWaterCache();
     renderAll();
     runInitialDataSync();
