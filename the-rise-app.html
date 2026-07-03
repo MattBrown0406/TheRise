@@ -2259,7 +2259,11 @@
       ["The Fly Fishers Place reports", "https://flyfishersplace.com/fishing-reports/"]
     ];
 
-    const liveReports = { byWater: {}, lastRequested: null };
+    const WATER_REPORT_CACHE_KEY = "riseWaterReports.v1";
+    const NIGHTLY_SYNC_HOUR = 23;
+    const LIVE_FETCH_TIMEOUT_MS = 6500;
+    const BULK_SYNC_CONCURRENCY = 4;
+    const liveReports = { byWater: {}, lastRequested: null, cache: null, bulkStatus: "" };
 
     const bugs = [
       {
@@ -2926,6 +2930,8 @@
 
     function scoreSourceLabel(water) {
       const report = liveReports.byWater[water.id];
+      if (report?.refreshing) return "Updating local cache";
+      if (report?.status === "ready" && report.fromCache) return "Local cached live score";
       if (report?.status === "ready") return "Live-adjusted prototype score";
       if (report?.status === "loading") return "Checking live inputs";
       return "Demo baseline score";
@@ -2993,6 +2999,119 @@
       return { ...fallback, reportKey: water.name };
     }
 
+    function emptyWaterCache() {
+      return { version: 1, byWater: {}, lastSavedAt: "", lastNightlyWindow: "" };
+    }
+
+    function readWaterCache() {
+      try {
+        const saved = localStorage.getItem(WATER_REPORT_CACHE_KEY);
+        if (!saved) return emptyWaterCache();
+        return { ...emptyWaterCache(), ...JSON.parse(saved) };
+      } catch {
+        return emptyWaterCache();
+      }
+    }
+
+    function writeWaterCache(cache) {
+      liveReports.cache = cache;
+      localStorage.setItem(WATER_REPORT_CACHE_KEY, JSON.stringify(cache));
+    }
+
+    function hydrateWaterCache() {
+      const cache = readWaterCache();
+      liveReports.cache = cache;
+      Object.entries(cache.byWater || {}).forEach(([waterId, report]) => {
+        liveReports.byWater[waterId] = {
+          ...report,
+          status: "ready",
+          fromCache: true,
+          refreshing: false
+        };
+      });
+    }
+
+    function cacheReport(waterId, report, mode = "manual") {
+      const cache = liveReports.cache || readWaterCache();
+      const cachedReport = {
+        ...report,
+        status: "ready",
+        fromCache: false,
+        refreshing: false,
+        cacheMode: mode,
+        cachedAt: new Date().toISOString()
+      };
+      cache.byWater[waterId] = cachedReport;
+      cache.lastSavedAt = cachedReport.cachedAt;
+      writeWaterCache(cache);
+      liveReports.byWater[waterId] = cachedReport;
+      return cachedReport;
+    }
+
+    function pacificDateKey(date = new Date()) {
+      const parts = new Intl.DateTimeFormat("en-US", {
+        timeZone: "America/Los_Angeles",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit"
+      }).formatToParts(date).reduce((memo, part) => {
+        memo[part.type] = part.value;
+        return memo;
+      }, {});
+      return `${parts.year}-${parts.month}-${parts.day}`;
+    }
+
+    function pacificHour(date = new Date()) {
+      const hour = new Intl.DateTimeFormat("en-US", {
+        timeZone: "America/Los_Angeles",
+        hour: "2-digit",
+        hourCycle: "h23"
+      }).formatToParts(date).find((part) => part.type === "hour")?.value;
+      return Number(hour || 0);
+    }
+
+    function nightlyWindowKey(date = new Date()) {
+      const targetDate = pacificHour(date) >= NIGHTLY_SYNC_HOUR
+        ? date
+        : new Date(date.getTime() - 24 * 60 * 60 * 1000);
+      return pacificDateKey(targetDate);
+    }
+
+    function formatSavedTime(value) {
+      if (!value) return "Never saved";
+      return new Date(value).toLocaleString([], {
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit"
+      });
+    }
+
+    function cachedWaterCount() {
+      return Object.keys(liveReports.cache?.byWater || {}).length;
+    }
+
+    function cacheSummary() {
+      const count = cachedWaterCount();
+      const savedAt = liveReports.cache?.lastSavedAt;
+      if (!count) return "No local water cache yet";
+      return `${count}/${waters.length} waters saved locally - ${formatSavedTime(savedAt)}`;
+    }
+
+    function shouldRunNightlySync() {
+      if (navigator.onLine === false) return false;
+      const cache = liveReports.cache || readWaterCache();
+      if (!Object.keys(cache.byWater || {}).length) return true;
+      return cache.lastNightlyWindow !== nightlyWindowKey();
+    }
+
+    function markNightlySyncComplete() {
+      const cache = readWaterCache();
+      cache.lastNightlyWindow = nightlyWindowKey();
+      cache.lastSavedAt = cache.lastSavedAt || new Date().toISOString();
+      writeWaterCache(cache);
+    }
+
     function fahrenheitFromC(value) {
       const n = Number(value);
       return Number.isFinite(n) ? Math.round((n * 9 / 5) + 32) : null;
@@ -3003,12 +3122,25 @@
       return points.length ? points[points.length - 1] : null;
     }
 
+    async function fetchJsonWithTimeout(url, label) {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), LIVE_FETCH_TIMEOUT_MS);
+      try {
+        const response = await fetch(url, { signal: controller.signal });
+        if (!response.ok) throw new Error(`${label} ${response.status}`);
+        return await response.json();
+      } catch (error) {
+        if (error.name === "AbortError") throw new Error(`${label} timeout`);
+        throw error;
+      } finally {
+        clearTimeout(timeout);
+      }
+    }
+
     async function fetchUsgsReport(meta) {
       if (!meta.usgs) return null;
       const url = `https://waterservices.usgs.gov/nwis/iv/?format=json&sites=${meta.usgs}&parameterCd=00060,00010&siteStatus=all`;
-      const response = await fetch(url);
-      if (!response.ok) throw new Error(`USGS ${response.status}`);
-      const json = await response.json();
+      const json = await fetchJsonWithTimeout(url, "USGS");
       const timeSeries = json?.value?.timeSeries || [];
       let flow = null;
       let waterTemp = null;
@@ -3029,13 +3161,9 @@
 
     async function fetchNwsReport(meta) {
       const pointUrl = `https://api.weather.gov/points/${meta.lat.toFixed(4)},${meta.lon.toFixed(4)}`;
-      const pointResponse = await fetch(pointUrl);
-      if (!pointResponse.ok) throw new Error(`NWS points ${pointResponse.status}`);
-      const pointJson = await pointResponse.json();
+      const pointJson = await fetchJsonWithTimeout(pointUrl, "NWS points");
       const forecastUrl = pointJson?.properties?.forecastHourly || pointJson?.properties?.forecast;
-      const forecastResponse = await fetch(forecastUrl);
-      if (!forecastResponse.ok) throw new Error(`NWS forecast ${forecastResponse.status}`);
-      const forecastJson = await forecastResponse.json();
+      const forecastJson = await fetchJsonWithTimeout(forecastUrl, "NWS forecast");
       const period = forecastJson?.properties?.periods?.[0];
       return {
         air: period?.temperature ? `${period.temperature} F` : null,
@@ -3046,13 +3174,19 @@
       };
     }
 
-    async function refreshLiveReport(waterId) {
+    async function refreshLiveReport(waterId, options = {}) {
+      const { mode = "manual", render = true } = options;
       const water = waters.find((item) => item.id === waterId) || getWater();
       const meta = liveMetaFor(water);
-      liveReports.byWater[water.id] = { status: "loading", meta };
+      const previous = liveReports.byWater[water.id];
+      liveReports.byWater[water.id] = previous?.status === "ready"
+        ? { ...previous, refreshing: true, refreshError: "" }
+        : { status: "loading", meta };
       liveReports.lastRequested = water.id;
-      renderWaters();
-      bindDynamic();
+      if (render) {
+        renderWaters();
+        bindDynamic();
+      }
       try {
         const [usgsResult, nwsResult] = await Promise.allSettled([
           fetchUsgsReport(meta),
@@ -3069,13 +3203,35 @@
             nwsResult.status === "rejected" ? nwsResult.reason.message : null
           ].filter(Boolean)
         };
-        liveReports.byWater[water.id] = report;
+        cacheReport(water.id, report, mode);
       } catch (error) {
-        liveReports.byWater[water.id] = { status: "error", meta, error: error.message };
+        liveReports.byWater[water.id] = previous?.status === "ready"
+          ? { ...previous, refreshing: false, refreshError: error.message }
+          : { status: "error", meta, error: error.message };
       }
+      if (render) {
+        renderToday();
+        renderWaters();
+        bindDynamic();
+      }
+    }
+
+    async function refreshAllWaterReports(mode = "manual") {
+      if (liveReports.bulkStatus) return;
+      liveReports.bulkStatus = mode;
       renderToday();
       renderWaters();
       bindDynamic();
+      const results = [];
+      for (let index = 0; index < waters.length; index += BULK_SYNC_CONCURRENCY) {
+        const batch = waters.slice(index, index + BULK_SYNC_CONCURRENCY);
+        const batchResults = await Promise.allSettled(batch.map((water) => refreshLiveReport(water.id, { mode, render: false })));
+        results.push(...batchResults);
+      }
+      if (mode === "nightly") markNightlySyncComplete();
+      liveReports.bulkStatus = "";
+      renderAll();
+      return results;
     }
 
     function numberFromText(text) {
@@ -3118,18 +3274,22 @@
       if (!report) return "Pull live inputs to compare gauge, forecast, and report context against the demo hatch profile.";
       if (report.status === "loading") return "Checking USGS gauge and NWS forecast now.";
       if (report.status === "error") return `Live pull failed: ${report.error}`;
+      if (report.refreshing) return "Updating from signal now while keeping the saved local report available.";
       const parts = [];
       if (report.usgs?.flow) parts.push(`${report.usgs.flow} from USGS`);
       if (report.usgs?.waterTemp) parts.push(`${report.usgs.waterTemp} water`);
       if (report.nws?.forecast) parts.push(`${report.nws.forecast.toLowerCase()} forecast`);
       if (report.nws?.wind) parts.push(`${report.nws.wind} wind`);
-      return parts.length ? `Adjusted from ${parts.join(", ")}.` : "Forecast/report links loaded, but no gauge values were available for this water.";
+      const prefix = report.fromCache ? "Using saved local data" : "Adjusted";
+      const suffix = report.refreshError ? ` Last update failed: ${report.refreshError}.` : "";
+      return parts.length ? `${prefix} from ${parts.join(", ")}.${suffix}` : `Forecast/report links loaded, but no gauge values were available for this water.${suffix}`;
     }
 
     function dataModelNotice(water) {
       const report = liveReports.byWater[water.id];
+      if (report?.refreshing) return "Updating now. The app will keep using the saved local report if signal drops.";
       if (report?.status === "ready") {
-        return "Prototype model: fishability, hatch window, and fly suggestions are adjusted from USGS gauge values and the NWS forecast. ODFW and shop reports are linked here, but not parsed yet.";
+        return "Stored locally on this device. Fishability, hatch window, and fly suggestions are adjusted from USGS gauge values and the NWS forecast. ODFW and shop reports are linked here, but not parsed yet.";
       }
       if (report?.status === "loading") return "Pulling live USGS/NWS inputs for this prototype model.";
       return "Demo baseline: refresh live inputs to adjust this water with USGS/NWS data.";
@@ -3137,14 +3297,15 @@
 
     function liveReportPanel(water) {
       const report = liveReports.byWater[water.id];
-      const status = report?.status || "idle";
+      const status = report?.refreshing ? "refreshing" : report?.status || "idle";
       const meta = report?.meta || liveMetaFor(water);
       const usgsLabel = meta.usgs ? `USGS ${meta.usgs}` : "No gauge mapped";
-      const updated = report?.updatedAt ? `Updated ${report.updatedAt}` : "Not pulled yet";
-      const rows = status === "ready" ? `
+      const updated = report?.cachedAt ? `Saved locally ${formatSavedTime(report.cachedAt)}` : report?.updatedAt ? `Updated ${report.updatedAt}` : "Not pulled yet";
+      const rows = report?.status === "ready" ? `
         <div class="line-row"><span>Gauge</span><b>${usgsLabel}${report.usgs?.flow ? ` - ${report.usgs.flow}` : ""}${report.usgs?.waterTemp ? ` - ${report.usgs.waterTemp}` : ""}</b></div>
         <div class="line-row"><span>Forecast</span><b>${report.nws?.air || "Air n/a"} - ${report.nws?.wind || "Wind n/a"}${report.nws?.forecast ? ` - ${report.nws.forecast}` : ""}</b></div>
-        ${report.errors.length ? `<div class="line-row"><span>Gaps</span><b>${report.errors.join(" / ")}</b></div>` : ""}
+        ${(report.errors || []).length ? `<div class="line-row"><span>Gaps</span><b>${report.errors.join(" / ")}</b></div>` : ""}
+        ${report.refreshError ? `<div class="line-row"><span>Last update</span><b>${report.refreshError}</b></div>` : ""}
       ` : `
         <div class="line-row"><span>Gauge</span><b>${usgsLabel}</b></div>
         <div class="line-row"><span>Forecast point</span><b>${meta.lat.toFixed(2)}, ${meta.lon.toFixed(2)}</b></div>
@@ -3153,10 +3314,10 @@
         <div class="live-panel">
           <div class="panel-head">
             <div>
-              <h3>Live Report Inputs</h3>
+              <h3>Saved Report Inputs</h3>
               <p class="subtle">${updated} - ${status === "loading" ? "Loading live sources..." : liveRecommendationReason(water)}</p>
             </div>
-            <button class="ghost-btn" data-refresh-live="${water.id}">${status === "loading" ? "Checking..." : "Refresh"}</button>
+            <button class="ghost-btn" data-refresh-live="${water.id}">${status === "loading" || status === "refreshing" ? "Updating..." : "Update"}</button>
           </div>
           ${rows}
           <p class="model-note">${dataModelNotice(water)}</p>
@@ -3413,6 +3574,7 @@
       const liveFlies = liveRecommendedFlies(selected);
       const selectedHatches = predictedHatches(selected);
       const liveSource = liveReports.byWater[selected.id]?.status === "ready" ? "USGS/NWS live pull + ODFW/shop report links" : selected.source;
+      const syncing = Boolean(liveReports.bulkStatus);
 
       $("#waters").innerHTML = `
         <div class="topbar">
@@ -3420,8 +3582,10 @@
             <p class="eyebrow">Waters</p>
             <h1>${topWater.name}</h1>
             <p class="subtle">Highest rated today - ${fishScore(topWater)} fishability - ${scoreSourceLabel(topWater)} - ${topWater.section}</p>
+            <p class="subtle">${syncing ? "Updating local cache for all waters..." : cacheSummary()}</p>
           </div>
           <div class="toolbar">
+            <button class="ghost-btn" data-refresh-all>${syncing ? "Updating..." : "Update Waters"}</button>
             <div class="segmented">
               ${["All", "River", "Lake"].map((label) => `<button class="${waterFilter === label ? "active" : ""}" data-water-filter="${label}">${label}</button>`).join("")}
             </div>
@@ -4157,6 +4321,28 @@
       bindDynamic();
     }
 
+    function runInitialDataSync() {
+      if (navigator.onLine === false) return;
+      if (shouldRunNightlySync()) {
+        refreshAllWaterReports("nightly");
+      } else if (!liveReports.byWater[activeWater]) {
+        refreshLiveReport(activeWater, { mode: "startup" });
+      }
+    }
+
+    function checkNightlySyncWindow() {
+      if (navigator.onLine === false || liveReports.bulkStatus) return;
+      if (shouldRunNightlySync()) refreshAllWaterReports("nightly");
+    }
+
+    function startNightlySyncWatcher() {
+      setInterval(checkNightlySyncWindow, 15 * 60 * 1000);
+      document.addEventListener("visibilitychange", () => {
+        if (!document.hidden) checkNightlySyncWindow();
+      });
+      window.addEventListener("online", checkNightlySyncWindow);
+    }
+
     function activateTab(tab) {
       all(".view").forEach((view) => view.classList.toggle("active", view.id === tab));
       all(".tab").forEach((button) => button.setAttribute("aria-selected", button.dataset.tab === tab ? "true" : "false"));
@@ -4189,12 +4375,15 @@
         button.addEventListener("click", () => {
           activeWater = button.dataset.water;
           renderAll();
-          if (!liveReports.byWater[activeWater]) refreshLiveReport(activeWater);
+          if (!liveReports.byWater[activeWater] && navigator.onLine !== false) refreshLiveReport(activeWater, { mode: "manual" });
           if (button.dataset.go) activateTab(button.dataset.go);
         });
       });
       all("[data-refresh-live]").forEach((button) => {
-        button.addEventListener("click", () => refreshLiveReport(button.dataset.refreshLive));
+        button.addEventListener("click", () => refreshLiveReport(button.dataset.refreshLive, { mode: "manual" }));
+      });
+      all("[data-refresh-all]").forEach((button) => {
+        button.addEventListener("click", () => refreshAllWaterReports("manual"));
       });
       all("[data-water-filter]").forEach((button) => {
         button.addEventListener("click", () => {
@@ -4347,8 +4536,10 @@
       button.addEventListener("click", () => activateTab(button.dataset.tab));
     });
 
+    hydrateWaterCache();
     renderAll();
-    refreshLiveReport(activeWater);
+    runInitialDataSync();
+    startNightlySyncWatcher();
   </script>
 </body>
 </html>
