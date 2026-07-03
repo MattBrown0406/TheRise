@@ -2252,15 +2252,48 @@
       "ochoco-reservoir": { lat: 44.30, lon: -120.72, reportKey: "Ochoco Reservoir" }
     };
 
-    const reportLinks = [
-      ["ODFW Central Zone", "https://myodfw.com/recreation-report/fishing-report/central-zone"],
-      ["ODFW Central Zone overview", "https://myodfw.com/fishing/central-zone"],
-      ["Confluence Fly Shop reports", "https://confluenceflyshop.com/fishing-reports/"],
-      ["The Fly Fishers Place reports", "https://flyfishersplace.com/fishing-reports/"]
+    const localIntelSources = [
+      {
+        label: "ODFW Central Zone",
+        type: "agency",
+        url: "https://myodfw.com/recreation-report/fishing-report/central-zone",
+        fallback: "Central Zone stocking, access, and regulation updates. Check East Lake, Paulina, Crane Prairie, Fall River, Crooked River, community ponds, and Cascade Lakes before harvest."
+      },
+      {
+        label: "ODFW Central Zone overview",
+        type: "agency",
+        url: "https://myodfw.com/fishing/central-zone",
+        fallback: "Agency overview for Central Oregon waters, stocked trout, seasonal access, and lake-specific opportunities."
+      },
+      {
+        label: "Confluence Fly Shop",
+        type: "shop",
+        url: "https://confluenceflyshop.com/fishing-reports/",
+        fallback: "Bend-area shop read: Deschutes, Crooked, Fall River, Cascade Lakes. Human notes often emphasize caddis, PMD, BWO, terrestrials, leeches, and stillwater chironomids depending on weather."
+      },
+      {
+        label: "The Fly Fishers Place",
+        type: "shop",
+        url: "https://flyfishersplace.com/fishing-reports/",
+        fallback: "Sisters-area shop read: Metolius, Lower Deschutes, Crooked River, Fall River, East Lake, Crane Prairie, Hosmer, and Cascade Lakes. Human reports often call out green drakes, golden stones, PMDs, caddis, Callibaetis, damsels, balanced leeches, and chironomids."
+      },
+      {
+        label: "Deschutes River Alliance",
+        type: "conservation",
+        url: "https://deschutesriveralliance.org/",
+        fallback: "Lower Deschutes context for water quality, temperature, clarity, aquatic insects, and river conditions below the dams."
+      },
+      {
+        label: "Deschutes Camp",
+        type: "guide",
+        url: "https://deschutescamp.com/fishing-report/",
+        fallback: "Lower Deschutes guide-style human read: trout windows, steelhead context, caddis, PMDs, stoneflies, and canyon weather."
+      }
     ];
 
+    const reportLinks = localIntelSources.map((source) => [source.label, source.url]);
+
     const WATER_REPORT_CACHE_KEY = "riseWaterReports.v1";
-    const NIGHTLY_SYNC_HOUR = 23;
     const LIVE_FETCH_TIMEOUT_MS = 6500;
     const BULK_SYNC_CONCURRENCY = 4;
     const liveReports = { byWater: {}, lastRequested: null, cache: null, bulkStatus: "" };
@@ -2907,6 +2940,8 @@
     function fishScore(water) {
       let score = water.score / 10;
       const report = liveReports.byWater[water.id];
+      const intel = localIntelForWater(water);
+      score += intel.scoreBoost || 0;
       if (report?.status === "ready") {
         const waterTemp = numberFromText(report.usgs?.waterTemp || water.temp);
         const wind = numberFromText(report.nws?.wind || water.wind);
@@ -2930,7 +2965,9 @@
 
     function scoreSourceLabel(water) {
       const report = liveReports.byWater[water.id];
+      const intel = localIntelForWater(water);
       if (report?.refreshing) return "Updating local cache";
+      if (report?.status === "ready" && intel.sources?.length) return "Cached live + local report score";
       if (report?.status === "ready" && report.fromCache) return "Local cached live score";
       if (report?.status === "ready") return "Live-adjusted prototype score";
       if (report?.status === "loading") return "Checking live inputs";
@@ -2946,12 +2983,101 @@
       return { inches: '24"', label: "fishable stain", trend: "stable" };
     }
 
+    const hatchSignalMap = [
+      ["green drake", "Green Drake"],
+      ["drake", "Green Drake"],
+      ["blue wing", "BWO"],
+      ["bwo", "BWO"],
+      ["pmd", "PMD"],
+      ["pale morning dun", "PMD"],
+      ["caddis", "Caddis"],
+      ["sedge", "Caddis"],
+      ["october caddis", "October Caddis"],
+      ["stonefly", "Stonefly"],
+      ["golden stone", "Stonefly"],
+      ["salmonfly", "Stonefly"],
+      ["yellow sally", "Yellow Sally"],
+      ["chironomid", "Chironomid"],
+      ["midge", "Chironomid"],
+      ["callibaetis", "Callibaetis"],
+      ["damsel", "Damsel"],
+      ["terrestrial", "Terrestrial"],
+      ["hopper", "Terrestrial"],
+      ["ant", "Terrestrial"],
+      ["beetle", "Terrestrial"],
+      ["leech", "Leech"],
+      ["baitfish", "Baitfish"],
+      ["minnow", "Baitfish"],
+      ["sculpin", "Baitfish"]
+    ];
+
+    const flySignalMap = [
+      ["x-caddis", "X-Caddis #16"],
+      ["elk hair", "Elk Hair Caddis #14"],
+      ["sparkle dun", "PMD Sparkle Dun #16"],
+      ["comparadun", "BWO Comparadun #18"],
+      ["rs2", "RS2 #20"],
+      ["zebra midge", "Zebra Midge #20"],
+      ["chironomid", "Chromie #14"],
+      ["chromie", "Chromie #14"],
+      ["ice cream cone", "Ice Cream Cone #16"],
+      ["balanced leech", "Balanced Leech #10"],
+      ["woolly bugger", "Woolly Bugger #8"],
+      ["callibaetis spinner", "Callibaetis Spinner #16"],
+      ["damsel nymph", "Damsel Nymph #12"],
+      ["pat's", "Pat's Rubber Legs #8"],
+      ["rubber legs", "Pat's Rubber Legs #8"],
+      ["golden stone", "Golden Stone Nymph #8"],
+      ["green drake cripple", "Green Drake Cripple #10"],
+      ["foam ant", "Foam Ant #16"],
+      ["beetle", "Foam Beetle #14"],
+      ["hopper", "Morrish Hopper #8"],
+      ["muddler", "Muddler Minnow #6"],
+      ["clouser", "Clouser Minnow #6"]
+    ];
+
+    const waterAliasMap = {
+      "lower deschutes": ["lower deschutes", "trout creek", "maupin", "pelton", "warm springs", "deschutes river"],
+      "middle deschutes": ["middle deschutes", "bend to lake billy chinook", "tumalo", "cline falls"],
+      "upper deschutes": ["upper deschutes", "wickiup", "benham", "sunriver", "little lava"],
+      metolius: ["metolius", "camp sherman", "bridge 99"],
+      crooked: ["crooked", "bowman", "prineville"],
+      "fall-river": ["fall river"],
+      "crane-prairie": ["crane prairie"],
+      "east-lake": ["east lake"],
+      paulina: ["paulina"],
+      hosmer: ["hosmer"],
+      davis: ["davis lake"],
+      "lake-billy-chinook": ["lake billy chinook", "billy chinook"],
+      "prineville-reservoir": ["prineville reservoir"],
+      "ochoco-reservoir": ["ochoco reservoir"],
+      "three-creek": ["three creek"],
+      "north-twin": ["north twin"],
+      "south-twin": ["south twin"],
+      suttle: ["suttle"],
+      "clear-lake": ["clear lake"],
+      walton: ["walton"],
+      "crescent-lake": ["crescent lake"],
+      "odell-lake": ["odell"]
+    };
+
+    function uniqueItems(items) {
+      return [...new Set(items.filter(Boolean))];
+    }
+
+    function localIntelForWater(water) {
+      const intel = liveReports.cache?.localIntel?.byWater?.[water.id];
+      return intel || { hatches: [], flies: [], sources: [], cues: [], scoreBoost: 0 };
+    }
+
     function predictedHatches(water) {
       const report = liveReports.byWater[water.id];
       const waterTemp = numberFromText(report?.usgs?.waterTemp || water.temp);
       const wind = numberFromText(report?.nws?.wind || water.wind);
       const forecast = `${report?.nws?.forecast || ""}`.toLowerCase();
       const hatches = [...water.hatch];
+      const intel = localIntelForWater(water);
+      hatches.unshift(...intel.hatches);
       if (report?.status === "ready") {
         if (water.type === "Lake") {
           if (waterTemp !== null && waterTemp >= 54) hatches.unshift("Damsel", "Callibaetis");
@@ -2962,7 +3088,7 @@
           if (forecast.includes("cloud") || forecast.includes("rain")) hatches.unshift("BWO");
         }
       }
-      return [...new Set(hatches)].slice(0, 4);
+      return uniqueItems(hatches).slice(0, 4);
     }
 
     function primeWindowFor(water) {
@@ -3000,7 +3126,7 @@
     }
 
     function emptyWaterCache() {
-      return { version: 1, byWater: {}, lastSavedAt: "", lastNightlyWindow: "" };
+      return { version: 1, byWater: {}, localIntel: { byWater: {}, sources: [], updatedAt: "", errors: [] }, lastSavedAt: "", lastDailyOpen: "" };
     }
 
     function readWaterCache() {
@@ -3061,22 +3187,6 @@
       return `${parts.year}-${parts.month}-${parts.day}`;
     }
 
-    function pacificHour(date = new Date()) {
-      const hour = new Intl.DateTimeFormat("en-US", {
-        timeZone: "America/Los_Angeles",
-        hour: "2-digit",
-        hourCycle: "h23"
-      }).formatToParts(date).find((part) => part.type === "hour")?.value;
-      return Number(hour || 0);
-    }
-
-    function nightlyWindowKey(date = new Date()) {
-      const targetDate = pacificHour(date) >= NIGHTLY_SYNC_HOUR
-        ? date
-        : new Date(date.getTime() - 24 * 60 * 60 * 1000);
-      return pacificDateKey(targetDate);
-    }
-
     function formatSavedTime(value) {
       if (!value) return "Never saved";
       return new Date(value).toLocaleString([], {
@@ -3095,19 +3205,21 @@
       const count = cachedWaterCount();
       const savedAt = liveReports.cache?.lastSavedAt;
       if (!count) return "No local water cache yet";
-      return `${count}/${waters.length} waters saved locally - ${formatSavedTime(savedAt)}`;
+      const intelCount = Object.keys(liveReports.cache?.localIntel?.byWater || {}).length;
+      const intelText = intelCount ? `, ${intelCount} with local report signals` : "";
+      return `${count}/${waters.length} waters saved locally${intelText} - ${formatSavedTime(savedAt)}`;
     }
 
-    function shouldRunNightlySync() {
+    function shouldRunDailyOpenSync() {
       if (navigator.onLine === false) return false;
       const cache = liveReports.cache || readWaterCache();
       if (!Object.keys(cache.byWater || {}).length) return true;
-      return cache.lastNightlyWindow !== nightlyWindowKey();
+      return cache.lastDailyOpen !== pacificDateKey();
     }
 
-    function markNightlySyncComplete() {
+    function markDailyOpenSyncComplete() {
       const cache = readWaterCache();
-      cache.lastNightlyWindow = nightlyWindowKey();
+      cache.lastDailyOpen = pacificDateKey();
       cache.lastSavedAt = cache.lastSavedAt || new Date().toISOString();
       writeWaterCache(cache);
     }
@@ -3135,6 +3247,137 @@
       } finally {
         clearTimeout(timeout);
       }
+    }
+
+    async function fetchTextWithTimeout(url, label) {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), LIVE_FETCH_TIMEOUT_MS);
+      try {
+        const response = await fetch(url, { signal: controller.signal });
+        if (!response.ok) throw new Error(`${label} ${response.status}`);
+        return await response.text();
+      } catch (error) {
+        if (error.name === "AbortError") throw new Error(`${label} timeout`);
+        throw error;
+      } finally {
+        clearTimeout(timeout);
+      }
+    }
+
+    function textFromHtml(html) {
+      return String(html || "")
+        .replace(/<script[\s\S]*?<\/script>/gi, " ")
+        .replace(/<style[\s\S]*?<\/style>/gi, " ")
+        .replace(/<[^>]+>/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+
+    function aliasesForWater(water) {
+      return uniqueItems([
+        water.name,
+        water.section,
+        ...(waterAliasMap[water.id] || [])
+      ].map((item) => String(item || "").toLowerCase()));
+    }
+
+    function cueSignalsFromText(text) {
+      const lower = text.toLowerCase();
+      const cues = [];
+      if (lower.includes("clear")) cues.push("clear water");
+      if (lower.includes("off color") || lower.includes("dirty") || lower.includes("stained")) cues.push("color/clarity note");
+      if (lower.includes("good") || lower.includes("fishing well") || lower.includes("productive")) cues.push("positive human report");
+      if (lower.includes("slow") || lower.includes("tough") || lower.includes("poor")) cues.push("technical human report");
+      if (lower.includes("morning")) cues.push("morning window");
+      if (lower.includes("evening")) cues.push("evening window");
+      return uniqueItems(cues);
+    }
+
+    function scoreBoostFromSignals(text, source, hatches, flies) {
+      const lower = text.toLowerCase();
+      let boost = source.type === "shop" || source.type === "guide" ? .18 : .08;
+      if (hatches.length) boost += .08;
+      if (flies.length) boost += .06;
+      if (lower.includes("fishing well") || lower.includes("good") || lower.includes("productive")) boost += .16;
+      if (lower.includes("slow") || lower.includes("tough") || lower.includes("poor")) boost -= .24;
+      return Math.max(-.35, Math.min(.45, boost));
+    }
+
+    function extractSignalsForWater(water, sourceText, source) {
+      const lower = sourceText.toLowerCase();
+      const aliases = aliasesForWater(water);
+      const mentioned = aliases.some((alias) => alias.length > 3 && lower.includes(alias));
+      if (!mentioned) return null;
+      const hatches = hatchSignalMap
+        .filter(([needle]) => lower.includes(needle))
+        .map(([, hatch]) => hatch);
+      const flies = flySignalMap
+        .filter(([needle]) => lower.includes(needle))
+        .map(([, fly]) => fly);
+      const cues = cueSignalsFromText(lower);
+      return {
+        hatches: uniqueItems(hatches),
+        flies: uniqueItems(flies),
+        cues,
+        sources: [source.label],
+        scoreBoost: scoreBoostFromSignals(lower, source, hatches, flies)
+      };
+    }
+
+    function mergeIntelSignals(current, next) {
+      if (!next) return current;
+      return {
+        hatches: uniqueItems([...(current.hatches || []), ...(next.hatches || [])]).slice(0, 6),
+        flies: uniqueItems([...(current.flies || []), ...(next.flies || [])]).slice(0, 8),
+        cues: uniqueItems([...(current.cues || []), ...(next.cues || [])]).slice(0, 6),
+        sources: uniqueItems([...(current.sources || []), ...(next.sources || [])]).slice(0, 6),
+        scoreBoost: Math.max(-.5, Math.min(.65, (current.scoreBoost || 0) + (next.scoreBoost || 0)))
+      };
+    }
+
+    async function scrubLocalResources(mode = "daily-open") {
+      const sourceResults = [];
+      const errors = [];
+      for (const source of localIntelSources) {
+        let text = "";
+        let readable = false;
+        try {
+          text = textFromHtml(await fetchTextWithTimeout(source.url, source.label));
+          readable = text.length > 80;
+        } catch (error) {
+          errors.push(`${source.label}: ${error.message}`);
+          text = source.fallback;
+        }
+        sourceResults.push({
+          label: source.label,
+          type: source.type,
+          url: source.url,
+          readable,
+          text: text || source.fallback
+        });
+      }
+
+      const byWater = {};
+      waters.forEach((water) => {
+        let intel = { hatches: [], flies: [], cues: [], sources: [], scoreBoost: 0 };
+        sourceResults.forEach((sourceResult) => {
+          const signals = extractSignalsForWater(water, sourceResult.text, sourceResult);
+          intel = mergeIntelSignals(intel, signals);
+        });
+        if (intel.sources.length || intel.hatches.length || intel.flies.length) byWater[water.id] = intel;
+      });
+
+      const cache = liveReports.cache || readWaterCache();
+      cache.localIntel = {
+        byWater,
+        sources: sourceResults.map(({ label, type, url, readable }) => ({ label, type, url, readable })),
+        updatedAt: new Date().toISOString(),
+        mode,
+        errors
+      };
+      cache.lastSavedAt = cache.lastSavedAt || cache.localIntel.updatedAt;
+      writeWaterCache(cache);
+      return cache.localIntel;
     }
 
     async function fetchUsgsReport(meta) {
@@ -3222,13 +3465,14 @@
       renderToday();
       renderWaters();
       bindDynamic();
+      await scrubLocalResources(mode);
       const results = [];
       for (let index = 0; index < waters.length; index += BULK_SYNC_CONCURRENCY) {
         const batch = waters.slice(index, index + BULK_SYNC_CONCURRENCY);
         const batchResults = await Promise.allSettled(batch.map((water) => refreshLiveReport(water.id, { mode, render: false })));
         results.push(...batchResults);
       }
-      if (mode === "nightly") markNightlySyncComplete();
+      if (mode === "daily-open") markDailyOpenSyncComplete();
       liveReports.bulkStatus = "";
       renderAll();
       return results;
@@ -3255,7 +3499,8 @@
       const wind = numberFromText(report?.nws?.wind || water.wind);
       const forecast = `${report?.nws?.forecast || ""}`.toLowerCase();
       const hatchText = predictedHatches(water).join(" ").toLowerCase();
-      const flies = [...water.flies];
+      const intel = localIntelForWater(water);
+      const flies = [...intel.flies, ...water.flies];
       if (water.type === "Lake") {
         if (wind !== null && wind >= 12) flies.unshift("Balanced Leech #10");
         if (waterTemp !== null && waterTemp >= 56) flies.unshift("Damsel Nymph #12", "Callibaetis Spinner #16");
@@ -3266,11 +3511,12 @@
         if (forecast.includes("cloud") || forecast.includes("rain")) flies.unshift("BWO Soft Hackle #18");
         if (hatchText.includes("caddis")) flies.unshift("X-Caddis #16");
       }
-      return [...new Set(flies)].slice(0, 4);
+      return uniqueItems(flies).slice(0, 4);
     }
 
     function liveRecommendationReason(water) {
       const report = liveReports.byWater[water.id];
+      const intel = localIntelForWater(water);
       if (!report) return "Pull live inputs to compare gauge, forecast, and report context against the demo hatch profile.";
       if (report.status === "loading") return "Checking USGS gauge and NWS forecast now.";
       if (report.status === "error") return `Live pull failed: ${report.error}`;
@@ -3280,6 +3526,7 @@
       if (report.usgs?.waterTemp) parts.push(`${report.usgs.waterTemp} water`);
       if (report.nws?.forecast) parts.push(`${report.nws.forecast.toLowerCase()} forecast`);
       if (report.nws?.wind) parts.push(`${report.nws.wind} wind`);
+      if (intel.sources?.length) parts.push(`${intel.sources.slice(0, 2).join(" + ")} local report signal`);
       const prefix = report.fromCache ? "Using saved local data" : "Adjusted";
       const suffix = report.refreshError ? ` Last update failed: ${report.refreshError}.` : "";
       return parts.length ? `${prefix} from ${parts.join(", ")}.${suffix}` : `Forecast/report links loaded, but no gauge values were available for this water.${suffix}`;
@@ -3287,9 +3534,12 @@
 
     function dataModelNotice(water) {
       const report = liveReports.byWater[water.id];
+      const intel = localIntelForWater(water);
       if (report?.refreshing) return "Updating now. The app will keep using the saved local report if signal drops.";
       if (report?.status === "ready") {
-        return "Stored locally on this device. Fishability, hatch window, and fly suggestions are adjusted from USGS gauge values and the NWS forecast. ODFW and shop reports are linked here, but not parsed yet.";
+        return intel.sources?.length
+          ? `Stored locally on this device. Model blends USGS/NWS data with daily local report signals from ${intel.sources.slice(0, 3).join(", ")}.`
+          : "Stored locally on this device. Fishability, hatch window, and fly suggestions are adjusted from USGS gauge values and the NWS forecast; local report pages are scrubbed daily when readable.";
       }
       if (report?.status === "loading") return "Pulling live USGS/NWS inputs for this prototype model.";
       return "Demo baseline: refresh live inputs to adjust this water with USGS/NWS data.";
@@ -3297,13 +3547,16 @@
 
     function liveReportPanel(water) {
       const report = liveReports.byWater[water.id];
+      const intel = localIntelForWater(water);
       const status = report?.refreshing ? "refreshing" : report?.status || "idle";
       const meta = report?.meta || liveMetaFor(water);
       const usgsLabel = meta.usgs ? `USGS ${meta.usgs}` : "No gauge mapped";
+      const intelUpdated = liveReports.cache?.localIntel?.updatedAt ? formatSavedTime(liveReports.cache.localIntel.updatedAt) : "Not scrubbed yet";
       const updated = report?.cachedAt ? `Saved locally ${formatSavedTime(report.cachedAt)}` : report?.updatedAt ? `Updated ${report.updatedAt}` : "Not pulled yet";
       const rows = report?.status === "ready" ? `
         <div class="line-row"><span>Gauge</span><b>${usgsLabel}${report.usgs?.flow ? ` - ${report.usgs.flow}` : ""}${report.usgs?.waterTemp ? ` - ${report.usgs.waterTemp}` : ""}</b></div>
         <div class="line-row"><span>Forecast</span><b>${report.nws?.air || "Air n/a"} - ${report.nws?.wind || "Wind n/a"}${report.nws?.forecast ? ` - ${report.nws.forecast}` : ""}</b></div>
+        <div class="line-row"><span>Local intel</span><b>${intel.sources?.length ? `${intel.sources.join(" + ")} - ${uniqueItems([...intel.hatches, ...intel.flies]).slice(0, 4).join(", ")}` : `Daily scrub saved ${intelUpdated}`}</b></div>
         ${(report.errors || []).length ? `<div class="line-row"><span>Gaps</span><b>${report.errors.join(" / ")}</b></div>` : ""}
         ${report.refreshError ? `<div class="line-row"><span>Last update</span><b>${report.refreshError}</b></div>` : ""}
       ` : `
@@ -4323,24 +4576,23 @@
 
     function runInitialDataSync() {
       if (navigator.onLine === false) return;
-      if (shouldRunNightlySync()) {
-        refreshAllWaterReports("nightly");
+      if (shouldRunDailyOpenSync()) {
+        refreshAllWaterReports("daily-open");
       } else if (!liveReports.byWater[activeWater]) {
         refreshLiveReport(activeWater, { mode: "startup" });
       }
     }
 
-    function checkNightlySyncWindow() {
+    function checkDailyOpenSync() {
       if (navigator.onLine === false || liveReports.bulkStatus) return;
-      if (shouldRunNightlySync()) refreshAllWaterReports("nightly");
+      if (shouldRunDailyOpenSync()) refreshAllWaterReports("daily-open");
     }
 
-    function startNightlySyncWatcher() {
-      setInterval(checkNightlySyncWindow, 15 * 60 * 1000);
+    function startDailyOpenSyncWatcher() {
       document.addEventListener("visibilitychange", () => {
-        if (!document.hidden) checkNightlySyncWindow();
+        if (!document.hidden) checkDailyOpenSync();
       });
-      window.addEventListener("online", checkNightlySyncWindow);
+      window.addEventListener("online", checkDailyOpenSync);
     }
 
     function activateTab(tab) {
@@ -4539,7 +4791,7 @@
     hydrateWaterCache();
     renderAll();
     runInitialDataSync();
-    startNightlySyncWatcher();
+    startDailyOpenSyncWatcher();
   </script>
 </body>
 </html>
