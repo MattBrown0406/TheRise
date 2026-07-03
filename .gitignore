@@ -1,0 +1,22 @@
+.DS_Store
+tmp/
+output/
+
+# Other local project folders that share this parent directory.
+FamilyBridgeApp/
+_local-duplicate-backend-archive/
+freedominterventions/
+nomoreenabling/
+northstar-os/
+northstar-os-codex-partial-20260607-072917/
+partywreckera/
+soberhelpline/
+soberhelpline_social_ads/
+stageforge-bodybuilding/
+virexfitness/
+
+# One-off build/helper scripts and prototype screenshots outside The Rise app.
+build_hermes_beginner_pdf.py
+build_hermes_pdf.py
+make_soberhelpline_ads.py
+the-rise-*.png
