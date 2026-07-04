@@ -4449,18 +4449,24 @@
         .join("");
       const wrappedTagPath = "M326 220 C350 256 382 256 394 220 C394 190 426 190 426 220 C426 250 458 250 458 220 C458 190 490 190 490 220 C490 250 522 250 522 220 C522 190 554 190 554 220 C554 250 586 250 586 220 C604 192 640 176 696 172";
       const threadedSmallLoopPath = `${wrappedTagPath} C610 96 420 103 326 220 C344 244 374 260 410 252`;
-      const improvedFinalLoopPath = `${threadedSmallLoopPath} C458 324 562 322 642 232`;
+      const completedThroughSmallLoopPath = `${wrappedTagPath} C610 96 420 103 326 220 C344 244 374 260 410 252`;
+      const largeLoopPassPath = "M410 252 C456 314 568 306 642 232";
       const smallEyeLoop = () => `
         ${line("M326 220 C350 256 386 256 410 220", "tag-line soft")}
         ${loopTarget(358, 228, 42, 30)}
       `;
       const bigLoop = () => `
-        ${line("M330 220 C398 108 566 106 646 220 C586 330 420 334 330 220", "guide-loop")}
+        ${line("M330 220 C398 126 560 124 646 220 C588 314 430 318 330 220", "guide-loop")}
       `;
-      const seatedWraps = () => Array.from({ length: 5 }, (_, index) => {
-        const x = 342 + index * 13;
-        return `<path class="seated-wrap" d="M${x} 202 C${x + 8} 214 ${x + 8} 226 ${x} 238"/>`;
-      }).join("");
+      const seatedKnot = () => `
+        <path class="knot-body" d="M328 220 C344 197 394 196 416 220 C394 244 344 243 328 220 Z"/>
+        <path class="knot-rib" d="M342 201 L354 239"/>
+        <path class="knot-rib" d="M354 198 L368 242"/>
+        <path class="knot-rib" d="M368 198 L383 242"/>
+        <path class="knot-rib" d="M383 201 L398 238"/>
+        <path class="tag-line soft" d="M331 224 C348 243 374 242 410 222"/>
+        <path class="tag-line soft" d="M334 238 C352 263 370 288 390 314"/>
+      `;
       const drawings = [
         () => `
           ${hook()}
@@ -4497,7 +4503,8 @@
           ${standingLine()}
           ${smallEyeLoop()}
           ${bigLoop()}
-          ${line(improvedFinalLoopPath, "active-tag")}
+          ${line(completedThroughSmallLoopPath, "completed-tag")}
+          ${line(largeLoopPassPath, "active-tag")}
           ${wrapNumbers()}
           ${arrow("M486 344 C522 300 586 250 642 232")}
           <text class="line-label" x="390" y="362">tag goes up through the large loop</text>
@@ -4505,9 +4512,7 @@
         () => `
           ${hook()}
           ${line("M326 220 H704", "standing-line")}
-          ${line("M326 220 C344 240 374 238 410 223", "tag-line soft")}
-          ${line("M334 240 C352 264 370 288 390 314", "tag-line soft")}
-          ${seatedWraps()}
+          ${seatedKnot()}
           <path class="trim-mark" d="M394 303 L416 324 M416 303 L394 324"/>
           ${pull("M650 220 H714")}
           ${pull("M352 260 C368 286 382 306 394 322")}
@@ -4530,7 +4535,7 @@
               .title{fill:#111815;font-size:30px;font-weight:900}
               .subtitle{fill:#5f6d63;font-size:18px;font-weight:750}
               .line-label{fill:#5f6d63;font-size:15px;font-weight:800}
-              .hook-wire,.hook-highlight,.hook-eye,.eye-hole,.standing-line,.tag-line,.active-tag,.guide-loop,.wrap-turn,.seated-wrap,.red-motion,.pull-motion,.wrap-direction,.trim-mark{fill:none;stroke-linecap:round;stroke-linejoin:round}
+              .hook-wire,.hook-highlight,.hook-eye,.eye-hole,.standing-line,.tag-line,.completed-tag,.active-tag,.guide-loop,.wrap-turn,.seated-wrap,.knot-rib,.red-motion,.pull-motion,.wrap-direction,.trim-mark{fill:none;stroke-linecap:round;stroke-linejoin:round}
               .hook-wire{stroke:#111815;stroke-width:9}
               .hook-highlight{stroke:#fffdf7;stroke-width:2;opacity:.42}
               .hook-point,.hook-barb{fill:#111815;stroke:none}
@@ -4539,11 +4544,14 @@
               .standing-line{stroke:#111815;stroke-width:5}
               .tag-line{stroke:#111815;stroke-width:5}
               .tag-line.soft{stroke-width:4;opacity:.52}
+              .completed-tag{stroke:#9a6b66;stroke-width:4;opacity:.45}
               .guide-loop{stroke:#315747;stroke-width:3;opacity:.34}
               .active-tag{stroke:#d33b37;stroke-width:4.5}
               .wrap-turn{stroke:#111815;stroke-width:5}
               .wrap-turn.under{opacity:.72}
               .seated-wrap{stroke:#111815;stroke-width:5}
+              .knot-body{fill:#fffdf7;stroke:#111815;stroke-width:5}
+              .knot-rib{stroke:#111815;stroke-width:4}
               .red-motion{stroke:#d33b37;stroke-width:3;marker-end:url(#redArrow)}
               .pull-motion{stroke:#315747;stroke-width:3.5;marker-end:url(#pullArrow)}
               .wrap-direction{stroke:#d33b37;stroke-width:2.5;stroke-dasharray:8 7;marker-end:url(#redArrow)}
