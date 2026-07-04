@@ -4420,135 +4420,135 @@
     }
 
     function improvedClinchInstructionSvg(step) {
-      const active = (index) => index === step ? " active-step" : "";
-      const line = (d, extra = "") => `<path class="tippet ${extra}" d="${d}"/>`;
-      const hookEyeX = (x, scale = 1) => x + 364 * scale;
-      const hook = (x, y, scale = 1) => `
-        <g transform="translate(${x} ${y}) scale(${scale})">
-          <path class="hook-outline" d="M362 0 H118 C66 0 38 -34 46 -73 C55 -119 98 -149 143 -139"/>
-          <path class="hook-outline" d="M143 -139 C119 -126 101 -105 93 -77"/>
-          <path class="hook-outline" d="M93 -77 C111 -94 127 -105 151 -113"/>
-          <path class="barb" d="M122 -101 L132 -79"/>
-          <ellipse class="eye-outline" cx="366" cy="0" rx="25" ry="15"/>
-          <ellipse class="eye-hole" cx="366" cy="0" rx="11" ry="6"/>
+      const labels = [
+        ["Pass tag end", "through the eye"],
+        ["Wrap tag end", "5 turns around standing line"],
+        ["Pass tag through", "the small eye loop"],
+        ["Pass tag through", "the large loop"],
+        ["Wet and seat", "by pulling standing line"]
+      ];
+      const instruction = labels[step] || labels[0];
+      const arrow = (d, cls = "red-motion") => `<path class="${cls}" d="${d}" marker-end="url(#redArrow)"/>`;
+      const pull = (d) => `<path class="pull-motion" d="${d}" marker-end="url(#pullArrow)"/>`;
+      const line = (d, cls = "line") => `<path class="${cls}" d="${d}"/>`;
+      const target = (cx, cy, r = 22) => `<circle class="target" cx="${cx}" cy="${cy}" r="${r}"/>`;
+      const loopTarget = (cx, cy, rx, ry) => `<ellipse class="target" cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}"/>`;
+      const hook = () => `
+        <g class="hook">
+          <path d="M318 220 H140 C86 220 50 188 55 146 C60 102 100 72 146 82"/>
+          <path d="M146 82 C122 94 104 115 96 142"/>
+          <path d="M96 142 C114 126 134 117 157 111"/>
+          <path class="barb" d="M128 121 L138 144"/>
+          <ellipse class="hook-eye" cx="326" cy="220" rx="26" ry="16"/>
+          <ellipse class="eye-hole" cx="326" cy="220" rx="11" ry="6"/>
         </g>
       `;
-      const badge = (index, x, y) => `
-        <g class="badge${active(index)}">
-          <text x="${x}" y="${y}">${index + 1}.</text>
-        </g>
-      `;
-      const text = (lines, x, y, index) => `
-        <text class="instruction-copy${active(index)}" x="${x}" y="${y}">
-          ${lines.map((line, lineIndex) => `<tspan x="${x}" dy="${lineIndex ? 25 : 0}">${line}</tspan>`).join("")}
-        </text>
-      `;
-      const labelBlock = (x, y, width = 350) => `
-        <rect class="label-back" x="${x - 14}" y="${y - 31}" width="${width}" height="58" rx="10"/>
-      `;
-      const wrapSequence = (startX, y, count = 5) => Array.from({ length: count }, (_, index) => {
-        const x = startX + index * 52;
+      const standingLine = () => line("M326 220 H700", "standing-line");
+      const wrapTurns = (count = 5) => Array.from({ length: count }, (_, index) => {
+        const x = 394 + index * 42;
         return `
-          <path class="wrap-over" d="M${x} ${y} C${x + 12} ${y - 22} ${x + 36} ${y - 22} ${x + 48} ${y}"/>
-          <path class="wrap-under" d="M${x + 48} ${y} C${x + 36} ${y + 22} ${x + 12} ${y + 22} ${x} ${y}"/>
-          <text class="tiny-count" x="${x + 24}" y="${y - 24}">${index + 1}</text>
+          <path class="wrap-turn over" d="M${x - 18} 220 C${x - 17} 185 ${x + 17} 185 ${x + 18} 220"/>
+          <path class="wrap-turn under" d="M${x + 18} 220 C${x + 17} 255 ${x - 17} 255 ${x - 18} 220"/>
+          <text class="turn-count" x="${x}" y="179">${index + 1}</text>
         `;
       }).join("");
+      const smallEyeLoop = () => line("M326 220 C352 250 386 250 410 220", "tag-line soft");
+      const bigLoop = () => `
+        ${line("M580 220 C560 88 386 88 326 220", "tag-line")}
+        ${line("M326 220 C420 344 620 334 650 220", "tag-line")}
+      `;
+      const seatedWraps = () => Array.from({ length: 5 }, (_, index) => {
+        const x = 350 + index * 16;
+        return `<path class="seated-wrap" d="M${x} 201 C${x + 10} 214 ${x + 10} 226 ${x} 239"/>`;
+      }).join("");
+      const drawings = [
+        () => `
+          ${hook()}
+          ${standingLine()}
+          ${line("M326 220 C365 236 395 266 420 304", "tag-line")}
+          ${arrow("M430 314 C390 286 354 245 332 222")}
+          <text class="line-label" x="578" y="202">standing line</text>
+          <text class="line-label" x="414" y="337">tag end</text>
+        `,
+        () => `
+          ${hook()}
+          ${standingLine()}
+          ${smallEyeLoop()}
+          ${wrapTurns(5)}
+          ${line("M604 220 C632 184 662 174 694 178", "tag-line")}
+          ${arrow("M684 126 C630 137 604 169 602 209")}
+          <text class="line-label" x="458" y="286">five stacked turns</text>
+        `,
+        () => `
+          ${hook()}
+          ${standingLine()}
+          ${smallEyeLoop()}
+          ${wrapTurns(5)}
+          ${line("M604 220 C584 104 390 98 326 220", "tag-line")}
+          ${line("M604 220 C540 318 402 306 326 222", "tag-line soft")}
+          ${target(326, 220, 26)}
+          ${arrow("M455 306 C398 292 350 254 329 223")}
+          <text class="line-label" x="84" y="283">small loop by eye</text>
+        `,
+        () => `
+          ${hook()}
+          ${standingLine()}
+          ${wrapTurns(5)}
+          ${bigLoop()}
+          ${line("M345 230 C444 319 542 303 610 238", "tag-line soft")}
+          ${line("M520 326 C555 286 576 248 586 221", "tag-line")}
+          ${loopTarget(501, 220, 180, 116)}
+          ${arrow("M500 326 C533 290 565 248 586 222")}
+          <text class="line-label" x="468" y="352">tag goes through big loop</text>
+        `,
+        () => `
+          ${hook()}
+          ${line("M326 220 H704", "standing-line")}
+          ${line("M326 220 C350 246 388 246 424 223", "tag-line soft")}
+          ${seatedWraps()}
+          ${pull("M650 220 H714")}
+          ${pull("M338 242 C312 262 292 278 274 300")}
+          <text class="line-label" x="520" y="202">pull standing line</text>
+          <text class="line-label" x="240" y="326">snug tag, trim close</text>
+        `
+      ];
 
       return `
-        <svg class="improved-clinch-board" viewBox="0 0 960 900" aria-label="Improved Clinch Knot instruction diagram" role="img">
+        <svg class="improved-clinch-board" viewBox="0 0 760 430" aria-label="Improved Clinch Knot step ${step + 1}" role="img">
           <defs>
-            <marker id="redArrow" markerWidth="13" markerHeight="13" refX="10" refY="6.5" orient="auto">
-              <path d="M0 0 L13 6.5 L0 13 Z" fill="#d63a35"/>
+            <marker id="redArrow" markerWidth="14" markerHeight="14" refX="11" refY="7" orient="auto">
+              <path d="M0 0 L14 7 L0 14 Z" fill="#d33b37"/>
+            </marker>
+            <marker id="pullArrow" markerWidth="14" markerHeight="14" refX="11" refY="7" orient="auto">
+              <path d="M0 0 L14 7 L0 14 Z" fill="#315747"/>
             </marker>
             <style>
-              .board-title,.instruction-copy,.badge text,.tiny-count{font-family:Inter,system-ui,sans-serif}
-              .board-title{fill:#111815;font-size:42px;font-weight:900}
-              .rule{stroke:#111815;stroke-width:2}
-              .row-guide{stroke:#ebe5db;stroke-width:1}
-              .hook-outline,.barb,.eye-outline,.eye-hole,.tippet,.wrap-over,.wrap-under,.red-motion{fill:none;stroke-linecap:round;stroke-linejoin:round}
-              .hook-outline{stroke:#111815;stroke-width:5.5}
-              .barb{stroke:#111815;stroke-width:4}
-              .eye-outline{stroke:#111815;stroke-width:5}
-              .eye-hole{stroke:#111815;stroke-width:2.5}
-              .tippet{stroke:#111815;stroke-width:4}
-              .tag{stroke-width:4.5}
-              .soft{opacity:.65}
-              .wrap-over{stroke:#111815;stroke-width:4.5}
-              .wrap-under{stroke:#111815;stroke-width:3.5;opacity:.82}
-              .red-motion{stroke:#d63a35;marker-end:url(#redArrow)}
-              .target{fill:none;stroke:#d63a35;stroke-width:2.5;stroke-dasharray:6 6}
-              .label-back{fill:#fffdf7;opacity:.94}
-              .badge text{fill:#111815;font-size:40px;font-weight:900;text-anchor:middle}
-              .badge.active-step text{fill:#9b6523}
-              .instruction-copy{fill:#111815;font-size:25px;font-weight:650}
-              .instruction-copy.active-step{font-weight:850}
-              .tiny-count{fill:#111815;font-size:13px;font-weight:850;text-anchor:middle}
+              .title,.subtitle,.line-label,.turn-count{font-family:Inter,system-ui,sans-serif}
+              .title{fill:#111815;font-size:30px;font-weight:900}
+              .subtitle{fill:#5f6d63;font-size:18px;font-weight:750}
+              .line-label{fill:#5f6d63;font-size:15px;font-weight:800}
+              .hook path,.hook-eye,.eye-hole,.standing-line,.tag-line,.wrap-turn,.seated-wrap,.red-motion,.pull-motion{fill:none;stroke-linecap:round;stroke-linejoin:round}
+              .hook path{stroke:#111815;stroke-width:7}
+              .hook .barb{stroke-width:5}
+              .hook-eye{stroke:#111815;stroke-width:6}
+              .eye-hole{stroke:#111815;stroke-width:2}
+              .standing-line{stroke:#111815;stroke-width:5}
+              .tag-line{stroke:#111815;stroke-width:5}
+              .tag-line.soft{stroke-width:4;opacity:.52}
+              .wrap-turn{stroke:#111815;stroke-width:5}
+              .wrap-turn.under{opacity:.72}
+              .seated-wrap{stroke:#111815;stroke-width:5}
+              .red-motion{stroke:#d33b37;stroke-width:4;marker-end:url(#redArrow)}
+              .pull-motion{stroke:#315747;stroke-width:4;marker-end:url(#pullArrow)}
+              .target{fill:none;stroke:#d33b37;stroke-width:3;stroke-dasharray:7 6}
+              .turn-count{fill:#111815;font-size:13px;font-weight:900;text-anchor:middle}
             </style>
           </defs>
-          <rect width="960" height="900" fill="#fffdf7"/>
-          <text class="board-title" x="28" y="58">Improved Clinch Knot Instructions</text>
-          <path class="rule" d="M28 80 H932"/>
-
-          <g>
-            ${hook(70, 170, .58)}
-            ${line(`M${hookEyeX(70, .58)} 170 H884`)}
-            ${line(`M${hookEyeX(70, .58)} 170 C340 174 361 199 390 225`, "tag")}
-            <path class="red-motion" d="M884 170 H824"/>
-            <path class="red-motion" d="M382 213 C360 197 341 181 328 171"/>
-            ${labelBlock(484, 127)}
-            ${badge(0, 450, 142)}
-            ${text(["Pass the working end", "through the eye."], 484, 126, 0)}
-          </g>
-
-          <g>
-            ${hook(70, 322, .58)}
-            ${line(`M${hookEyeX(70, .58)} 322 H884`)}
-            ${wrapSequence(380, 322, 5)}
-            ${line("M334 322 C370 278 430 278 458 322", "tag")}
-            <path class="red-motion" d="M854 278 C884 293 896 314 884 329"/>
-            ${labelBlock(472, 262, 385)}
-            ${badge(1, 438, 277)}
-            ${text(["Wrap it 5 times", "around standing line."], 472, 261, 1)}
-          </g>
-
-          <g>
-            ${hook(70, 474, .58)}
-            ${line(`M${hookEyeX(70, .58)} 474 H884`)}
-            ${wrapSequence(380, 474, 5)}
-            ${line(`M${hookEyeX(70, .58)} 474 C430 386 696 388 818 474`, "tag")}
-            ${line("M818 474 C716 562 458 558 291 480", "tag soft")}
-            <circle class="target" cx="${hookEyeX(70, .58)}" cy="474" r="22"/>
-            <path class="red-motion" d="M372 544 C333 523 302 498 286 478"/>
-            ${labelBlock(472, 414, 365)}
-            ${badge(2, 438, 429)}
-            ${text(["Pass it through the", "first loop."], 472, 413, 2)}
-          </g>
-
-          <g>
-            ${hook(70, 632, .58)}
-            ${line(`M${hookEyeX(70, .58)} 632 H884`)}
-            ${wrapSequence(380, 632, 5)}
-            ${line(`M${hookEyeX(70, .58)} 632 C430 528 696 530 818 632 C700 726 444 724 ${hookEyeX(70, .58)} 632`, "tag")}
-            ${line("M482 710 C586 688 662 644 718 578", "tag")}
-            <ellipse class="target" cx="590" cy="632" rx="300" ry="108"/>
-            <path class="red-motion" d="M684 518 C649 557 632 591 638 621"/>
-            ${labelBlock(472, 572, 340)}
-            ${badge(3, 438, 587)}
-            ${text(["Pass it under the", "larger loop."], 472, 571, 3)}
-          </g>
-
-          <g>
-            ${hook(70, 790, .58)}
-            ${line(`M${hookEyeX(70, .58)} 790 H884`)}
-            ${line(`M${hookEyeX(70, .58)} 790 C338 814 416 814 468 790`, "tag")}
-            ${wrapSequence(360, 790, 4)}
-            <path class="red-motion" d="M884 790 H816"/>
-            <path class="red-motion" d="M450 830 C476 838 498 855 513 880"/>
-            ${labelBlock(472, 732, 330)}
-            ${badge(4, 438, 747)}
-            ${text(["Tighten by pulling", "on both ends."], 472, 731, 4)}
-          </g>
+          <rect width="760" height="430" fill="#fffdf7"/>
+          <text class="title" x="24" y="42">Step ${step + 1}: ${instruction[0]}</text>
+          <text class="subtitle" x="24" y="70">${instruction[1]}</text>
+          <path d="M24 92 H736" stroke="#111815" stroke-width="2"/>
+          ${drawings[step] ? drawings[step]() : drawings[0]()}
         </svg>
       `;
     }
@@ -4670,31 +4670,11 @@
         ]
       };
 
-      const boardPanels = knot.id === "improved-clinch" ? improvedClinchPanels : genericPanels[knot.id] || genericPanels["non-slip-loop"];
-      const isFivePanel = boardPanels.length === 5;
-      const panelPositions = isFivePanel
-        ? [[26, 106, 430, 178], [504, 106, 430, 178], [26, 314, 430, 178], [504, 314, 430, 178], [26, 522, 908, 168]]
-        : [[26, 112, 430, 236], [504, 112, 430, 236], [26, 388, 430, 236], [504, 388, 430, 236]];
-      const viewHeight = isFivePanel ? 720 : 650;
-      const panel = (draw, index) => {
-        const [x, y, width, height] = panelPositions[index];
-        const active = index === step ? " active" : "";
-        const scale = width > 500 ? 1.05 : 1;
-        return `
-          <g transform="translate(${x} ${y})">
-            <rect class="instruction-panel${active}" width="${width}" height="${height}" rx="12"/>
-            <circle class="step-dot" cx="28" cy="33" r="17"/>
-            <text class="step-num" x="28" y="40">${index + 1}</text>
-            ${caption(knot.steps[index], 56, 29, width > 500 ? 50 : 28)}
-            <g transform="translate(0 ${width > 500 ? 35 : 28}) scale(${scale})">
-              ${draw()}
-            </g>
-          </g>
-        `;
-      };
+      const boardPanels = genericPanels[knot.id] || genericPanels["non-slip-loop"];
+      const currentPanel = boardPanels[Math.min(step, boardPanels.length - 1)] || boardPanels[0];
 
       return `
-        <svg viewBox="0 0 960 ${viewHeight}" aria-label="${knot.name} knot instruction diagram" role="img">
+        <svg class="knot-step-board" viewBox="0 0 760 430" aria-label="${knot.name} step ${step + 1}" role="img">
           <defs>
             <marker id="knotArrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
               <path d="M0 0 L12 6 L0 12 Z" fill="#d33b37"/>
@@ -4707,12 +4687,10 @@
             </filter>
             <style>
               .board-title,.panel-copy,.step-num{font-family:Inter,system-ui,sans-serif}
-              .board-title{fill:#111815;font-size:42px;font-weight:900}
-              .instruction-panel{fill:#fff;stroke:#ddd8cf;stroke-width:2}
-              .instruction-panel.active{stroke:#d6a94a;stroke-width:5}
+              .board-title{fill:#111815;font-size:30px;font-weight:900}
               .step-dot{fill:#b8b8b8;stroke:#898989;stroke-width:1}
               .step-num{fill:#111815;font-size:24px;font-weight:850;text-anchor:middle}
-              .panel-copy{fill:#111815;font-size:23px;font-weight:650}
+              .panel-copy{fill:#111815;font-size:19px;font-weight:750}
               .hook{fill:none;stroke:#111815;stroke-width:7;filter:url(#knotShadow)}
               .hook-eye{fill:#f7f4ec;stroke:#353733;stroke-width:8}
               .hook-hole{fill:#fff;stroke:#6a6d66;stroke-width:2}
@@ -4729,10 +4707,13 @@
               .target{fill:none;stroke:#d33b37;stroke-width:3;stroke-dasharray:6 6}
             </style>
           </defs>
-          <rect width="960" height="${viewHeight}" fill="#fffdf7"/>
-          <text class="board-title" x="26" y="62">${knot.name} Instructions</text>
-          <path d="M26 82 H934" stroke="#111815" stroke-width="2"/>
-          ${boardPanels.map(panel).join("")}
+          <rect width="760" height="430" fill="#fffdf7"/>
+          <text class="board-title" x="24" y="42">Step ${step + 1}: ${knot.name}</text>
+          <path d="M24 66 H736" stroke="#111815" stroke-width="2"/>
+          ${caption(knot.steps[step] || knot.steps[knot.steps.length - 1], 24, 96, 54)}
+          <g transform="translate(88 128) scale(1.34)">
+            ${currentPanel()}
+          </g>
         </svg>
       `;
     }
