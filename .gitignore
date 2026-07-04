@@ -1,6 +1,8 @@
 .DS_Store
 tmp/
 output/
+xcuserdata/
+*.xcuserstate
 
 # Other local project folders that share this parent directory.
 FamilyBridgeApp/
