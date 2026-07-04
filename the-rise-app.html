@@ -276,11 +276,46 @@
       z-index: 1;
     }
 
-    .home-water {
-      font-size: 16px;
+    .home-water-control {
+      width: min(460px, 100%);
+      display: grid;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .home-water-control label {
+      font-size: 14px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: rgba(255, 255, 255, .78);
+    }
+
+    .home-water-control select {
+      width: 100%;
+      min-height: 48px;
+      border: 1px solid rgba(255, 255, 255, .28);
+      border-radius: 8px;
+      color: #fff;
+      background:
+        linear-gradient(45deg, transparent 50%, rgba(255, 255, 255, .92) 50%) right 18px center / 7px 7px no-repeat,
+        linear-gradient(135deg, rgba(255, 255, 255, .92) 50%, transparent 50%) right 13px center / 7px 7px no-repeat,
+        rgba(255, 255, 255, .16);
+      appearance: none;
+      padding: 10px 42px 10px 14px;
       font-weight: 850;
-      color: rgba(255, 255, 255, .82);
-      margin-bottom: 12px;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, .12);
+      backdrop-filter: blur(8px);
+    }
+
+    .home-water-control select:focus {
+      outline: 3px solid rgba(240, 179, 61, .36);
+      outline-offset: 2px;
+    }
+
+    .home-water-control option {
+      color: var(--ink);
+      background: #fffdf7;
     }
 
     .prime-title {
@@ -1589,7 +1624,7 @@
         max-width: 100vw;
       }
 
-      .home-water {
+      .home-water-control label {
         font-size: 15px;
       }
 
@@ -2364,6 +2399,8 @@
 
     const WATER_REPORT_CACHE_KEY = "riseWaterReports.v1";
     const USER_LOCATION_KEY = "riseUserLocation.v1";
+    const HOME_WATER_KEY = "riseHomeWater.v1";
+    const ACTIVE_WATER_KEY = "riseActiveWater.v1";
     const LIVE_FETCH_TIMEOUT_MS = 6500;
     const BULK_SYNC_CONCURRENCY = 4;
     const liveReports = { byWater: {}, lastRequested: null, cache: null, bulkStatus: "" };
@@ -2570,7 +2607,8 @@
       }
     ];
 
-    let activeWater = waters[0].id;
+    let activeWater = readSavedWaterId(ACTIVE_WATER_KEY) || waters[0].id;
+    let homeWaterId = readSavedWaterId(HOME_WATER_KEY) || activeWater;
     let activeWaterFlyByWater = {};
     let waterFilter = "All";
     let waterQuery = "";
@@ -3056,6 +3094,37 @@
 
     function getWater() {
       return waters.find((water) => water.id === activeWater) || waters[0];
+    }
+
+    function getHomeWater() {
+      return waters.find((water) => water.id === homeWaterId) || getWater();
+    }
+
+    function readSavedWaterId(key) {
+      try {
+        const saved = localStorage.getItem(key);
+        return waters.some((water) => water.id === saved) ? saved : "";
+      } catch {
+        return "";
+      }
+    }
+
+    function saveActiveWater(waterId) {
+      activeWater = waters.some((water) => water.id === waterId) ? waterId : waters[0].id;
+      try {
+        localStorage.setItem(ACTIVE_WATER_KEY, activeWater);
+      } catch {
+        // Local persistence is a convenience for the prototype.
+      }
+    }
+
+    function saveHomeWater(waterId) {
+      homeWaterId = waters.some((water) => water.id === waterId) ? waterId : waters[0].id;
+      try {
+        localStorage.setItem(HOME_WATER_KEY, homeWaterId);
+      } catch {
+        // Local persistence is a convenience for the prototype.
+      }
     }
 
     function getBug() {
@@ -3994,7 +4063,7 @@
     }
 
     function renderToday() {
-      const best = getWater();
+      const best = getHomeWater();
       const score = fishScore(best);
       const clarity = clarityFor(best);
       const scoreDeg = Math.round(Number(score) * 36);
@@ -4040,7 +4109,12 @@
       $("#today").innerHTML = `
         <div class="today-screen">
           <section class="today-hero">
-            <div class="home-water">HOME WATER - ${best.name}</div>
+            <div class="home-water-control">
+              <label for="home-water-select">Home Water</label>
+              <select id="home-water-select" data-home-water aria-label="Choose home water">
+                ${waters.map((water) => `<option value="${water.id}" ${water.id === best.id ? "selected" : ""}>${water.name} - ${water.section}</option>`).join("")}
+              </select>
+            </div>
             <h1 class="prime-title">${primeWindowFor(best)}</h1>
             <div class="condition-line">${liveTemp} water - ${liveWind} - ${clarity.label}</div>
             <div class="fishability-card">
@@ -4857,12 +4931,21 @@
       all("[data-water]").forEach((button) => {
         button.addEventListener("click", (event) => {
           if (event.target.closest("button, a, input, select, textarea, [data-library-fly]")) return;
-          activeWater = button.dataset.water;
+          saveActiveWater(button.dataset.water);
           renderAll();
           if (!liveReports.byWater[activeWater] && navigator.onLine !== false) refreshLiveReport(activeWater, { mode: "manual" });
           if (button.dataset.go) activateTab(button.dataset.go);
         });
       });
+      const homeWaterSelect = $("[data-home-water]");
+      if (homeWaterSelect) {
+        homeWaterSelect.addEventListener("change", () => {
+          saveHomeWater(homeWaterSelect.value);
+          saveActiveWater(homeWaterSelect.value);
+          renderAll();
+          if (!liveReports.byWater[homeWaterId] && navigator.onLine !== false) refreshLiveReport(homeWaterId, { mode: "manual" });
+        });
+      }
       all("[data-refresh-live]").forEach((button) => {
         button.addEventListener("click", () => refreshLiveReport(button.dataset.refreshLive, { mode: "manual" }));
       });
