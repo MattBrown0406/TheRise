@@ -4435,12 +4435,12 @@
       const loopTarget = (cx, cy, rx, ry) => `<ellipse class="target" cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}"/>`;
       const hook = () => `
         <g class="hook">
-          <path d="M318 220 H140 C86 220 50 188 55 146 C60 102 100 72 146 82"/>
-          <path d="M146 82 C122 94 104 115 96 142"/>
-          <path d="M96 142 C114 126 134 117 157 111"/>
-          <path class="barb" d="M128 121 L138 144"/>
-          <ellipse class="hook-eye" cx="326" cy="220" rx="26" ry="16"/>
-          <ellipse class="eye-hole" cx="326" cy="220" rx="11" ry="6"/>
+          <path class="hook-wire" d="M306 220 H142 C94 220 60 254 67 294 C76 342 132 357 176 327 C198 312 215 299 242 293"/>
+          <path class="hook-highlight" d="M300 214 H145 C105 214 78 241 76 276"/>
+          <path class="hook-point" d="M238 292 L282 283 L244 304 Z"/>
+          <path class="hook-barb" d="M218 298 L207 283 L231 294 Z"/>
+          <ellipse class="hook-eye" cx="326" cy="220" rx="26" ry="15" transform="rotate(12 326 220)"/>
+          <ellipse class="eye-hole" cx="326" cy="220" rx="12" ry="6" transform="rotate(12 326 220)"/>
         </g>
       `;
       const standingLine = () => line("M326 220 H700", "standing-line");
@@ -4527,9 +4527,10 @@
               .title{fill:#111815;font-size:30px;font-weight:900}
               .subtitle{fill:#5f6d63;font-size:18px;font-weight:750}
               .line-label{fill:#5f6d63;font-size:15px;font-weight:800}
-              .hook path,.hook-eye,.eye-hole,.standing-line,.tag-line,.wrap-turn,.seated-wrap,.red-motion,.pull-motion{fill:none;stroke-linecap:round;stroke-linejoin:round}
-              .hook path{stroke:#111815;stroke-width:7}
-              .hook .barb{stroke-width:5}
+              .hook-wire,.hook-highlight,.hook-eye,.eye-hole,.standing-line,.tag-line,.wrap-turn,.seated-wrap,.red-motion,.pull-motion{fill:none;stroke-linecap:round;stroke-linejoin:round}
+              .hook-wire{stroke:#111815;stroke-width:9}
+              .hook-highlight{stroke:#fffdf7;stroke-width:2;opacity:.42}
+              .hook-point,.hook-barb{fill:#111815;stroke:none}
               .hook-eye{stroke:#111815;stroke-width:6}
               .eye-hole{stroke:#111815;stroke-width:2}
               .standing-line{stroke:#111815;stroke-width:5}
@@ -4570,9 +4571,12 @@
       `;
       const hook = (x = 26, y = 76, scale = 1) => `
         <g transform="translate(${x} ${y}) scale(${scale})">
-          <path class="hook" d="M116 40 C61 26 18 52 18 91 C18 127 53 144 82 125 C94 117 100 105 102 93 L79 93 C75 105 62 111 49 104 C34 96 36 75 52 68 C69 61 92 66 116 80"/>
-          <ellipse class="hook-eye" cx="127" cy="88" rx="22" ry="15"/>
-          <ellipse class="hook-hole" cx="127" cy="88" rx="10" ry="6"/>
+          <path class="hook" d="M111 88 H42 C19 88 4 106 8 128 C13 154 43 162 67 145 C78 137 88 127 101 125"/>
+          <path class="hook-highlight-small" d="M108 82 H43 C25 82 14 93 12 109"/>
+          <path class="hook-point-fill" d="M99 125 L123 120 L103 132 Z"/>
+          <path class="hook-barb-fill" d="M88 129 L82 121 L96 127 Z"/>
+          <ellipse class="hook-eye" cx="127" cy="88" rx="18" ry="11" transform="rotate(12 127 88)"/>
+          <ellipse class="hook-hole" cx="127" cy="88" rx="8" ry="4" transform="rotate(12 127 88)"/>
         </g>
       `;
       const arrow = (d) => `<path class="red-arrow" d="${d}" marker-end="url(#knotArrow)"/>`;
@@ -4692,6 +4696,8 @@
               .step-num{fill:#111815;font-size:24px;font-weight:850;text-anchor:middle}
               .panel-copy{fill:#111815;font-size:19px;font-weight:750}
               .hook{fill:none;stroke:#111815;stroke-width:7;filter:url(#knotShadow)}
+              .hook-highlight-small{fill:none;stroke:#fffdf7;stroke-width:1.5;stroke-linecap:round;opacity:.42}
+              .hook-point-fill,.hook-barb-fill{fill:#111815;stroke:none}
               .hook-eye{fill:#f7f4ec;stroke:#353733;stroke-width:8}
               .hook-hole{fill:#fff;stroke:#6a6d66;stroke-width:2}
               .line-under,.line-core,.line-ribs{fill:none;stroke-linecap:round;stroke-linejoin:round}
