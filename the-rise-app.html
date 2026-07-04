@@ -2486,7 +2486,7 @@
         water: "East, Hosmer, Crane Prairie",
         cue: "Calm lake mornings, suspended fish",
         body: "A stillwater staple. Depth and hang time matter more than motion when trout key on pupae.",
-        stages: ["Larva: red bloodworm", "Pupa: ribbed ascending body", "Emerger: hanging in surface film", "Adult: tiny midge"],
+        stages: ["Larva: red bloodworm", "Pupa: ribbed ascending body", "Emerger: hanging in surface film", "Adult gnat: tiny dry or cluster"],
         flies: ["Chromie #14", "Ice Cream Cone #16", "Bloodworm #18"],
         plate: "bug-plates/chironomid.png"
       },
@@ -2498,7 +2498,7 @@
         water: "Crooked, Fall, Spring River",
         cue: "Cold clear rivers, tailouts, slow seams",
         body: "Tiny two-winged insects that matter most on cold, clear rivers and spring creeks. For anglers, the practical match is usually larva, pupa, emerger, or a small adult cluster.",
-        stages: ["Larva: slim threadlike body", "Pupa: ribbed ascending body", "Emerger: hanging in the surface film", "Adult: tiny cluster or single dry"],
+        stages: ["Larva: slim threadlike body", "Pupa: ribbed ascending body", "Emerger: hanging in the surface film", "Adult gnat: tiny dry or cluster"],
         flies: ["Zebra Midge #20", "Black Beauty Midge #22", "Griffith's Gnat #20"],
         plate: "bug-plates/chironomid.png"
       },
@@ -2728,7 +2728,7 @@
       blackChironomidFly: { plate: "fly-plates/black-chironomid-artificial.png", pos: "center", size: "contain", cue: "Glossy stillwater chironomid pupa with ribbing, dark bead, and white gill." },
       zebraMidgeFly: { plate: "fly-plates/zebra-midge-artificial.png", pos: "center", size: "contain", cue: "Tiny black midge with silver bead and silver wire rib." },
       blackBeautyMidgeFly: { plate: "fly-plates/black-chironomid-artificial.png", pos: "center", size: "contain", cue: "Tiny dark river midge pupa with fine ribbing and sparse profile." },
-      midgeAdultFly: { plate: "fly-plates/zebra-midge-artificial.png", pos: "center", size: "contain", cue: "Tiny adult midge or cluster reference for slow slicks and sippers." },
+      midgeAdultFly: { plate: "fly-plates/midge-adult-gnat-artificial.png", pos: "center", size: "contain", cue: "Adult midge as a gnat-style dry fly with hackle, upright pale post, and trailing shuck." },
       chromieFly: { plate: "fly-plates/chironomid-artificial.png", pos: "0% 100%", cue: "Silver ribbed chironomid pupa." },
       iceCreamConeFly: { plate: "fly-plates/chironomid-artificial.png", pos: "100% 100%", cue: "White-bead chironomid pupa." },
       miniLeechFly: { plate: "fly-plates/leech-artificial.png", pos: "0% 0%", cue: "Slim olive micro leech pattern." },
@@ -2807,7 +2807,7 @@
       { name: "Zebra Midge #20", bugId: "midge", stage: "Pupa", sizes: "#18-24", ref: flyRefs.zebraMidgeFly, note: "Tiny silver-ribbed midge for cold clear water and tailwaters." },
       { name: "Black Beauty Midge #22", bugId: "midge", stage: "Pupa", sizes: "#20-24", ref: flyRefs.blackBeautyMidgeFly, note: "Sparse dark pupa for picky tailwater and spring-creek fish." },
       { name: "Midge Emerger #22", bugId: "midge", stage: "Emerger", sizes: "#20-24", ref: flyRefs.blackBeautyMidgeFly, note: "Small film pattern when fish sip just below the surface." },
-      { name: "Griffith's Gnat #20", bugId: "midge", stage: "Adult", sizes: "#18-22", ref: flyRefs.midgeAdultFly, note: "Tiny adult midge cluster for surface sippers." },
+      { name: "Griffith's Gnat #20", bugId: "midge", stage: "Adult gnat", sizes: "#18-22", ref: flyRefs.midgeAdultFly, note: "Tiny gnat-style dry for adult midges and surface sippers." },
       { name: "Mini Leech #12", bugId: "leech", stage: "Juvenile", sizes: "#10-12", ref: flyRefs.miniLeechFly, note: "Small slim leech for clear water and cautious stillwater fish." },
       { name: "Balanced Leech #10", bugId: "leech", stage: "Swimming", sizes: "#8-12", ref: flyRefs.balancedLeechFly, note: "Suspended leech profile under an indicator or slow retrieve." },
       { name: "Olive Leech #8", bugId: "leech", stage: "Swimming", sizes: "#6-10", ref: flyRefs.oliveLeechFly, note: "Olive movement pattern for weed edges and wind lanes." },
@@ -3051,7 +3051,7 @@
           ["Larva", "Bloodworm", flyRefs.bloodwormFly],
           ["Pupa", "Black Chironomid", flyRefs.blackChironomidFly],
           ["Pupa", "Chromie", flyRefs.chromieFly],
-          ["Adult", "Griffith's Gnat", flyRefs.zebraMidgeFly]
+          ["Adult gnat", "Griffith's Gnat", flyRefs.midgeAdultFly]
         ]
       },
       midge: {
@@ -3063,7 +3063,7 @@
           ["Larva", "Midge Larva", flyRefs.zebra],
           ["Pupa", "Zebra Midge", flyRefs.zebraMidgeFly],
           ["Emerger", "Black Beauty Midge", flyRefs.blackBeautyMidgeFly],
-          ["Adult", "Griffith's Gnat", flyRefs.midgeAdultFly]
+          ["Adult gnat", "Griffith's Gnat", flyRefs.midgeAdultFly]
         ]
       },
       leech: {
