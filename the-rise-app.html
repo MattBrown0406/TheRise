@@ -3780,7 +3780,7 @@
     }
 
     function stageFlyStyle(ref) {
-      return `background-image:url('${ref.plate}');background-position:${ref.pos};`;
+      return `background-image:url('${ref.plate}');background-position:${ref.pos};background-size:${ref.size || "200% 200%"};`;
     }
 
     function flyLibraryForBug(bugId, stageName = null) {
