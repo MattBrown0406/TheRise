@@ -1846,41 +1846,8 @@
       display: none;
     }
 
-    .ios-status {
-      height: 54px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0 28px;
-      flex: 0 0 auto;
-      background: #fbf7ef;
-      color: #23312c;
-      font-size: 16px;
-      font-weight: 850;
-      letter-spacing: 0;
-    }
-
-    .ios-indicators {
-      display: inline-flex;
-      align-items: center;
-      gap: 7px;
-    }
-
-    .ios-indicators svg {
-      width: 17px;
-      height: 17px;
-    }
-
-    .ios-indicators span {
-      width: 8px;
-      height: 16px;
-      border-radius: 2px;
-      background: currentColor;
-      display: block;
-    }
-
     main {
-      height: calc(100% - 54px);
+      height: 100%;
       overflow-y: auto;
       overflow-x: hidden;
       -webkit-overflow-scrolling: touch;
@@ -2155,15 +2122,6 @@
 </head>
 <body>
   <div class="app-shell">
-    <div class="ios-status" aria-hidden="true">
-      <span>7:12</span>
-      <span class="ios-indicators">
-        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-        <span></span>
-        <span></span>
-        <span></span>
-      </span>
-    </div>
     <main>
       <section id="today" class="view active"></section>
       <section id="waters" class="view"></section>

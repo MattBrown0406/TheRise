@@ -20,11 +20,12 @@ final class RiseViewController: UIViewController, WKNavigationDelegate {
         view.backgroundColor = webView.backgroundColor
         view.addSubview(webView)
         webView.translatesAutoresizingMaskIntoConstraints = false
+        let safeArea = view.safeAreaLayoutGuide
         NSLayoutConstraint.activate([
-            webView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            webView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            webView.topAnchor.constraint(equalTo: view.topAnchor),
-            webView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+            webView.leadingAnchor.constraint(equalTo: safeArea.leadingAnchor),
+            webView.trailingAnchor.constraint(equalTo: safeArea.trailingAnchor),
+            webView.topAnchor.constraint(equalTo: safeArea.topAnchor),
+            webView.bottomAnchor.constraint(equalTo: safeArea.bottomAnchor)
         ])
         loadRiseApp()
     }
