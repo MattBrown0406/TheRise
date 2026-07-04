@@ -2491,6 +2491,18 @@
         plate: "bug-plates/chironomid.png"
       },
       {
+        id: "midge",
+        name: "Midge",
+        season: "Year-round",
+        sizes: "#18-24",
+        water: "Crooked, Fall, Spring River",
+        cue: "Cold clear rivers, tailouts, slow seams",
+        body: "Tiny two-winged insects that matter most on cold, clear rivers and spring creeks. For anglers, the practical match is usually larva, pupa, emerger, or a small adult cluster.",
+        stages: ["Larva: slim threadlike body", "Pupa: ribbed ascending body", "Emerger: hanging in the surface film", "Adult: tiny cluster or single dry"],
+        flies: ["Zebra Midge #20", "Black Beauty Midge #22", "Griffith's Gnat #20"],
+        plate: "bug-plates/chironomid.png"
+      },
+      {
         id: "leech",
         name: "Leech",
         season: "Year-round",
@@ -2715,6 +2727,8 @@
       bloodwormFly: { plate: "fly-plates/chironomid-artificial.png", pos: "0% 0%", cue: "Thin red chironomid larva on a curved hook." },
       blackChironomidFly: { plate: "fly-plates/black-chironomid-artificial.png", pos: "center", size: "contain", cue: "Glossy stillwater chironomid pupa with ribbing, dark bead, and white gill." },
       zebraMidgeFly: { plate: "fly-plates/zebra-midge-artificial.png", pos: "center", size: "contain", cue: "Tiny black midge with silver bead and silver wire rib." },
+      blackBeautyMidgeFly: { plate: "fly-plates/black-chironomid-artificial.png", pos: "center", size: "contain", cue: "Tiny dark river midge pupa with fine ribbing and sparse profile." },
+      midgeAdultFly: { plate: "fly-plates/zebra-midge-artificial.png", pos: "center", size: "contain", cue: "Tiny adult midge or cluster reference for slow slicks and sippers." },
       chromieFly: { plate: "fly-plates/chironomid-artificial.png", pos: "0% 100%", cue: "Silver ribbed chironomid pupa." },
       iceCreamConeFly: { plate: "fly-plates/chironomid-artificial.png", pos: "100% 100%", cue: "White-bead chironomid pupa." },
       miniLeechFly: { plate: "fly-plates/leech-artificial.png", pos: "0% 0%", cue: "Slim olive micro leech pattern." },
@@ -2787,10 +2801,13 @@
       { name: "Red Chironomid Larva #18", bugId: "chironomid", stage: "Larva", sizes: "#16-22", ref: flyRefs.bloodwormFly, note: "Bloodworm-style larva for stillwater mud and weeds." },
       { name: "Bloodworm #18", bugId: "chironomid", stage: "Larva", sizes: "#16-22", ref: flyRefs.bloodwormFly, note: "Red larva imitation for stillwater trout close to bottom." },
       { name: "Black Chironomid #16", bugId: "chironomid", stage: "Pupa", sizes: "#14-20", ref: flyRefs.blackChironomidFly, note: "Dark ascending pupa for lakes and slow water." },
-      { name: "Zebra Midge #20", bugId: "chironomid", stage: "Pupa", sizes: "#18-22", ref: flyRefs.zebraMidgeFly, note: "Tiny silver-ribbed midge for cold clear water and tailwaters." },
       { name: "Chromie #14", bugId: "chironomid", stage: "Pupa", sizes: "#12-18", ref: flyRefs.chromieFly, note: "Silver pupa for bright stillwater days." },
       { name: "Ice Cream Cone #16", bugId: "chironomid", stage: "Pupa", sizes: "#14-18", ref: flyRefs.iceCreamConeFly, note: "White-bead pupa under an indicator." },
-      { name: "Griffith's Gnat #20", bugId: "chironomid", stage: "Adult", sizes: "#18-22", ref: flyRefs.zebraMidgeFly, note: "Tiny adult midge cluster for surface sippers." },
+      { name: "Midge Larva #22", bugId: "midge", stage: "Larva", sizes: "#20-24", ref: flyRefs.zebra, note: "Tiny threadlike larva for cold clear river seams." },
+      { name: "Zebra Midge #20", bugId: "midge", stage: "Pupa", sizes: "#18-24", ref: flyRefs.zebraMidgeFly, note: "Tiny silver-ribbed midge for cold clear water and tailwaters." },
+      { name: "Black Beauty Midge #22", bugId: "midge", stage: "Pupa", sizes: "#20-24", ref: flyRefs.blackBeautyMidgeFly, note: "Sparse dark pupa for picky tailwater and spring-creek fish." },
+      { name: "Midge Emerger #22", bugId: "midge", stage: "Emerger", sizes: "#20-24", ref: flyRefs.blackBeautyMidgeFly, note: "Small film pattern when fish sip just below the surface." },
+      { name: "Griffith's Gnat #20", bugId: "midge", stage: "Adult", sizes: "#18-22", ref: flyRefs.midgeAdultFly, note: "Tiny adult midge cluster for surface sippers." },
       { name: "Mini Leech #12", bugId: "leech", stage: "Juvenile", sizes: "#10-12", ref: flyRefs.miniLeechFly, note: "Small slim leech for clear water and cautious stillwater fish." },
       { name: "Balanced Leech #10", bugId: "leech", stage: "Swimming", sizes: "#8-12", ref: flyRefs.balancedLeechFly, note: "Suspended leech profile under an indicator or slow retrieve." },
       { name: "Olive Leech #8", bugId: "leech", stage: "Swimming", sizes: "#6-10", ref: flyRefs.oliveLeechFly, note: "Olive movement pattern for weed edges and wind lanes." },
@@ -2872,7 +2889,10 @@
       "Black Chironomid #16": flyRefs.blackChironomidFly,
       "Chromie #14": flyRefs.chromieFly,
       "Ice Cream Cone #16": flyRefs.iceCreamConeFly,
-      "Griffith's Gnat #20": flyRefs.zebraMidgeFly,
+      "Midge Larva #22": flyRefs.zebra,
+      "Black Beauty Midge #22": flyRefs.blackBeautyMidgeFly,
+      "Midge Emerger #22": flyRefs.blackBeautyMidgeFly,
+      "Griffith's Gnat #20": flyRefs.midgeAdultFly,
       "Mini Leech #12": flyRefs.miniLeechFly,
       "Balanced Leech #10": flyRefs.balancedLeechFly,
       "Olive Leech #8": flyRefs.oliveLeechFly,
@@ -3036,14 +3056,14 @@
       },
       midge: {
         label: "Midges",
-        bugId: "chironomid",
+        bugId: "midge",
         size: "18-22",
         trigger: "cold clear water",
         stages: [
-          ["Larva", "Midge Larva", flyRefs.bloodwormFly],
+          ["Larva", "Midge Larva", flyRefs.zebra],
           ["Pupa", "Zebra Midge", flyRefs.zebraMidgeFly],
-          ["Emerger", "Midge Pupa", flyRefs.blackChironomidFly],
-          ["Adult", "Griffith's Gnat", flyRefs.zebraMidgeFly]
+          ["Emerger", "Black Beauty Midge", flyRefs.blackBeautyMidgeFly],
+          ["Adult", "Griffith's Gnat", flyRefs.midgeAdultFly]
         ]
       },
       leech: {
