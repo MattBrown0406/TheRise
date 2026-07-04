@@ -4445,89 +4445,98 @@
       `;
       const standingLine = () => line("M326 220 H700", "standing-line");
       const wrapTurns = (count = 5) => Array.from({ length: count }, (_, index) => {
-        const x = 394 + index * 42;
+        const x = 404 + index * 39;
         return `
-          <path class="wrap-turn over" d="M${x - 18} 220 C${x - 17} 185 ${x + 17} 185 ${x + 18} 220"/>
-          <path class="wrap-turn under" d="M${x + 18} 220 C${x + 17} 255 ${x - 17} 255 ${x - 18} 220"/>
-          <text class="turn-count" x="${x}" y="179">${index + 1}</text>
+          <path class="wrap-turn under" d="M${x - 16} 220 C${x - 16} 250 ${x + 16} 250 ${x + 16} 220"/>
+          <path class="wrap-turn over" d="M${x + 16} 220 C${x + 16} 190 ${x - 16} 190 ${x - 16} 220"/>
+          <text class="turn-count" x="${x}" y="183">${index + 1}</text>
         `;
       }).join("");
-      const smallEyeLoop = () => line("M326 220 C352 250 386 250 410 220", "tag-line soft");
+      const smallEyeLoop = () => `
+        ${line("M326 220 C350 256 386 256 410 220", "tag-line soft")}
+        ${loopTarget(358, 228, 42, 30)}
+      `;
       const bigLoop = () => `
-        ${line("M580 220 C560 88 386 88 326 220", "tag-line")}
-        ${line("M326 220 C420 344 620 334 650 220", "tag-line")}
+        ${line("M612 220 C584 108 408 102 326 220", "tag-line soft")}
+        ${line("M326 220 C426 340 624 330 648 220", "tag-line soft")}
       `;
       const seatedWraps = () => Array.from({ length: 5 }, (_, index) => {
-        const x = 350 + index * 16;
-        return `<path class="seated-wrap" d="M${x} 201 C${x + 10} 214 ${x + 10} 226 ${x} 239"/>`;
+        const x = 350 + index * 15;
+        return `<path class="seated-wrap" d="M${x} 202 C${x + 9} 214 ${x + 9} 226 ${x} 238"/>`;
       }).join("");
       const drawings = [
         () => `
           ${hook()}
           ${standingLine()}
-          ${line("M326 220 C365 236 395 266 420 304", "tag-line")}
-          ${arrow("M430 314 C390 286 354 245 332 222")}
-          <text class="line-label" x="578" y="202">standing line</text>
-          <text class="line-label" x="414" y="337">tag end</text>
+          ${line("M326 220 C313 224 310 237 321 248 C346 270 378 300 408 333", "active-tag")}
+          ${arrow("M690 205 H344")}
+          ${arrow("M438 345 C392 312 350 268 326 223")}
+          <text class="line-label" x="570" y="202">standing line</text>
+          <text class="line-label" x="412" y="354">tag end: pull 5-6 inches through</text>
         `,
         () => `
           ${hook()}
           ${standingLine()}
           ${smallEyeLoop()}
           ${wrapTurns(5)}
-          ${line("M604 220 C632 184 662 174 694 178", "tag-line")}
-          ${arrow("M684 126 C630 137 604 169 602 209")}
-          <text class="line-label" x="458" y="286">five stacked turns</text>
+          ${line("M599 220 C626 176 660 164 696 172", "active-tag")}
+          ${arrow("M662 142 C604 148 390 161 384 216")}
+          <path class="wrap-direction" d="M374 176 C420 128 548 128 604 176"/>
+          <text class="line-label" x="424" y="296">five turns around the standing line</text>
+          <text class="line-label" x="260" y="278">keep this eye loop open</text>
         `,
         () => `
           ${hook()}
           ${standingLine()}
           ${smallEyeLoop()}
           ${wrapTurns(5)}
-          ${line("M604 220 C584 104 390 98 326 220", "tag-line")}
-          ${line("M604 220 C540 318 402 306 326 222", "tag-line soft")}
-          ${target(326, 220, 26)}
-          ${arrow("M455 306 C398 292 350 254 329 223")}
-          <text class="line-label" x="84" y="283">small loop by eye</text>
+          ${line("M599 220 C626 176 660 164 696 172", "tag-line soft")}
+          ${line("M696 172 C610 96 420 103 326 220", "active-tag")}
+          ${line("M326 220 C344 244 374 260 410 252", "active-tag")}
+          ${target(326, 220, 24)}
+          ${arrow("M438 252 C390 260 348 244 329 224")}
+          <text class="line-label" x="386" y="318">tag goes back through the small loop</text>
         `,
         () => `
           ${hook()}
           ${standingLine()}
+          ${smallEyeLoop()}
           ${wrapTurns(5)}
           ${bigLoop()}
-          ${line("M345 230 C444 319 542 303 610 238", "tag-line soft")}
-          ${line("M520 326 C555 286 576 248 586 221", "tag-line")}
-          ${loopTarget(501, 220, 180, 116)}
-          ${arrow("M500 326 C533 290 565 248 586 222")}
-          <text class="line-label" x="468" y="352">tag goes through big loop</text>
+          ${line("M326 220 C438 338 626 326 648 220", "active-tag")}
+          ${line("M493 336 C526 292 562 252 612 220", "active-tag")}
+          ${loopTarget(510, 220, 166, 112)}
+          ${arrow("M492 342 C522 300 560 254 610 221")}
+          <text class="line-label" x="404" y="362">now pass tag through this large loop</text>
         `,
         () => `
           ${hook()}
           ${line("M326 220 H704", "standing-line")}
-          ${line("M326 220 C350 246 388 246 424 223", "tag-line soft")}
+          ${line("M326 220 C348 244 386 244 424 223", "tag-line soft")}
+          ${line("M338 242 C356 264 374 286 392 310", "tag-line soft")}
           ${seatedWraps()}
           ${pull("M650 220 H714")}
-          ${pull("M338 242 C312 262 292 278 274 300")}
+          ${pull("M356 262 C374 286 390 306 404 322")}
           <text class="line-label" x="520" y="202">pull standing line</text>
-          <text class="line-label" x="240" y="326">snug tag, trim close</text>
+          <text class="line-label" x="394" y="344">snug tag, then trim</text>
         `
       ];
 
       return `
         <svg class="improved-clinch-board" viewBox="0 0 760 430" aria-label="Improved Clinch Knot step ${step + 1}" role="img">
           <defs>
-            <marker id="redArrow" markerWidth="14" markerHeight="14" refX="11" refY="7" orient="auto">
-              <path d="M0 0 L14 7 L0 14 Z" fill="#d33b37"/>
+            <marker id="redArrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+              <path d="M0 0 L10 5 L0 10 Z" fill="#d33b37"/>
             </marker>
-            <marker id="pullArrow" markerWidth="14" markerHeight="14" refX="11" refY="7" orient="auto">
-              <path d="M0 0 L14 7 L0 14 Z" fill="#315747"/>
+            <marker id="pullArrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+              <path d="M0 0 L10 5 L0 10 Z" fill="#315747"/>
             </marker>
             <style>
               .title,.subtitle,.line-label,.turn-count{font-family:Inter,system-ui,sans-serif}
               .title{fill:#111815;font-size:30px;font-weight:900}
               .subtitle{fill:#5f6d63;font-size:18px;font-weight:750}
               .line-label{fill:#5f6d63;font-size:15px;font-weight:800}
-              .hook-wire,.hook-highlight,.hook-eye,.eye-hole,.standing-line,.tag-line,.wrap-turn,.seated-wrap,.red-motion,.pull-motion{fill:none;stroke-linecap:round;stroke-linejoin:round}
+              .hook-wire,.hook-highlight,.hook-eye,.eye-hole,.standing-line,.tag-line,.active-tag,.wrap-turn,.seated-wrap,.red-motion,.pull-motion,.wrap-direction{fill:none;stroke-linecap:round;stroke-linejoin:round}
               .hook-wire{stroke:#111815;stroke-width:9}
               .hook-highlight{stroke:#fffdf7;stroke-width:2;opacity:.42}
               .hook-point,.hook-barb{fill:#111815;stroke:none}
@@ -4536,11 +4545,13 @@
               .standing-line{stroke:#111815;stroke-width:5}
               .tag-line{stroke:#111815;stroke-width:5}
               .tag-line.soft{stroke-width:4;opacity:.52}
+              .active-tag{stroke:#d33b37;stroke-width:4.5}
               .wrap-turn{stroke:#111815;stroke-width:5}
               .wrap-turn.under{opacity:.72}
               .seated-wrap{stroke:#111815;stroke-width:5}
-              .red-motion{stroke:#d33b37;stroke-width:4;marker-end:url(#redArrow)}
-              .pull-motion{stroke:#315747;stroke-width:4;marker-end:url(#pullArrow)}
+              .red-motion{stroke:#d33b37;stroke-width:3;marker-end:url(#redArrow)}
+              .pull-motion{stroke:#315747;stroke-width:3.5;marker-end:url(#pullArrow)}
+              .wrap-direction{stroke:#d33b37;stroke-width:2.5;stroke-dasharray:8 7;marker-end:url(#redArrow)}
               .target{fill:none;stroke:#d33b37;stroke-width:3;stroke-dasharray:7 6}
               .turn-count{fill:#111815;font-size:13px;font-weight:900;text-anchor:middle}
             </style>
