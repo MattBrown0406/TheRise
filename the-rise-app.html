@@ -4569,10 +4569,152 @@
       `;
     }
 
+    function nonSlipLoopInstructionSvg(step) {
+      const labels = [
+        ["Tie loose overhand", "leave it open on the tippet"],
+        ["Through eye, back through knot", "set the size of the fly loop"],
+        ["Wrap standing line", "make 3-5 turns above the overhand"],
+        ["Return through overhand", "enter from the same side"],
+        ["Wet, tighten, trim", "leave a small open loop at the fly"]
+      ];
+      const instruction = labels[step] || labels[0];
+      const line = (d, cls = "leader") => `<path class="${cls}" d="${d}"/>`;
+      const active = (d) => `<path class="active-tag" d="${d}" marker-end="url(#nsRedArrow)"/>`;
+      const arrow = (d, cls = "red-motion") => `<path class="${cls}" d="${d}" marker-end="url(#nsRedArrow)"/>`;
+      const pull = (d) => `<path class="pull-motion" d="${d}" marker-end="url(#nsPullArrow)"/>`;
+      const hook = () => `
+        <g class="hook">
+          <path class="hook-wire" d="M306 220 H142 C94 220 60 254 67 294 C76 342 132 357 176 327 C198 312 215 299 242 293"/>
+          <path class="hook-highlight" d="M300 214 H145 C105 214 78 241 76 276"/>
+          <path class="hook-point" d="M238 292 L282 283 L244 304 Z"/>
+          <path class="hook-barb" d="M218 298 L207 283 L231 294 Z"/>
+          <ellipse class="hook-eye" cx="326" cy="220" rx="26" ry="15" transform="rotate(12 326 220)"/>
+          <ellipse class="eye-hole" cx="326" cy="220" rx="12" ry="6" transform="rotate(12 326 220)"/>
+        </g>
+      `;
+      const standing = (x = 452) => line(`M${x} 220 H704`, "standing-line");
+      const overhandShape = (cls = "guide-loop") => `
+        <path class="${cls}" d="M452 220 C426 186 467 154 511 179 C555 204 532 263 476 253 C439 246 416 229 452 220"/>
+        <path class="cross-gap" d="M438 222 C457 214 480 214 502 225"/>
+      `;
+      const looseOverhandPath = "M704 220 H518 C486 220 456 206 453 181 C448 142 521 150 542 194 C563 241 498 268 452 220 C424 222 398 236 374 258";
+      const flyLoopPath = "M452 220 C416 181 360 181 326 220 C360 259 416 259 452 220";
+      const tagBackPath = "M704 220 H452 C416 181 360 181 326 220 C360 259 416 259 452 220 C476 239 500 260 522 286";
+      const wrapPath = "M452 220 C473 250 500 250 500 220 C500 190 530 190 530 220 C530 250 560 250 560 220 C560 190 590 190 590 220 C590 250 620 250 620 220 C620 191 650 188 676 201";
+      const returnPath = "M676 201 C630 270 536 282 472 241 C452 228 438 222 422 220 C403 221 389 236 380 256";
+      const wrapNumbers = () => [500, 530, 560, 590]
+        .map((x, index) => `<text class="turn-count" x="${x}" y="184">${index + 1}</text>`)
+        .join("");
+      const finalKnot = () => `
+        ${line(flyLoopPath, "finished-loop")}
+        <path class="knot-body" d="M432 220 C449 200 491 200 514 220 C491 240 449 240 432 220 Z"/>
+        <path class="knot-rib" d="M444 203 L456 237"/>
+        <path class="knot-rib" d="M458 200 L472 240"/>
+        <path class="knot-rib" d="M474 200 L488 240"/>
+        <path class="knot-rib" d="M490 203 L504 237"/>
+        ${line("M514 220 H704", "standing-line")}
+        ${line("M448 236 C462 258 482 278 503 296", "tag-line")}
+      `;
+      const drawings = [
+        () => `
+          ${hook()}
+          ${line(looseOverhandPath, "active-tag")}
+          <circle class="target" cx="482" cy="218" r="48"/>
+          ${arrow("M375 302 C398 270 424 242 450 222")}
+          <text class="line-label" x="382" y="314">leave the overhand open</text>
+        `,
+        () => `
+          ${hook()}
+          ${standing()}
+          ${overhandShape()}
+          ${active(tagBackPath)}
+          <circle class="target" cx="452" cy="220" r="34"/>
+          <text class="line-label" x="390" y="326">tag returns through the loose overhand</text>
+        `,
+        () => `
+          ${hook()}
+          ${line(flyLoopPath, "completed-line")}
+          ${standing()}
+          ${overhandShape("guide-loop")}
+          ${active(wrapPath)}
+          ${wrapNumbers()}
+          <text class="line-label" x="460" y="304">wrap the tag around the standing line</text>
+        `,
+        () => `
+          ${hook()}
+          ${line(flyLoopPath, "completed-line")}
+          ${standing()}
+          ${overhandShape("guide-loop")}
+          ${line(wrapPath, "completed-tag")}
+          ${active(returnPath)}
+          ${wrapNumbers()}
+          <circle class="target" cx="452" cy="220" r="34"/>
+          <text class="line-label" x="360" y="330">bring the tag back through the same opening</text>
+        `,
+        () => `
+          ${hook()}
+          ${finalKnot()}
+          ${pull("M652 220 H716")}
+          ${pull("M462 258 C476 278 491 291 505 300")}
+          <path class="trim-mark" d="M496 286 L518 307 M518 286 L496 307"/>
+          <text class="line-label" x="532" y="200">pull standing line</text>
+          <text class="line-label" x="494" y="330">trim tag</text>
+        `
+      ];
+
+      return `
+        <svg class="non-slip-loop-board" viewBox="0 0 760 430" aria-label="Non-Slip Loop Knot step ${step + 1}" role="img">
+          <defs>
+            <marker id="nsRedArrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="userSpaceOnUse">
+              <path d="M0 0 L12 6 L0 12 Z" fill="#d33b37"/>
+            </marker>
+            <marker id="nsPullArrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="userSpaceOnUse">
+              <path d="M0 0 L12 6 L0 12 Z" fill="#315747"/>
+            </marker>
+            <style>
+              .title,.subtitle,.line-label,.turn-count{font-family:Inter,system-ui,sans-serif}
+              .title{fill:#111815;font-size:30px;font-weight:900}
+              .subtitle{fill:#5f6d63;font-size:18px;font-weight:750}
+              .line-label{fill:#5f6d63;font-size:15px;font-weight:800}
+              .hook-wire,.hook-highlight,.hook-eye,.eye-hole,.standing-line,.tag-line,.completed-line,.completed-tag,.active-tag,.guide-loop,.finished-loop,.knot-rib,.red-motion,.pull-motion,.trim-mark,.cross-gap{fill:none;stroke-linecap:round;stroke-linejoin:round}
+              .hook-wire{stroke:#111815;stroke-width:9}
+              .hook-highlight{stroke:#fffdf7;stroke-width:2;opacity:.42}
+              .hook-point,.hook-barb{fill:#111815;stroke:none}
+              .hook-eye{stroke:#111815;stroke-width:6}
+              .eye-hole{stroke:#111815;stroke-width:2}
+              .standing-line{stroke:#111815;stroke-width:5}
+              .tag-line{stroke:#111815;stroke-width:4;opacity:.68}
+              .completed-line{stroke:#111815;stroke-width:4.5;opacity:.78}
+              .guide-loop{stroke:#315747;stroke-width:3;opacity:.34}
+              .finished-loop{stroke:#111815;stroke-width:5}
+              .completed-tag{stroke:#9a6b66;stroke-width:4;opacity:.38}
+              .active-tag{stroke:#d33b37;stroke-width:4.5}
+              .cross-gap{stroke:#fffdf7;stroke-width:8}
+              .knot-body{fill:#fffdf7;stroke:#111815;stroke-width:5}
+              .knot-rib{stroke:#111815;stroke-width:4}
+              .red-motion{stroke:#d33b37;stroke-width:3;marker-end:url(#nsRedArrow)}
+              .pull-motion{stroke:#315747;stroke-width:3.5;marker-end:url(#nsPullArrow)}
+              .trim-mark{stroke:#d33b37;stroke-width:3}
+              .target{fill:none;stroke:#d33b37;stroke-width:3;stroke-dasharray:7 6}
+              .turn-count{fill:#111815;font-size:13px;font-weight:900;text-anchor:middle}
+            </style>
+          </defs>
+          <rect width="760" height="430" fill="#fffdf7"/>
+          <text class="title" x="24" y="42">Step ${step + 1}: ${instruction[0]}</text>
+          <text class="subtitle" x="24" y="70">${instruction[1]}</text>
+          <path d="M24 92 H736" stroke="#111815" stroke-width="2"/>
+          ${drawings[step] ? drawings[step]() : drawings[0]()}
+        </svg>
+      `;
+    }
+
     function knotSvg(step) {
       const knot = getKnot();
       if (knot.id === "improved-clinch") {
         return improvedClinchInstructionSvg(step);
+      }
+      if (knot.id === "non-slip-loop") {
+        return nonSlipLoopInstructionSvg(step);
       }
       const line = (d, extra = "") => `
         <path class="line-under ${extra}" d="${d}"/>
