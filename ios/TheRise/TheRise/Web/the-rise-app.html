@@ -4444,14 +4444,12 @@
         </g>
       `;
       const standingLine = () => line("M326 220 H700", "standing-line");
-      const wrapTurns = (count = 5) => Array.from({ length: count }, (_, index) => {
-        const x = 404 + index * 39;
-        return `
-          <path class="wrap-turn under" d="M${x - 16} 220 C${x - 16} 250 ${x + 16} 250 ${x + 16} 220"/>
-          <path class="wrap-turn over" d="M${x + 16} 220 C${x + 16} 190 ${x - 16} 190 ${x - 16} 220"/>
-          <text class="turn-count" x="${x}" y="183">${index + 1}</text>
-        `;
-      }).join("");
+      const wrapNumbers = () => [404, 443, 482, 521, 560]
+        .map((x, index) => `<text class="turn-count" x="${x}" y="183">${index + 1}</text>`)
+        .join("");
+      const wrappedTagPath = "M326 220 C350 256 382 256 394 220 C394 190 426 190 426 220 C426 250 458 250 458 220 C458 190 490 190 490 220 C490 250 522 250 522 220 C522 190 554 190 554 220 C554 250 586 250 586 220 C604 192 640 176 696 172";
+      const threadedSmallLoopPath = `${wrappedTagPath} C610 96 420 103 326 220 C344 244 374 260 410 252`;
+      const improvedFinalLoopPath = `${threadedSmallLoopPath} C498 340 626 306 648 220 C598 250 536 294 493 336 C526 292 562 252 612 220`;
       const smallEyeLoop = () => `
         ${line("M326 220 C350 256 386 256 410 220", "tag-line soft")}
         ${loopTarget(358, 228, 42, 30)}
@@ -4478,8 +4476,8 @@
           ${hook()}
           ${standingLine()}
           ${smallEyeLoop()}
-          ${wrapTurns(5)}
-          ${line("M599 220 C626 176 660 164 696 172", "active-tag")}
+          ${line(wrappedTagPath, "active-tag")}
+          ${wrapNumbers()}
           ${arrow("M662 142 C604 148 390 161 384 216")}
           <path class="wrap-direction" d="M374 176 C420 128 548 128 604 176"/>
           <text class="line-label" x="424" y="296">five turns around the standing line</text>
@@ -4489,10 +4487,8 @@
           ${hook()}
           ${standingLine()}
           ${smallEyeLoop()}
-          ${wrapTurns(5)}
-          ${line("M599 220 C626 176 660 164 696 172", "tag-line soft")}
-          ${line("M696 172 C610 96 420 103 326 220", "active-tag")}
-          ${line("M326 220 C344 244 374 260 410 252", "active-tag")}
+          ${line(threadedSmallLoopPath, "active-tag")}
+          ${wrapNumbers()}
           ${target(326, 220, 24)}
           ${arrow("M438 252 C390 260 348 244 329 224")}
           <text class="line-label" x="386" y="318">tag goes back through the small loop</text>
@@ -4501,10 +4497,8 @@
           ${hook()}
           ${standingLine()}
           ${smallEyeLoop()}
-          ${wrapTurns(5)}
-          ${bigLoop()}
-          ${line("M326 220 C438 338 626 326 648 220", "active-tag")}
-          ${line("M493 336 C526 292 562 252 612 220", "active-tag")}
+          ${line(improvedFinalLoopPath, "active-tag")}
+          ${wrapNumbers()}
           ${loopTarget(510, 220, 166, 112)}
           ${arrow("M492 342 C522 300 560 254 610 221")}
           <text class="line-label" x="404" y="362">now pass tag through this large loop</text>
