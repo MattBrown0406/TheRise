@@ -1071,6 +1071,11 @@
       border-color: rgba(180, 75, 61, .25);
     }
 
+    button.chip {
+      cursor: pointer;
+      line-height: 1.1;
+    }
+
     .line-row {
       display: flex;
       justify-content: space-between;
@@ -1263,10 +1268,25 @@
 
     .knot-layout {
       grid-template-columns: minmax(0, 1fr);
+      gap: 12px;
     }
 
     .knot-picker .knot-list {
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      display: flex;
+      overflow-x: auto;
+      padding-bottom: 2px;
+      scroll-snap-type: x proximity;
+    }
+
+    .knot-picker {
+      padding: 10px;
+    }
+
+    .knot-picker .knot-card {
+      flex: 0 0 164px;
+      min-height: 92px;
+      padding: 12px;
+      scroll-snap-align: start;
     }
 
     .bug-art,
@@ -1422,7 +1442,7 @@
 
     .knot-visual svg {
       width: 100%;
-      min-width: 780px;
+      min-width: 100%;
       height: auto;
       display: block;
     }
@@ -1468,6 +1488,38 @@
       border-radius: 8px;
       background: #fbfaf5;
       overflow: auto;
+      min-width: 0;
+      max-width: 100%;
+    }
+
+    .knot-detail,
+    .knot-layout {
+      min-width: 0;
+      max-width: 100%;
+    }
+
+    .knot-tips {
+      display: grid;
+      gap: 7px;
+      margin: 0 0 14px;
+    }
+
+    .knot-tips div {
+      border-left: 3px solid rgba(185, 107, 53, .58);
+      padding: 7px 10px;
+      background: #fbfaf5;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.35;
+    }
+
+    .knot-detail {
+      padding: 10px;
+    }
+
+    .knot-detail h2 {
+      font-size: 20px;
+      line-height: 1.12;
     }
 
     .step-count {
@@ -1866,7 +1918,7 @@
       right: 0;
       bottom: 0;
       display: grid;
-      grid-template-columns: repeat(5, 1fr);
+      grid-template-columns: repeat(6, 1fr);
       gap: 0;
       padding: 8px 8px calc(8px + env(safe-area-inset-bottom));
       background: rgba(255, 253, 247, .96);
@@ -2009,6 +2061,10 @@
       grid-template-columns: 1fr;
     }
 
+    .knot-layout {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
     .top-water-card,
     .ranked-water-card {
       grid-template-columns: 1fr;
@@ -2127,6 +2183,7 @@
       <section id="waters" class="view"></section>
       <section id="bugs" class="view"></section>
       <section id="log" class="view"></section>
+      <section id="knots" class="view"></section>
       <section id="pro" class="view"></section>
     </main>
 
@@ -2135,6 +2192,7 @@
       <button class="tab" data-tab="waters"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 15c3 2 6 2 9 0s6-2 9 0"/><path d="M3 9c3 2 6 2 9 0s6-2 9 0"/></svg>Waters</button>
       <button class="tab" data-tab="bugs"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><ellipse cx="12" cy="12" rx="5" ry="7"/><path d="M3 9h4M17 9h4M3 15h4M17 15h4"/></svg>Bugs</button>
       <button class="tab" data-tab="log"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M6 3h12v18H6z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>Log</button>
+      <button class="tab" data-tab="knots"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 12c3.5-5 8.5 5 12 0s4-2 4 0"/><path d="M4 17c4-3 8 3 12 0"/><circle cx="7" cy="10" r="2"/></svg>Knots</button>
       <button class="tab" data-tab="pro"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 3l2.5 5 5.5.8-4 3.9.9 5.5L12 15.7 7.1 18.2l.9-5.5-4-3.9 5.5-.8z"/></svg>Pro</button>
     </nav>
   </div>
@@ -2540,40 +2598,45 @@
         name: "Improved Clinch",
         use: "Fly to tippet",
         difficulty: "Easy",
-        steps: ["Pass the working end through the eye of the hook.", "Wrap the tag five times around the standing line.", "Pass the tag through the first loop by the eye.", "Pass the tag under the larger loop just created.", "Wet the knot and tighten by pulling both ends."],
-        note: "Reliable for most small dries and nymphs."
+        steps: ["Pass 5-6 inches of tag end through the hook eye.", "Wrap the tag end 5 turns around the standing line.", "Pass the tag back through the small loop beside the eye.", "Pass the tag through the larger loop you just created.", "Wet the knot, pull the standing line to seat it, then trim the tag."],
+        note: "Reliable for most small dries and nymphs. The improved step is the final pass through the large loop before seating.",
+        tips: ["Keep the small loop beside the hook eye open with your fingers.", "Use 4 wraps for heavier/stiffer tippet and 5-7 wraps for fine tippet.", "Seat the knot slowly after wetting it so the wraps stack cleanly instead of crossing."]
       },
       {
         id: "non-slip-loop",
         name: "Non-Slip Loop",
         use: "Streamers and leeches",
         difficulty: "Medium",
-        steps: ["Tie a loose overhand knot in the tippet.", "Pass tag through the fly eye, then back through the overhand knot.", "Wrap tag around standing line four turns.", "Return tag through the overhand knot, wet, and tighten."],
-        note: "Adds movement to lake leeches and small streamers."
+        steps: ["Tie a loose overhand knot about 8-10 inches from the tag end.", "Pass the tag through the fly eye, then back through the overhand knot.", "Wrap the tag around the standing line 3-5 turns.", "Return the tag through the overhand knot from the same side it exited.", "Wet the knot, pull tag and standing line to seat, and leave a small loop."],
+        note: "Adds movement to lake leeches and small streamers without choking the fly eye.",
+        tips: ["The tag must re-enter the overhand knot from the same side it came out.", "Set loop size before final tightening.", "Use fewer wraps with heavier tippet."]
       },
       {
         id: "blood-knot",
         name: "Blood Knot",
         use: "Tippet to leader",
         difficulty: "Medium",
-        steps: ["Overlap two line ends by six inches.", "Wrap one tag around the opposite line five turns and return to center.", "Repeat with the other tag in the opposite direction.", "Wet and pull both standing lines evenly."],
-        note: "Best when joining similar diameters."
+        steps: ["Overlap the two line ends by 5-6 inches and hold the crossing open.", "Wrap one tag around the opposite standing line 5 turns and bring it back through the center.", "Wrap the second tag 5 turns the opposite direction and pass it through the center the other way.", "Wet the knot and pull both standing lines evenly until the wraps barrel together."],
+        note: "Best when joining leader or tippet sections of similar diameter.",
+        tips: ["Both tag ends should exit the center in opposite directions.", "Pull standing lines, not tag ends, to finish seating.", "If the diameters are very different, use a surgeon's knot instead."]
       },
       {
         id: "surgeons",
         name: "Double Surgeon's",
         use: "Fast tippet connection",
         difficulty: "Easy",
-        steps: ["Overlap leader and tippet with both tag ends pointing opposite directions.", "Form one large loop with both strands together.", "Pass the doubled strands through the loop twice.", "Wet, pull all four ends evenly, and trim close."],
-        note: "Fast and strong when conditions make a blood knot fussy."
+        steps: ["Overlap leader and tippet with the tag ends pointing opposite directions.", "Form one large overhand loop with both strands together.", "Pass the doubled strands through that same loop twice.", "Wet the knot and pull all four ends evenly so both strands cinch together."],
+        note: "Fast and strong when wind, cold fingers, or mismatched diameters make a blood knot fussy.",
+        tips: ["Keep both strands parallel through the knot.", "Pull all four ends while tightening so one strand does not cut across the other.", "Trim both tags close after the knot seats."]
       },
       {
         id: "perfection-loop",
         name: "Perfection Loop",
         use: "Leader butt loop",
         difficulty: "Medium",
-        steps: ["Make a small loop with the tag behind the standing line.", "Make a second loop in front and pinch both loops.", "Pass the tag between the two loops.", "Pull the rear loop through the front loop, wet, and seat."],
-        note: "Clean fixed loop for loop-to-loop leader connections."
+        steps: ["Make the first loop with the tag passing behind the standing line.", "Make a second loop in front of the first and pinch both crossings.", "Pass the tag between the two loops.", "Reach behind and pull the rear loop through the front loop.", "Wet and tighten by pulling the new loop in line with the standing line."],
+        note: "Clean fixed loop for loop-to-loop leader connections.",
+        tips: ["Do not pull on the tag while seating; pull the finished loop and standing line.", "This knot should finish with the loop aligned straight with the leader.", "Start with a small first loop if you want a compact final loop."]
       }
     ];
 
@@ -4583,7 +4646,8 @@
           () => `${hook(20, 76, .9)}${line("M137 155 H394")}${oval(230, 155, 68, 48)}${arrow("M285 84 C316 100 331 122 329 149")}`,
           () => `${hook(20, 76, .9)}${line("M137 155 H394")}${oval(230, 155, 68, 48)}${line("M296 155 C330 133 363 130 394 139")}${arrow("M376 104 C338 112 314 130 298 151")}`,
           () => `${hook(20, 76, .9)}${line("M137 155 H394")}${oval(230, 155, 68, 48)}${wraps(284, 155, 4)}${arrow("M371 204 C332 223 280 209 252 173")}`,
-          () => `${hook(20, 76, .9)}${line("M137 155 H394")}${oval(255, 155, 96, 55)}${wraps(278, 155, 3)}${pull("M139 155 H86")}${pull("M394 155 H430")}`
+          () => `${hook(20, 76, .9)}${line("M137 155 H394")}${oval(255, 155, 96, 55)}${wraps(278, 155, 3)}<circle class="target" cx="254" cy="154" r="22"/>${arrow("M365 217 C319 220 278 195 255 160")}`,
+          () => `${hook(20, 76, .9)}${line("M137 155 C190 102 288 102 341 155")}${wraps(286, 155, 3)}${pull("M139 155 H86")}${pull("M394 155 H430")}`
         ],
         "blood-knot": [
           () => `${line("M36 120 H390")}${line("M390 170 H36")}${caption("Overlap both line ends", 94, 73, 24)}`,
@@ -4601,6 +4665,7 @@
           () => `${line("M34 154 H392")}${line("M145 154 C181 82 292 82 328 154")}${arrow("M287 83 C318 100 334 123 330 151")}`,
           () => `${line("M34 154 H392")}${oval(242, 154, 88, 58)}${line("M231 154 C278 106 355 113 376 178")}`,
           () => `${line("M34 154 H392")}${oval(242, 154, 88, 58)}${line("M231 154 C278 106 355 113 376 178 C332 176 288 193 249 220")}<circle class="target" cx="330" cy="154" r="20"/>${arrow("M389 105 C356 113 337 130 331 150")}`,
+          () => `${line("M34 154 H392")}${oval(242, 154, 88, 58)}${line("M231 154 C278 106 355 113 376 178 C332 176 288 193 249 220")}${arrow("M318 222 C296 207 279 186 267 163")}`,
           () => `${line("M34 154 H392")}${oval(270, 154, 110, 62)}${wraps(252, 154, 3)}${pull("M35 154 H0")}${pull("M380 154 H430")}`
         ]
       };
@@ -4648,15 +4713,16 @@
               .step-dot{fill:#b8b8b8;stroke:#898989;stroke-width:1}
               .step-num{fill:#111815;font-size:24px;font-weight:850;text-anchor:middle}
               .panel-copy{fill:#111815;font-size:23px;font-weight:650}
-              .hook{fill:#353733;stroke:#111815;stroke-width:4;filter:url(#knotShadow)}
+              .hook{fill:none;stroke:#111815;stroke-width:7;filter:url(#knotShadow)}
               .hook-eye{fill:#f7f4ec;stroke:#353733;stroke-width:8}
               .hook-hole{fill:#fff;stroke:#6a6d66;stroke-width:2}
               .line-under,.line-core,.line-ribs{fill:none;stroke-linecap:round;stroke-linejoin:round}
-              .line-under{stroke:#147da5;stroke-width:17;filter:url(#knotShadow)}
-              .line-core{stroke:#70d1ee;stroke-width:11}
-              .line-ribs{stroke:#0d719a;stroke-width:11;stroke-dasharray:2 10;opacity:.72}
-              .wrap.line-under{stroke-width:15}
-              .wrap.line-core,.wrap.line-ribs{stroke-width:9}
+              .line-under{stroke:#111815;stroke-width:7;filter:url(#knotShadow)}
+              .line-core{stroke:#fffdf7;stroke-width:2;opacity:.42}
+              .line-ribs{stroke:#111815;stroke-width:0}
+              .wrap.line-under{stroke-width:6}
+              .wrap.line-core{stroke-width:2}
+              .wrap.line-ribs{stroke-width:0}
               .red-arrow,.pull-arrow{fill:none;stroke-linecap:round;stroke-linejoin:round;stroke-width:4}
               .red-arrow{stroke:#d33b37}
               .pull-arrow{stroke:#315747}
@@ -4706,7 +4772,8 @@
             <div style="height: 16px"></div>
             <h2>${selected.steps[knotStep]}</h2>
             <p class="subtle">${selected.note}</p>
-            <div class="chips">${selected.steps.map((_, index) => `<span class="chip ${index === knotStep ? "copper" : ""}">Step ${index + 1}</span>`).join("")}</div>
+            ${selected.tips?.length ? `<div class="knot-tips">${selected.tips.map((tip) => `<div>${tip}</div>`).join("")}</div>` : ""}
+            <div class="chips">${selected.steps.map((_, index) => `<button class="chip ${index === knotStep ? "copper" : ""}" data-knot-step="${index}">Step ${index + 1}</button>`).join("")}</div>
           </div>
         </div>
       `;
@@ -4875,6 +4942,7 @@
       renderWaters();
       renderBugs();
       renderLog();
+      renderKnots();
       renderPro();
       bindDynamic();
     }
@@ -5046,6 +5114,30 @@
       });
       all("[data-tab-jump]").forEach((button) => {
         button.addEventListener("click", () => activateTab(button.dataset.tabJump));
+      });
+      all("[data-knot]").forEach((button) => {
+        button.addEventListener("click", () => {
+          activeKnot = button.dataset.knot;
+          knotStep = 0;
+          renderKnots();
+          bindDynamic();
+        });
+      });
+      all("[data-step]").forEach((button) => {
+        button.addEventListener("click", () => {
+          const selected = getKnot();
+          const nextStep = knotStep + Number(button.dataset.step);
+          knotStep = Math.max(0, Math.min(selected.steps.length - 1, nextStep));
+          renderKnots();
+          bindDynamic();
+        });
+      });
+      all("[data-knot-step]").forEach((button) => {
+        button.addEventListener("click", () => {
+          knotStep = Number(button.dataset.knotStep);
+          renderKnots();
+          bindDynamic();
+        });
       });
       all("[data-new-log]").forEach((button) => {
         button.addEventListener("click", () => {
