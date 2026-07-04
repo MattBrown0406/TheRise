@@ -683,6 +683,10 @@
       margin-top: 16px;
     }
 
+    .waters-accordion-grid {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
     .panel {
       border: 1px solid var(--line);
       border-radius: 8px;
@@ -808,6 +812,22 @@
 
     .top-water-card .water-fly-preview {
       width: 132px;
+    }
+
+    .accordion-detail {
+      grid-column: 1 / -1;
+      border-top: 1px solid var(--line);
+      padding-top: 14px;
+      display: grid;
+      gap: 14px;
+    }
+
+    .accordion-detail h3 {
+      margin-bottom: 4px;
+    }
+
+    .accordion-detail .fly-stack {
+      margin-top: 8px;
     }
 
     .log-screen {
@@ -1194,22 +1214,6 @@
       grid-column: 1 / -1;
     }
 
-    .map-panel {
-      min-height: 236px;
-      border-radius: 8px;
-      border: 1px solid var(--line);
-      background: #e6eee7;
-      position: relative;
-      overflow: hidden;
-    }
-
-    .map-panel svg {
-      width: 100%;
-      height: 100%;
-      position: absolute;
-      inset: 0;
-    }
-
     .bug-layout,
     .knot-layout,
     .pro-layout {
@@ -1219,7 +1223,7 @@
     }
 
     .bug-layout {
-      grid-template-columns: minmax(380px, .92fr) minmax(0, 1.08fr);
+      grid-template-columns: minmax(0, 1fr);
     }
 
     .knot-layout {
@@ -3857,6 +3861,36 @@
       `;
     }
 
+    function waterAccordionDetail(water) {
+      const flies = liveRecommendedFlies(water);
+      const hatches = predictedHatches(water);
+      const liveSource = liveReports.byWater[water.id]?.status === "ready" ? "USGS/NWS + local report cache" : water.source;
+      return `
+        <div class="accordion-detail">
+          <div class="metric-grid">
+            <div class="metric"><span>Flow</span><strong>${liveDisplayValue(water, "flow")}</strong></div>
+            <div class="metric"><span>Water</span><strong>${liveDisplayValue(water, "temp")}</strong></div>
+            <div class="metric"><span>Air</span><strong>${liveDisplayValue(water, "air")}</strong></div>
+            <div class="metric"><span>Wind</span><strong>${liveDisplayValue(water, "wind")}</strong></div>
+            <div class="metric"><span>Distance</span><strong>${distanceLabel(water) || "Use location"}</strong></div>
+          </div>
+          ${liveReportPanel(water)}
+          <div>
+            <h3>${water.name} Detail</h3>
+            <p class="subtle">${water.read}</p>
+          </div>
+          <div class="line-row"><span>Regulations</span><b>${water.regs}</b></div>
+          <div class="line-row"><span>Stocking</span><b>${water.stocking}</b></div>
+          <div class="line-row"><span>Source</span><b>${liveSource}</b></div>
+          <div>
+            <h3>Fly Match</h3>
+            <p class="subtle">${liveRecommendationReason(water)}</p>
+            <div class="fly-stack">${flies.map((fly) => flyCard(fly, hatches.join(" / "))).join("")}</div>
+          </div>
+        </div>
+      `;
+    }
+
     function selectedWaterFly(water) {
       const flies = liveRecommendedFlies(water);
       const activeFly = activeWaterFlyByWater[water.id];
@@ -3872,6 +3906,7 @@
       const sortScore = rankedScore(water);
       const hatches = predictedHatches(water);
       const distance = distanceLabel(water);
+      const isExpanded = water.id === activeWater;
       return `
         <div class="${cardClass} ${water.id === activeWater ? "active" : ""}" data-water="${water.id}">
           <div class="water-card-main">
@@ -3892,6 +3927,7 @@
             <div class="subtle">${scoreSourceLabel(water)}</div>
           </div>
           <div class="water-fly-preview" style="background-image:url('${ref.plate}');background-position:${ref.pos};background-size:${ref.size || "200% 200%"};" role="img" aria-label="${selectedFly} artificial fly reference"></div>
+          ${isExpanded ? waterAccordionDetail(water) : ""}
         </div>
       `;
     }
@@ -4004,9 +4040,6 @@
       const rankedRest = filtered.slice(1);
       const selected = filtered.find((water) => water.id === activeWater) || topWater;
       activeWater = selected.id;
-      const liveFlies = liveRecommendedFlies(selected);
-      const selectedHatches = predictedHatches(selected);
-      const liveSource = liveReports.byWater[selected.id]?.status === "ready" ? "USGS/NWS live pull + ODFW/shop report links" : selected.source;
       const syncing = Boolean(liveReports.bulkStatus);
 
       $("#waters").innerHTML = `
@@ -4034,7 +4067,7 @@
           </div>
         </div>
         ${waterRankCard(topWater, 1, true)}
-        <div class="content-grid">
+        <div class="content-grid waters-accordion-grid">
           <div class="panel">
             <div class="panel-head">
               <div>
@@ -4046,48 +4079,14 @@
               ${rankedRest.length ? rankedRest.map((water, index) => waterRankCard(water, index + 2)).join("") : `<p class="subtle">No additional waters match this filter.</p>`}
             </div>
           </div>
-          <div class="panel">
-            <div class="map-panel" aria-label="Central Oregon water map">
-              <svg viewBox="0 0 640 360" role="img">
-                <rect width="640" height="360" fill="#e7eee7"></rect>
-                <path d="M42 82 C190 20 258 96 370 74 C480 54 548 94 612 42" fill="none" stroke="#8f9a7b" stroke-width="32" opacity=".38"></path>
-                <path d="M90 20 C148 105 126 160 206 222 C272 274 348 232 436 310" fill="none" stroke="#4b8794" stroke-width="18" stroke-linecap="round"></path>
-                <path d="M384 66 C340 130 368 178 300 242" fill="none" stroke="#4b8794" stroke-width="13" stroke-linecap="round"></path>
-                <path d="M236 74 C304 138 246 185 268 304" fill="none" stroke="#4b8794" stroke-width="10" stroke-linecap="round"></path>
-                <circle cx="474" cy="98" r="34" fill="#6ea0a5" opacity=".82"></circle>
-                <circle cx="530" cy="164" r="28" fill="#6ea0a5" opacity=".82"></circle>
-                <circle cx="306" cy="224" r="8" fill="#b96b35"></circle>
-                <circle cx="236" cy="176" r="8" fill="#b96b35"></circle>
-                <circle cx="148" cy="118" r="8" fill="#b96b35"></circle>
-                <circle cx="474" cy="98" r="8" fill="#b96b35"></circle>
-              </svg>
-            </div>
-            <div style="height: 14px"></div>
-            <div class="metric-grid">
-              <div class="metric"><span>Flow</span><strong>${liveDisplayValue(selected, "flow")}</strong></div>
-              <div class="metric"><span>Water</span><strong>${liveDisplayValue(selected, "temp")}</strong></div>
-              <div class="metric"><span>Air</span><strong>${liveDisplayValue(selected, "air")}</strong></div>
-              <div class="metric"><span>Wind</span><strong>${liveDisplayValue(selected, "wind")}</strong></div>
-              <div class="metric"><span>Distance</span><strong>${distanceLabel(selected) || "Use location"}</strong></div>
-            </div>
-            <div style="height: 14px"></div>
-            ${liveReportPanel(selected)}
-            <div style="height: 14px"></div>
-            <h2>${selected.name} Detail</h2>
-            <p class="subtle">${selected.read}</p>
-            <div class="line-row"><span>Regulations</span><b>${selected.regs}</b></div>
-            <div class="line-row"><span>Stocking</span><b>${selected.stocking}</b></div>
-            <div class="line-row"><span>Source</span><b>${liveSource}</b></div>
-            <div style="height: 14px"></div>
-            <h3>Fly Match</h3>
-            <p class="subtle">${liveRecommendationReason(selected)}</p>
-            <div class="fly-stack">${liveFlies.map((fly) => flyCard(fly, selectedHatches.join(" / "))).join("")}</div>
-          </div>
         </div>
       `;
     }
 
     function bugImageStyle(bug, stageIndex = null) {
+      if (bug.id === "caddis" && stageIndex === 2) {
+        return "background-image:url('bug-plates/caddis-adult-stage.png');background-size:contain;background-position:center;";
+      }
       const positions = ["0% 0%", "100% 0%", "0% 100%", "100% 100%"];
       const size = stageIndex === null ? "contain" : "200% 200%";
       const position = stageIndex === null ? "center" : positions[stageIndex];
@@ -4193,7 +4192,7 @@
           <div class="panel">
             <div class="bug-list">
               ${bugs.map((bug) => `
-                <button class="bug-card selectable ${bug.id === activeBug ? "active" : ""}" data-bug="${bug.id}">
+                <div class="bug-card selectable ${bug.id === activeBug ? "active" : ""}" data-bug="${bug.id}" role="button" tabindex="0">
                   <div class="bug-accordion-head">
                     <div>
                       <strong>${bug.name}</strong>
@@ -4203,35 +4202,20 @@
                   </div>
                   ${bug.id === activeBug ? `
                     <div class="bug-accordion-body">
-                      ${bugStageStrip(bug)}
+                      <p class="subtle">${bug.body}</p>
+                      <div class="stage-grid">
+                        ${bug.stages.map((stage, index) => stageCard(bug, stage, index)).join("")}
+                      </div>
                       <div class="chips">
                         <span class="chip copper">${bug.water}</span>
                         ${bug.flies.map((fly) => `<span class="chip blue fly-trigger-chip" role="button" tabindex="0" data-library-fly="${fly}">${fly}</span>`).join("")}
                       </div>
+                      ${flyLibraryPanel(bug)}
                     </div>
                   ` : ""}
-                </button>
+                </div>
               `).join("")}
             </div>
-          </div>
-          <div class="panel">
-            <div class="detail-hero">
-              <div class="bug-art" style="${bugImageStyle(selected)}" role="img" aria-label="${selected.name} macro reference"></div>
-              <div>
-                <h2>${selected.name}</h2>
-                <p class="subtle">${selected.body}</p>
-                <div class="chips">
-                  <span class="chip">${selected.sizes}</span>
-                  <span class="chip copper">${selected.season}</span>
-                  <span class="chip blue">${selected.water}</span>
-                </div>
-              </div>
-            </div>
-            <div class="stage-grid">
-              ${selected.stages.map((stage, index) => stageCard(selected, stage, index)).join("")}
-            </div>
-            <div style="height: 16px"></div>
-            ${flyLibraryPanel(selected)}
           </div>
         </div>
       `;
@@ -4810,7 +4794,8 @@
         });
       });
       all("[data-water]").forEach((button) => {
-        button.addEventListener("click", () => {
+        button.addEventListener("click", (event) => {
+          if (event.target.closest("button, a, input, select, textarea, [data-library-fly]")) return;
           activeWater = button.dataset.water;
           renderAll();
           if (!liveReports.byWater[activeWater] && navigator.onLine !== false) refreshLiveReport(activeWater, { mode: "manual" });
@@ -4858,16 +4843,26 @@
         });
       }
       all("[data-bug]").forEach((button) => {
-        button.addEventListener("click", () => {
+        const openBug = (event) => {
+          if (event.target.closest("button, a, input, select, textarea, [data-library-fly], [data-bug-stage], [data-clear-bug-stage]")) return;
           activeBug = button.dataset.bug;
           activeBugStage = null;
           activeFlyName = null;
           renderBugs();
           bindDynamic();
+        };
+        button.addEventListener("click", openBug);
+        button.addEventListener("keydown", (event) => {
+          if (event.target !== button) return;
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            openBug(event);
+          }
         });
       });
       all("[data-bug-stage]").forEach((button) => {
-        button.addEventListener("click", () => {
+        button.addEventListener("click", (event) => {
+          event.stopPropagation();
           activeBugStage = button.dataset.bugStage;
           activeFlyName = null;
           renderBugs();
@@ -4875,7 +4870,8 @@
         });
       });
       all("[data-clear-bug-stage]").forEach((button) => {
-        button.addEventListener("click", () => {
+        button.addEventListener("click", (event) => {
+          event.stopPropagation();
           activeBugStage = null;
           activeFlyName = null;
           renderBugs();
