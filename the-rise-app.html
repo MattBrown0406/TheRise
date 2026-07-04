@@ -2728,6 +2728,7 @@
       blackChironomidFly: { plate: "fly-plates/black-chironomid-artificial.png", pos: "center", size: "contain", cue: "Glossy stillwater chironomid pupa with ribbing, dark bead, and white gill." },
       zebraMidgeFly: { plate: "fly-plates/zebra-midge-artificial.png", pos: "center", size: "contain", cue: "Tiny black midge with silver bead and silver wire rib." },
       blackBeautyMidgeFly: { plate: "fly-plates/black-chironomid-artificial.png", pos: "center", size: "contain", cue: "Tiny dark river midge pupa with fine ribbing and sparse profile." },
+      midgeEmergerFly: { plate: "fly-plates/midge-emerger-parachute-artificial.png", pos: "center", size: "contain", cue: "Curved-hook midge emerger with ribbed body, trailing shuck, parachute post, and sparse hackle." },
       midgeAdultFly: { plate: "fly-plates/midge-adult-gnat-artificial.png", pos: "center", size: "contain", cue: "Adult midge as a gnat-style dry fly with hackle, upright pale post, and trailing shuck." },
       chromieFly: { plate: "fly-plates/chironomid-artificial.png", pos: "0% 100%", cue: "Silver ribbed chironomid pupa." },
       iceCreamConeFly: { plate: "fly-plates/chironomid-artificial.png", pos: "100% 100%", cue: "White-bead chironomid pupa." },
@@ -2806,7 +2807,7 @@
       { name: "Midge Larva #22", bugId: "midge", stage: "Larva", sizes: "#20-24", ref: flyRefs.zebra, note: "Tiny threadlike larva for cold clear river seams." },
       { name: "Zebra Midge #20", bugId: "midge", stage: "Pupa", sizes: "#18-24", ref: flyRefs.zebraMidgeFly, note: "Tiny silver-ribbed midge for cold clear water and tailwaters." },
       { name: "Black Beauty Midge #22", bugId: "midge", stage: "Pupa", sizes: "#20-24", ref: flyRefs.blackBeautyMidgeFly, note: "Sparse dark pupa for picky tailwater and spring-creek fish." },
-      { name: "Midge Emerger #22", bugId: "midge", stage: "Emerger", sizes: "#20-24", ref: flyRefs.blackBeautyMidgeFly, note: "Small film pattern when fish sip just below the surface." },
+      { name: "Midge Emerger #22", bugId: "midge", stage: "Emerger", sizes: "#20-24", ref: flyRefs.midgeEmergerFly, note: "Curved-hook emerger or parachute midge when fish sip just below the surface." },
       { name: "Griffith's Gnat #20", bugId: "midge", stage: "Adult gnat", sizes: "#18-22", ref: flyRefs.midgeAdultFly, note: "Tiny gnat-style dry for adult midges and surface sippers." },
       { name: "Mini Leech #12", bugId: "leech", stage: "Juvenile", sizes: "#10-12", ref: flyRefs.miniLeechFly, note: "Small slim leech for clear water and cautious stillwater fish." },
       { name: "Balanced Leech #10", bugId: "leech", stage: "Swimming", sizes: "#8-12", ref: flyRefs.balancedLeechFly, note: "Suspended leech profile under an indicator or slow retrieve." },
@@ -2891,7 +2892,7 @@
       "Ice Cream Cone #16": flyRefs.iceCreamConeFly,
       "Midge Larva #22": flyRefs.zebra,
       "Black Beauty Midge #22": flyRefs.blackBeautyMidgeFly,
-      "Midge Emerger #22": flyRefs.blackBeautyMidgeFly,
+      "Midge Emerger #22": flyRefs.midgeEmergerFly,
       "Griffith's Gnat #20": flyRefs.midgeAdultFly,
       "Mini Leech #12": flyRefs.miniLeechFly,
       "Balanced Leech #10": flyRefs.balancedLeechFly,
@@ -3062,7 +3063,7 @@
         stages: [
           ["Larva", "Midge Larva", flyRefs.zebra],
           ["Pupa", "Zebra Midge", flyRefs.zebraMidgeFly],
-          ["Emerger", "Black Beauty Midge", flyRefs.blackBeautyMidgeFly],
+          ["Emerger", "Midge Emerger", flyRefs.midgeEmergerFly],
           ["Adult gnat", "Griffith's Gnat", flyRefs.midgeAdultFly]
         ]
       },
