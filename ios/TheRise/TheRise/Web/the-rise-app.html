@@ -539,6 +539,92 @@
       font-weight: 850;
     }
 
+    .beginner-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .beginner-toggle.active,
+    .ghost-btn.active {
+      background: var(--pine);
+      color: white;
+      border-color: var(--pine);
+    }
+
+    .pack-box {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 30px;
+    }
+
+    .pack-group {
+      border: 1px solid #e0dbcf;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, .94);
+      padding: 12px;
+      display: grid;
+      gap: 10px;
+      box-shadow: 0 8px 18px rgba(30, 43, 34, .05);
+      min-width: 0;
+    }
+
+    .pack-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .pack-head strong {
+      font-size: 15px;
+      color: #16485a;
+    }
+
+    .pack-head span {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 850;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+    }
+
+    .pack-fly {
+      display: grid;
+      grid-template-columns: 54px minmax(0, 1fr);
+      gap: 9px;
+      align-items: center;
+      min-width: 0;
+    }
+
+    .pack-fly-image {
+      width: 54px;
+      aspect-ratio: 1;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background-color: #edf0eb;
+      background-repeat: no-repeat;
+      background-size: 200% 200%;
+    }
+
+    .pack-fly b,
+    .pack-fly span {
+      display: block;
+      overflow-wrap: anywhere;
+    }
+
+    .pack-fly b {
+      font-size: 12px;
+      margin-bottom: 3px;
+    }
+
+    .pack-fly span {
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.25;
+    }
+
     .condition-cards {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -902,6 +988,88 @@
       font-weight: 920;
       color: #050807;
       align-self: end;
+    }
+
+    .water-shelves {
+      display: grid;
+      gap: 12px;
+      margin: 0 0 16px;
+    }
+
+    .water-shelf {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255, 253, 247, .9);
+      padding: 12px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .water-shelf h3 {
+      margin: 0;
+      color: #16485a;
+      font-size: 15px;
+    }
+
+    .water-chip-row {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 2px;
+    }
+
+    .water-chip-card {
+      flex: 0 0 168px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfaf5;
+      padding: 10px;
+      text-align: left;
+      display: grid;
+      gap: 4px;
+    }
+
+    .water-chip-card span,
+    .water-chip-card small {
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.25;
+    }
+
+    .water-chip-card span {
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+    }
+
+    .water-chip-card strong {
+      color: var(--ink);
+      font-size: 14px;
+      line-height: 1.1;
+      overflow-wrap: anywhere;
+    }
+
+    .water-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .save-water {
+      width: 38px;
+      height: 38px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfaf5;
+      color: var(--muted);
+      font-weight: 950;
+      line-height: 1;
+    }
+
+    .save-water.active {
+      color: #8a5a12;
+      background: #fff0c7;
+      border-color: rgba(214, 169, 74, .5);
     }
 
     .ranked-water-card {
@@ -1289,6 +1457,39 @@
       background: var(--panel);
     }
 
+    .fly > div:last-child {
+      min-width: 0;
+    }
+
+    .fly-feedback {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .fly-feedback button {
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #fbfaf5;
+      color: var(--muted);
+      padding: 5px 8px;
+      font-size: 11px;
+      font-weight: 850;
+    }
+
+    .fly-feedback button.active {
+      background: #e7f1ef;
+      color: var(--pine);
+      border-color: rgba(47, 91, 69, .28);
+    }
+
+    .fly-feedback button.ignored.active {
+      background: #f8ebe8;
+      color: var(--danger);
+      border-color: rgba(180, 75, 61, .25);
+    }
+
     .fly-photo {
       width: 64px;
       height: 48px;
@@ -1637,6 +1838,23 @@
       color: var(--muted);
       font-size: 13px;
       line-height: 1.35;
+    }
+
+    .beginner-note {
+      border-left: 3px solid rgba(75, 135, 148, .48);
+      border-radius: 0 8px 8px 0;
+      background: #eef7f8;
+      color: #466166;
+      padding: 8px 10px;
+      font-size: 12px;
+      line-height: 1.35;
+      margin: 0;
+    }
+
+    .stage .beginner-note {
+      margin-top: 8px;
+      font-size: 11px;
+      padding: 7px 8px;
     }
 
     .knot-visual {
@@ -2015,7 +2233,7 @@
         right: 0;
         bottom: 0;
         display: grid;
-        grid-template-columns: repeat(6, 1fr);
+        grid-template-columns: repeat(5, 1fr);
         gap: 0;
         padding: 7px;
         background: rgba(255, 253, 247, .94);
@@ -2087,7 +2305,7 @@
       right: 0;
       bottom: 0;
       display: grid;
-      grid-template-columns: repeat(6, 1fr);
+      grid-template-columns: repeat(5, 1fr);
       gap: 0;
       padding: 8px 8px calc(8px + env(safe-area-inset-bottom));
       background: rgba(255, 253, 247, .96);
@@ -2585,6 +2803,10 @@
     const USER_LOCATION_KEY = "riseUserLocation.v1";
     const HOME_WATER_KEY = "riseHomeWater.v1";
     const ACTIVE_WATER_KEY = "riseActiveWater.v1";
+    const SAVED_WATERS_KEY = "riseSavedWaters.v1";
+    const RECENT_WATERS_KEY = "riseRecentWaters.v1";
+    const FLY_FEEDBACK_KEY = "riseFlyFeedback.v1";
+    const BEGINNER_MODE_KEY = "riseBeginnerMode.v1";
     const LIVE_FETCH_TIMEOUT_MS = 6500;
     const BULK_SYNC_CONCURRENCY = 4;
     const liveReports = { byWater: {}, lastRequested: null, cache: null, bulkStatus: "" };
@@ -2824,6 +3046,10 @@
     let editingLogIndex = null;
     let activeBugStage = null;
     let activeFlyName = null;
+    let savedWaterIds = readStoredArray(SAVED_WATERS_KEY);
+    let recentWaterIds = readStoredArray(RECENT_WATERS_KEY);
+    let flyFeedback = readStoredObject(FLY_FEEDBACK_KEY);
+    let beginnerMode = readStoredBoolean(BEGINNER_MODE_KEY);
 
     const nativeFish = [
       "Redband Trout",
@@ -3331,8 +3557,177 @@
       }
     }
 
+    function readStoredArray(key) {
+      try {
+        const saved = JSON.parse(localStorage.getItem(key) || "[]");
+        return Array.isArray(saved) ? saved : [];
+      } catch {
+        return [];
+      }
+    }
+
+    function readStoredObject(key) {
+      try {
+        const saved = JSON.parse(localStorage.getItem(key) || "{}");
+        return saved && typeof saved === "object" && !Array.isArray(saved) ? saved : {};
+      } catch {
+        return {};
+      }
+    }
+
+    function readStoredBoolean(key) {
+      try {
+        return localStorage.getItem(key) === "true";
+      } catch {
+        return false;
+      }
+    }
+
+    function writeStoredArray(key, value) {
+      try {
+        localStorage.setItem(key, JSON.stringify(value));
+      } catch {
+        // Local persistence is a convenience for the prototype.
+      }
+    }
+
+    function writeStoredObject(key, value) {
+      try {
+        localStorage.setItem(key, JSON.stringify(value));
+      } catch {
+        // Local persistence is a convenience for the prototype.
+      }
+    }
+
+    function validWaterIds(ids) {
+      return uniqueItems(ids).filter((id) => waters.some((water) => water.id === id));
+    }
+
+    function waterById(waterId) {
+      return waters.find((water) => water.id === waterId);
+    }
+
+    function trackRecentWater(waterId) {
+      recentWaterIds = validWaterIds([waterId, ...recentWaterIds]).slice(0, 6);
+      writeStoredArray(RECENT_WATERS_KEY, recentWaterIds);
+    }
+
+    function toggleSavedWater(waterId) {
+      savedWaterIds = savedWaterIds.includes(waterId)
+        ? savedWaterIds.filter((id) => id !== waterId)
+        : validWaterIds([waterId, ...savedWaterIds]);
+      writeStoredArray(SAVED_WATERS_KEY, savedWaterIds);
+    }
+
+    function setFlyFeedback(fly, value) {
+      if (!fly) return;
+      if (flyFeedback[fly] === value) {
+        delete flyFeedback[fly];
+      } else {
+        flyFeedback[fly] = value;
+      }
+      writeStoredObject(FLY_FEEDBACK_KEY, flyFeedback);
+    }
+
+    function flyFeedbackLabel(fly) {
+      if (flyFeedback[fly] === "worked") return "Worked for you";
+      if (flyFeedback[fly] === "ignored") return "Ignored last time";
+      return "";
+    }
+
+    function flyCategoryFor(fly) {
+      const text = String(fly || "").toLowerCase();
+      if (text.includes("leech") || text.includes("bugger") || text.includes("minnow") || text.includes("muddler") || text.includes("sculpin") || text.includes("streamer")) return "Streamers";
+      if (text.includes("ant") || text.includes("beetle") || text.includes("hopper") || text.includes("cricket") || text.includes("terrestrial")) return "Terrestrials";
+      if (text.includes("nymph") || text.includes("pupa") || text.includes("emerg") || text.includes("midge") || text.includes("chironomid") || text.includes("zebra") || text.includes("rs2") || text.includes("chromie") || text.includes("ice cream") || text.includes("bloodworm") || text.includes("soft hackle") || text.includes("rubber")) return "Nymphs";
+      return "Dries";
+    }
+
+    function dailyFlyBoxFor(water) {
+      const groups = { Dries: [], Nymphs: [], Streamers: [], Terrestrials: [] };
+      const hatchFlies = predictedHatches(water).flatMap((hatch) => hatchProfileFor(hatch).stages.map(([, fly]) => fly));
+      uniqueItems([...liveRecommendedFlies(water), ...hatchFlies]).forEach((fly) => {
+        groups[flyCategoryFor(fly)].push(fly);
+      });
+      if (!groups.Streamers.length) groups.Streamers.push(water.type === "Lake" ? "Balanced Leech #10" : "Muddler Minnow #6");
+      if (!groups.Terrestrials.length) groups.Terrestrials.push("Foam Ant #16");
+      Object.keys(groups).forEach((key) => {
+        groups[key] = applyFlyFeedback(groups[key]).slice(0, 3);
+      });
+      return groups;
+    }
+
+    const beginnerGlossary = {
+      nymph: "The young underwater stage. Fish these below the surface.",
+      larva: "A very early underwater stage. Usually fish it deep and slow.",
+      pupa: "A rising transition stage for caddis and midges. Often best just under the surface.",
+      emerger: "The insect is changing into an adult at the surface, so trout may eat in the film.",
+      dun: "A fresh adult mayfly with upright wings. This is a dry-fly target.",
+      spinner: "A spent adult mayfly lying flat on the water, often during calm mornings or evenings.",
+      adult: "The winged insect anglers see on, near, or above the water.",
+      terrestrial: "A land insect like an ant, beetle, cricket, or hopper that gets blown onto the water.",
+      streamer: "A moving fly that imitates baitfish, leeches, or sculpins."
+    };
+
+    function beginnerStageNote(stageName) {
+      const lower = String(stageName || "").toLowerCase();
+      const key = Object.keys(beginnerGlossary).find((term) => lower.includes(term));
+      return key ? beginnerGlossary[key] : "";
+    }
+
+    function beginnerBugNote(bug) {
+      if (bug.id === "leech") return "Think of leeches as moving food, not a hatch. Retrieve them slowly or suspend a balanced leech in lakes.";
+      if (bug.id === "baitfish") return "Streamers imitate minnows, sculpins, or small trout. They are useful when fish are chasing, near structure, or in low light.";
+      if (bug.id === "terrestrial") return beginnerGlossary.terrestrial;
+      return "Tap a life stage to see the matching artificial flies. The goal is to match where the insect is in its life cycle, not just its name.";
+    }
+
+    function setBeginnerMode(value) {
+      beginnerMode = Boolean(value);
+      try {
+        localStorage.setItem(BEGINNER_MODE_KEY, beginnerMode ? "true" : "false");
+      } catch {
+        // Local persistence is a convenience for the prototype.
+      }
+    }
+
+    function waterChipCard(waterId, label) {
+      const water = waterById(waterId);
+      if (!water) return "";
+      return `
+        <button class="water-chip-card" data-water="${water.id}">
+          <span>${label}</span>
+          <strong>${water.name}</strong>
+          <small>${fishScore(water)} fishability${distanceLabel(water) ? ` - ${distanceLabel(water)}` : ""}</small>
+        </button>
+      `;
+    }
+
+    function savedRecentPanel() {
+      const saved = validWaterIds(savedWaterIds);
+      const recent = validWaterIds(recentWaterIds).filter((id) => !saved.includes(id)).slice(0, 5);
+      if (!saved.length && !recent.length) return "";
+      return `
+        <div class="water-shelves">
+          ${saved.length ? `
+            <div class="water-shelf">
+              <h3>Saved Waters</h3>
+              <div class="water-chip-row">${saved.map((id) => waterChipCard(id, "Saved")).join("")}</div>
+            </div>
+          ` : ""}
+          ${recent.length ? `
+            <div class="water-shelf">
+              <h3>Recently Viewed</h3>
+              <div class="water-chip-row">${recent.map((id) => waterChipCard(id, "Recent")).join("")}</div>
+            </div>
+          ` : ""}
+        </div>
+      `;
+    }
+
     function saveActiveWater(waterId) {
       activeWater = waters.some((water) => water.id === waterId) ? waterId : waters[0].id;
+      trackRecentWater(activeWater);
       try {
         localStorage.setItem(ACTIVE_WATER_KEY, activeWater);
       } catch {
@@ -4073,6 +4468,15 @@
       return water[key];
     }
 
+    function applyFlyFeedback(flies) {
+      const unique = uniqueItems(flies);
+      return [
+        ...unique.filter((fly) => flyFeedback[fly] === "worked"),
+        ...unique.filter((fly) => !flyFeedback[fly]),
+        ...unique.filter((fly) => flyFeedback[fly] === "ignored")
+      ];
+    }
+
     function liveRecommendedFlies(water) {
       const report = liveReports.byWater[water.id];
       const waterTemp = numberFromText(report?.usgs?.waterTemp || water.temp);
@@ -4091,7 +4495,7 @@
         if (forecast.includes("cloud") || forecast.includes("rain")) flies.unshift("BWO Soft Hackle #18");
         if (hatchText.includes("caddis")) flies.unshift("X-Caddis #16");
       }
-      return uniqueItems(flies).slice(0, 4);
+      return applyFlyFeedback(flies).slice(0, 4);
     }
 
     function flyRecommendationReason(water, fly) {
@@ -4128,9 +4532,8 @@
       const report = liveReports.byWater[water.id];
       const intel = localIntelForWater(water);
       if (report?.status === "ready" && intel.sources?.length) return "High confidence";
-      if (report?.status === "ready" || intel.sources?.length) return "Medium confidence";
-      if (navigator.onLine === false && cachedWaterCount()) return "Cached baseline";
-      return "Demo baseline";
+      if (report?.status === "ready" || intel.sources?.length || navigator.onLine === false && cachedWaterCount()) return "Mixed reports";
+      return "Weather-driven guess";
     }
 
     function liveRecommendationReason(water) {
@@ -4294,6 +4697,7 @@
 
     function flyCard(fly, subtext, reason = "") {
       const ref = flyRefFor(fly);
+      const feedback = flyFeedbackLabel(fly);
       return `
         <div class="fly" data-fly-name="${fly}">
           <div class="fly-photo" style="background-image:url('${ref.plate}');background-position:${ref.pos};background-size:${ref.size || "200% 200%"};" role="img" aria-label="${fly} artificial fly reference"></div>
@@ -4301,7 +4705,11 @@
             <strong>${fly}</strong>
             <div class="subtle">${subtext}</div>
             ${reason ? `<div class="fly-reason">${reason}</div>` : ""}
-            <div class="subtle">${ref.cue}</div>
+            <div class="subtle">${ref.cue}${feedback ? ` - ${feedback}` : ""}</div>
+            <div class="fly-feedback" aria-label="Fly feedback for ${fly}">
+              <button class="${flyFeedback[fly] === "worked" ? "active" : ""}" data-fly-feedback="${fly}" data-feedback-value="worked">Worked</button>
+              <button class="ignored ${flyFeedback[fly] === "ignored" ? "active" : ""}" data-fly-feedback="${fly}" data-feedback-value="ignored">Ignore</button>
+            </div>
           </div>
         </div>
       `;
@@ -4354,6 +4762,7 @@
       const distance = distanceLabel(water);
       const isExpanded = water.id === activeWater;
       const summaryScore = waterSortMode === "Near" && userLocation ? `${sortScore.toFixed(1)} nearby / ${score} fish` : `${score} fishability`;
+      const feedback = flyFeedbackLabel(selectedFly);
       return `
         <div class="${cardClass} ${water.id === activeWater ? "active" : ""}" data-water="${water.id}">
           <div class="water-card-main">
@@ -4363,7 +4772,10 @@
                 ${isTop ? `<h2>${water.name}</h2>` : `<strong>${water.name}</strong>`}
                 <div class="subtle">${water.section}</div>
               </div>
-              <span class="chip ${water.type === "Lake" ? "blue" : ""}">${water.type}</span>
+              <div class="water-actions">
+                <button class="save-water ${savedWaterIds.includes(water.id) ? "active" : ""}" data-save-water="${water.id}" aria-label="${savedWaterIds.includes(water.id) ? "Unsave" : "Save"} ${water.name}">★</button>
+                <span class="chip ${water.type === "Lake" ? "blue" : ""}">${water.type}</span>
+              </div>
             </div>
             <div class="water-summary-row">
               <b>${summaryScore}</b>
@@ -4375,7 +4787,7 @@
             <div class="water-fly-badges" aria-label="${water.name} recommended flies">
               ${flies.map((fly) => `<button class="water-fly-badge ${fly === selectedFly ? "active" : ""}" data-water-fly="${fly}" data-water-id="${water.id}">${fly}</button>`).join("")}
             </div>
-            <div class="fly-reason"><b>Why ${selectedFly}:</b> ${flyRecommendationReason(water, selectedFly)}</div>
+            <div class="fly-reason"><b>Why ${selectedFly}:</b> ${flyRecommendationReason(water, selectedFly)}${feedback ? ` ${feedback}.` : ""}</div>
             <div class="subtle">${scoreSourceLabel(water)} - tap card for flow, regs, and report inputs</div>
           </div>
           <div class="water-fly-preview" style="background-image:url('${ref.plate}');background-position:${ref.pos};background-size:${ref.size || "200% 200%"};" role="img" aria-label="${selectedFly} artificial fly reference"></div>
@@ -4397,6 +4809,25 @@
       const flowValue = liveFlow.replace(" cfs", "");
       const flowUnit = liveFlow.includes("cfs") ? "CFS" : "";
       const currentHatches = predictedHatches(best);
+      const packBox = dailyFlyBoxFor(topPick);
+      const packGroups = Object.entries(packBox).map(([group, flies]) => `
+        <div class="pack-group">
+          <div class="pack-head"><strong>${group}</strong><span>${flies.length} picks</span></div>
+          ${flies.map((fly) => {
+            const ref = flyRefFor(fly);
+            const feedback = flyFeedbackLabel(fly);
+            return `
+              <div class="pack-fly">
+                <div class="pack-fly-image" style="background-image:url('${ref.plate}');background-position:${ref.pos};background-size:${ref.size || "200% 200%"};" role="img" aria-label="${fly} artificial fly reference"></div>
+                <div>
+                  <b>${fly}</b>
+                  <span>${feedback || flyRecommendationReason(topPick, fly)}</span>
+                </div>
+              </div>
+            `;
+          }).join("")}
+        </div>
+      `).join("");
       const hatches = currentHatches.slice(0, 3).map((hatch, index) => {
         const profile = hatchProfileFor(hatch);
         const status = index === 0 ? "NOW" : index === 1 ? "PEAK" : "SOON";
@@ -4475,6 +4906,18 @@
                 <small>${locationSummary()}</small>
                 <button class="mini-action" data-use-location>${userLocation ? "Refresh location" : "Use location"}</button>
               </div>
+              <div class="command-card">
+                <span>After a catch</span>
+                <strong>Quick log</strong>
+                <small>Prefills ${topPick.name} and today's top fly.</small>
+                <button class="mini-action" data-quick-log="${topPick.id}">Log a catch</button>
+              </div>
+              <div class="command-card">
+                <span>Learning layer</span>
+                <strong>Beginner mode</strong>
+                <small>${beginnerMode ? "Plain-English hatch and stage notes are on." : "Adds simple explanations for hatch terms and life stages."}</small>
+                <button class="mini-action beginner-toggle ${beginnerMode ? "active" : ""}" data-beginner-mode>${beginnerMode ? "On" : "Off"}</button>
+              </div>
             </div>
 
             <div class="condition-cards">
@@ -4494,6 +4937,9 @@
                 <small>▼ ${clarity.trend}</small>
               </div>
             </div>
+
+            <h2 class="section-title">Pack My Fly Box <em>${topPick.name}</em></h2>
+            <div class="pack-box">${packGroups}</div>
 
             <h2 class="section-title">Hatching Now</h2>
             <div class="hatch-card">${hatches}</div>
@@ -4546,6 +4992,7 @@
           </div>
         </div>
         ${dataStatusStrip("waters")}
+        ${savedRecentPanel()}
         ${waterRankCard(topWater, 1, true)}
         <div class="content-grid waters-accordion-grid">
           <div class="panel">
@@ -4577,11 +5024,13 @@
       const parts = stage.split(": ");
       const stageName = parts[0];
       const isActive = activeBugStage === stageName;
+      const note = beginnerMode ? beginnerStageNote(stageName) : "";
       return `
         <button class="stage stage-button ${isActive ? "active" : ""}" data-bug-stage="${stageName}">
           <div class="bug-stage-photo" style="${bugImageStyle(bug, index)}" role="img" aria-label="${bug.name} ${parts[0]} stage"></div>
           <b>${parts[0]}</b>
           <span>${parts[1]}</span>
+          ${note ? `<p class="beginner-note">${note}</p>` : ""}
         </button>
       `;
     }
@@ -4625,6 +5074,7 @@
               <h3>${selectedFly.name}</h3>
               <p class="subtle">${selectedFly.stage} imitation - ${selectedFly.sizes}</p>
               <p class="subtle">${selectedFly.note}</p>
+              ${beginnerMode ? `<p class="beginner-note">${beginnerStageNote(selectedFly.stage) || beginnerBugNote(bug)}</p>` : ""}
               ${selectedFly.waters ? `<p class="subtle"><b>Best waters:</b> ${selectedFly.waters}</p>` : ""}
               <div class="chips">
                 <span class="chip copper">${bug.name}</span>
@@ -4666,7 +5116,10 @@
             <h1>${selected.name}</h1>
             <p class="subtle">${selected.cue}</p>
           </div>
-          <div class="sync-pill">Bundled reference</div>
+          <div class="toolbar">
+            <button class="ghost-btn ${beginnerMode ? "active" : ""}" data-beginner-mode>Beginner ${beginnerMode ? "On" : "Off"}</button>
+            <div class="sync-pill">Bundled reference</div>
+          </div>
         </div>
         <div class="bug-layout">
           <div class="panel">
@@ -4683,6 +5136,7 @@
                   ${bug.id === activeBug ? `
                     <div class="bug-accordion-body">
                       <p class="subtle">${bug.body}</p>
+                      ${beginnerMode ? `<p class="beginner-note">${beginnerBugNote(bug)}</p>` : ""}
                       <div class="stage-grid">
                         ${bug.stages.map((stage, index) => stageCard(bug, stage, index)).join("")}
                       </div>
@@ -5274,6 +5728,7 @@
       const topFly = flyFamilyName(Object.entries(flyCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || "Caddis");
       const editingEntry = editingLogIndex !== null ? logs[editingLogIndex] : null;
       const selectedWater = editingEntry?.waterId ? (waters.find((water) => water.id === editingEntry.waterId) || getWater()) : getWater();
+      const defaultFly = selectedWaterFly(selectedWater) || selectedWater.flies[0];
       $("#log").innerHTML = `
         <div class="log-screen">
           <div class="log-top">
@@ -5316,7 +5771,7 @@
                   <input name="count" type="number" min="1" value="${editingEntry?.count || "1"}">
                 </label>
                 <label>Fly
-                  <input name="fly" value="${editingEntry?.fly || selectedWater.flies[0]}" autocomplete="off">
+                  <input name="fly" value="${editingEntry?.fly || defaultFly}" autocomplete="off">
                 </label>
                 <label>Time
                   <input name="time" value="${editingEntry?.time || new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}" autocomplete="off">
@@ -5446,6 +5901,48 @@
     }
 
     function bindDynamic() {
+      all("[data-save-water]").forEach((button) => {
+        button.addEventListener("click", (event) => {
+          event.stopPropagation();
+          toggleSavedWater(button.dataset.saveWater);
+          renderToday();
+          renderWaters();
+          bindDynamic();
+        });
+      });
+      all("[data-fly-feedback]").forEach((button) => {
+        button.addEventListener("click", (event) => {
+          event.stopPropagation();
+          setFlyFeedback(button.dataset.flyFeedback, button.dataset.feedbackValue);
+          renderToday();
+          renderWaters();
+          renderBugs();
+          bindDynamic();
+        });
+      });
+      all("[data-beginner-mode]").forEach((button) => {
+        button.addEventListener("click", (event) => {
+          event.stopPropagation();
+          setBeginnerMode(!beginnerMode);
+          renderToday();
+          renderBugs();
+          bindDynamic();
+        });
+      });
+      all("[data-quick-log]").forEach((button) => {
+        button.addEventListener("click", (event) => {
+          event.stopPropagation();
+          const water = waterById(button.dataset.quickLog) || topRecommendedWater();
+          saveActiveWater(water.id);
+          activeWaterFlyByWater[water.id] = liveRecommendedFlies(water)[0];
+          editingLogIndex = null;
+          logFormOpen = true;
+          renderLog();
+          bindDynamic();
+          activateTab("log");
+          requestAnimationFrame(() => $("#logForm")?.scrollIntoView({ behavior: "smooth", block: "start" }));
+        });
+      });
       all("[data-water-fly]").forEach((button) => {
         button.addEventListener("click", (event) => {
           event.stopPropagation();
