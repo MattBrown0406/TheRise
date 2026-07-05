@@ -243,6 +243,61 @@
       font-size: 13px;
     }
 
+    .data-status {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      border: 1px solid rgba(47, 91, 69, .18);
+      border-radius: 8px;
+      background: rgba(255, 253, 247, .94);
+      color: var(--ink);
+      padding: 12px;
+      margin: 0 0 14px;
+      box-shadow: 0 8px 18px rgba(30, 43, 34, .05);
+    }
+
+    .today-hero .data-status {
+      width: min(680px, 100%);
+      background: rgba(255, 255, 255, .18);
+      border-color: rgba(255, 255, 255, .22);
+      color: #fff;
+      backdrop-filter: blur(8px);
+      margin-bottom: 16px;
+    }
+
+    .data-status strong,
+    .data-status span {
+      display: block;
+    }
+
+    .data-status strong {
+      font-size: 14px;
+      margin-bottom: 3px;
+    }
+
+    .data-status span {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.3;
+    }
+
+    .today-hero .data-status span {
+      color: rgba(255, 255, 255, .76);
+    }
+
+    .data-status.ready {
+      border-color: rgba(47, 91, 69, .3);
+    }
+
+    .data-status.updating {
+      border-color: rgba(240, 179, 61, .5);
+    }
+
+    .data-status.warning {
+      border-color: rgba(196, 87, 59, .45);
+    }
+
     .today-screen {
       background: #f8f5ed;
       border-radius: 8px;
@@ -417,6 +472,71 @@
       background: #f8f5ed;
       border-radius: 50% 50% 0 0 / 100% 100% 0 0;
       z-index: -1;
+    }
+
+    .command-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 26px;
+    }
+
+    .command-card {
+      border: 1px solid #e0dbcf;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, .96);
+      color: var(--ink);
+      padding: 14px;
+      text-align: left;
+      min-width: 0;
+      box-shadow: 0 8px 18px rgba(30, 43, 34, .05);
+    }
+
+    button.command-card {
+      cursor: pointer;
+    }
+
+    .command-card.primary {
+      border-color: rgba(47, 91, 69, .34);
+      background: #f4faf6;
+    }
+
+    .command-card span,
+    .command-card small {
+      display: block;
+      color: var(--muted);
+      line-height: 1.35;
+    }
+
+    .command-card span {
+      font-size: 11px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      margin-bottom: 8px;
+    }
+
+    .command-card strong {
+      display: block;
+      font-size: 19px;
+      line-height: 1.05;
+      margin-bottom: 8px;
+      overflow-wrap: anywhere;
+    }
+
+    .command-card small {
+      font-size: 12px;
+    }
+
+    .mini-action {
+      margin-top: 10px;
+      border: 1px solid rgba(47, 91, 69, .24);
+      border-radius: 999px;
+      background: #edf5f1;
+      color: var(--pine);
+      padding: 7px 10px;
+      font-size: 12px;
+      font-weight: 850;
     }
 
     .condition-cards {
@@ -804,6 +924,31 @@
       text-transform: uppercase;
     }
 
+    .water-summary-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .water-summary-row b,
+    .water-summary-row span {
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #fbfaf5;
+      padding: 6px 9px;
+      font-size: 12px;
+      line-height: 1;
+      color: var(--muted);
+      font-weight: 800;
+    }
+
+    .water-summary-row b {
+      color: var(--ink);
+      background: #eef6f2;
+      border-color: rgba(47, 91, 69, .22);
+    }
+
     .water-fly-badges {
       display: flex;
       flex-wrap: wrap;
@@ -843,6 +988,17 @@
       color: var(--muted);
       font-size: 13px;
       line-height: 1.45;
+    }
+
+    .fly-reason {
+      color: #6f4c2d;
+      background: #fff4e8;
+      border-left: 3px solid rgba(185, 107, 53, .42);
+      padding: 7px 9px;
+      font-size: 12px;
+      font-weight: 750;
+      line-height: 1.35;
+      border-radius: 0 8px 8px 0;
     }
 
     .top-water-card .water-fly-preview {
@@ -1613,6 +1769,19 @@
       .top-water-card,
       .ranked-water-card {
         grid-template-columns: 1fr;
+      }
+
+      .data-status {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      .data-status .ghost-btn {
+        width: 100%;
+      }
+
+      .command-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
       }
 
       .water-fly-preview {
@@ -3485,6 +3654,19 @@
       return `${clarity.label} water + ${hatch.toLowerCase()} hatch building`;
     }
 
+    function rankedWatersForCurrentMode(list = waters) {
+      return [...list].sort((a, b) => {
+        const scoreDelta = rankedScore(b) - rankedScore(a);
+        if (Math.abs(scoreDelta) > .05) return scoreDelta;
+        if (waterSortMode === "Near" && userLocation) return (distanceToWater(a) ?? 9999) - (distanceToWater(b) ?? 9999);
+        return Number(fishScore(b)) - Number(fishScore(a));
+      });
+    }
+
+    function topRecommendedWater() {
+      return rankedWatersForCurrentMode()[0] || getHomeWater();
+    }
+
     function liveMetaFor(water) {
       if (liveSources[water.id]) return liveSources[water.id];
       const fallback = water.type === "Lake" ? { lat: 44.05, lon: -121.32 } : { lat: 44.06, lon: -121.31 };
@@ -3574,6 +3756,38 @@
       const intelCount = Object.keys(liveReports.cache?.localIntel?.byWater || {}).length;
       const intelText = intelCount ? `, ${intelCount} with local report signals` : "";
       return `${count}/${waters.length} waters saved locally${intelText} - ${formatSavedTime(savedAt)}`;
+    }
+
+    function dataFreshnessLabel() {
+      const savedAt = liveReports.cache?.lastSavedAt;
+      if (liveReports.bulkStatus) return "Updating now";
+      if (!cachedWaterCount()) return navigator.onLine === false ? "Offline - no saved reports yet" : "Not cached yet";
+      return navigator.onLine === false
+        ? `Offline-ready - saved ${formatSavedTime(savedAt)}`
+        : `Offline-ready - updated ${formatSavedTime(savedAt)}`;
+    }
+
+    function dataFreshnessTone() {
+      if (liveReports.bulkStatus) return "updating";
+      if (navigator.onLine === false && !cachedWaterCount()) return "warning";
+      if (cachedWaterCount()) return "ready";
+      return "idle";
+    }
+
+    function dataStatusStrip(context = "waters") {
+      const synced = cachedWaterCount();
+      const intelCount = Object.keys(liveReports.cache?.localIntel?.byWater || {}).length;
+      const tone = dataFreshnessTone();
+      const action = context === "waters" ? "" : `<button class="ghost-btn" data-refresh-all>${liveReports.bulkStatus ? "Updating..." : "Update before heading out"}</button>`;
+      return `
+        <div class="data-status ${tone}">
+          <div>
+            <strong>${dataFreshnessLabel()}</strong>
+            <span>${synced}/${waters.length} waters saved locally${intelCount ? ` - ${intelCount} with local shop/report signals` : ""}</span>
+          </div>
+          ${action}
+        </div>
+      `;
     }
 
     function shouldRunDailyOpenSync() {
@@ -3880,6 +4094,45 @@
       return uniqueItems(flies).slice(0, 4);
     }
 
+    function flyRecommendationReason(water, fly) {
+      const text = String(fly || "").toLowerCase();
+      const hatches = predictedHatches(water).join(" / ");
+      const report = liveReports.byWater[water.id];
+      const forecast = `${report?.nws?.forecast || ""}`.toLowerCase();
+      const wind = numberFromText(report?.nws?.wind || water.wind);
+      const temp = liveDisplayValue(water, "temp");
+      const intel = localIntelForWater(water);
+      if (intel.flies?.includes(fly)) return `Local report signal mentioned this pattern; pair with ${hatches}.`;
+      if (text.includes("leech") || text.includes("bugger") || text.includes("minnow") || text.includes("muddler")) {
+        return water.type === "Lake"
+          ? `${wind !== null && wind >= 10 ? "Wind lanes" : "Low light and edges"} make movement easier for trout to track.`
+          : "Use when fish are hunting edges, shade, or off-color water.";
+      }
+      if (text.includes("chironomid") || text.includes("chromie") || text.includes("midge") || text.includes("zebra")) {
+        return water.type === "Lake"
+          ? `Stillwater depth control pick for ${temp} water and suspended fish.`
+          : `Cold clear water pick when small midges matter more than profile size.`;
+      }
+      if (text.includes("damsel")) return "Matches damsel movement around weed beds, reeds, and warm stillwater shallows.";
+      if (text.includes("caddis") || text.includes("sedge") || text.includes("x-")) return "Matches caddis activity; fish it near riffles, banks, or evening surface movement.";
+      if (text.includes("pmd") || text.includes("sparkle") || text.includes("split case")) return "Matches PMD emergence when water temperature and light create a surface window.";
+      if (text.includes("bwo") || text.includes("rs2") || text.includes("soft hackle")) return forecast.includes("cloud") || forecast.includes("rain")
+        ? "Cloud cover favors BWO emergers and soft hackles."
+        : "Small mayfly profile for clear water and technical feeding.";
+      if (text.includes("stone") || text.includes("rubber") || text.includes("sally")) return "Stonefly/searching choice for riffles, banks, and broken water.";
+      if (text.includes("ant") || text.includes("beetle") || text.includes("hopper")) return "Terrestrial option for warm banks, grass edges, and afternoon wind.";
+      return `Chosen to cover ${hatches || "today's expected food"} with current water and weather.`;
+    }
+
+    function confidenceForWater(water) {
+      const report = liveReports.byWater[water.id];
+      const intel = localIntelForWater(water);
+      if (report?.status === "ready" && intel.sources?.length) return "High confidence";
+      if (report?.status === "ready" || intel.sources?.length) return "Medium confidence";
+      if (navigator.onLine === false && cachedWaterCount()) return "Cached baseline";
+      return "Demo baseline";
+    }
+
     function liveRecommendationReason(water) {
       const report = liveReports.byWater[water.id];
       const intel = localIntelForWater(water);
@@ -4039,7 +4292,7 @@
       return flyRefs.parachuteAdamsFly;
     }
 
-    function flyCard(fly, subtext) {
+    function flyCard(fly, subtext, reason = "") {
       const ref = flyRefFor(fly);
       return `
         <div class="fly" data-fly-name="${fly}">
@@ -4047,6 +4300,7 @@
           <div>
             <strong>${fly}</strong>
             <div class="subtle">${subtext}</div>
+            ${reason ? `<div class="fly-reason">${reason}</div>` : ""}
             <div class="subtle">${ref.cue}</div>
           </div>
         </div>
@@ -4077,7 +4331,7 @@
           <div>
             <h3>Fly Match</h3>
             <p class="subtle">${liveRecommendationReason(water)}</p>
-            <div class="fly-stack">${flies.map((fly) => flyCard(fly, hatches.join(" / "))).join("")}</div>
+            <div class="fly-stack">${flies.map((fly) => flyCard(fly, hatches.join(" / "), flyRecommendationReason(water, fly))).join("")}</div>
           </div>
         </div>
       `;
@@ -4099,6 +4353,7 @@
       const hatches = predictedHatches(water);
       const distance = distanceLabel(water);
       const isExpanded = water.id === activeWater;
+      const summaryScore = waterSortMode === "Near" && userLocation ? `${sortScore.toFixed(1)} nearby / ${score} fish` : `${score} fishability`;
       return `
         <div class="${cardClass} ${water.id === activeWater ? "active" : ""}" data-water="${water.id}">
           <div class="water-card-main">
@@ -4110,13 +4365,18 @@
               </div>
               <span class="chip ${water.type === "Lake" ? "blue" : ""}">${water.type}</span>
             </div>
+            <div class="water-summary-row">
+              <b>${summaryScore}</b>
+              <span>${primeWindowFor(water).replace("Prime window: ", "")}</span>
+              <span>${distance || "Use location"}</span>
+              <span>${confidenceForWater(water)}</span>
+            </div>
             <div class="chips">${hatches.map((hatch) => `<span class="chip copper">${hatch}</span>`).join("")}</div>
             <div class="water-fly-badges" aria-label="${water.name} recommended flies">
               ${flies.map((fly) => `<button class="water-fly-badge ${fly === selectedFly ? "active" : ""}" data-water-fly="${fly}" data-water-id="${water.id}">${fly}</button>`).join("")}
             </div>
-            <div class="line-row"><span>${waterSortMode === "Near" && userLocation ? "Nearby rank" : "Fishability"}</span><b>${waterSortMode === "Near" && userLocation ? `${sortScore.toFixed(1)} (${score})` : score}</b></div>
-            ${distance ? `<div class="line-row"><span>Distance</span><b>${distance}</b></div>` : ""}
-            <div class="subtle">${scoreSourceLabel(water)}</div>
+            <div class="fly-reason"><b>Why ${selectedFly}:</b> ${flyRecommendationReason(water, selectedFly)}</div>
+            <div class="subtle">${scoreSourceLabel(water)} - tap card for flow, regs, and report inputs</div>
           </div>
           <div class="water-fly-preview" style="background-image:url('${ref.plate}');background-position:${ref.pos};background-size:${ref.size || "200% 200%"};" role="img" aria-label="${selectedFly} artificial fly reference"></div>
           ${isExpanded ? waterAccordionDetail(water) : ""}
@@ -4126,6 +4386,8 @@
 
     function renderToday() {
       const best = getHomeWater();
+      const topPick = topRecommendedWater();
+      const topPickFlies = liveRecommendedFlies(topPick).slice(0, 3);
       const score = fishScore(best);
       const clarity = clarityFor(best);
       const scoreDeg = Math.round(Number(score) * 36);
@@ -4179,6 +4441,7 @@
             </div>
             <h1 class="prime-title">${primeWindowFor(best)}</h1>
             <div class="condition-line">${liveTemp} water - ${liveWind} - ${clarity.label}</div>
+            ${dataStatusStrip("today")}
             <div class="fishability-card">
               <div class="score-ring" style="--score-deg:${scoreDeg}deg"><strong>${score}</strong></div>
               <div class="fishability-copy">
@@ -4190,6 +4453,30 @@
           </section>
 
           <section class="today-body">
+            <div class="command-grid">
+              <div class="command-card primary" role="button" tabindex="0" data-water="${topPick.id}" data-go="waters">
+                <span>Best option now</span>
+                <strong>${topPick.name}</strong>
+                <small>${fishScore(topPick)} fishability${distanceLabel(topPick) ? ` - ${distanceLabel(topPick)} away` : ""} - ${confidenceForWater(topPick)}</small>
+              </div>
+              <div class="command-card">
+                <span>Prime window</span>
+                <strong>${primeWindowFor(topPick).replace("Prime window: ", "")}</strong>
+                <small>${fishabilityReason(topPick)}</small>
+              </div>
+              <div class="command-card">
+                <span>Top flies</span>
+                <strong>${topPickFlies.map((fly) => flyFamilyName(fly)).join(", ")}</strong>
+                <small>${topPickFlies.map((fly) => flyRecommendationReason(topPick, fly)).slice(0, 1).join("")}</small>
+              </div>
+              <div class="command-card">
+                <span>Nearby mode</span>
+                <strong>${waterSortMode === "Near" && userLocation ? "Closest good water" : "Best fishability"}</strong>
+                <small>${locationSummary()}</small>
+                <button class="mini-action" data-use-location>${userLocation ? "Refresh location" : "Use location"}</button>
+              </div>
+            </div>
+
             <div class="condition-cards">
               <div class="condition-card">
                 <strong>${liveTemp}</strong>
@@ -4227,15 +4514,11 @@
         const matchesType = waterFilter === "All" || water.type === waterFilter;
         const searchable = `${water.name} ${water.section} ${water.hatch.join(" ")} ${predictedHatches(water).join(" ")}`.toLowerCase();
         return matchesType && (!query || searchable.includes(query));
-      }).sort((a, b) => {
-        const scoreDelta = rankedScore(b) - rankedScore(a);
-        if (Math.abs(scoreDelta) > .05) return scoreDelta;
-        if (waterSortMode === "Near" && userLocation) return (distanceToWater(a) ?? 9999) - (distanceToWater(b) ?? 9999);
-        return Number(fishScore(b)) - Number(fishScore(a));
       });
-      const topWater = filtered[0] || baseSelected;
-      const rankedRest = filtered.slice(1);
-      const selected = filtered.find((water) => water.id === activeWater) || topWater;
+      const ranked = rankedWatersForCurrentMode(filtered);
+      const topWater = ranked[0] || baseSelected;
+      const rankedRest = ranked.slice(1);
+      const selected = ranked.find((water) => water.id === activeWater) || topWater;
       activeWater = selected.id;
       const syncing = Boolean(liveReports.bulkStatus);
 
@@ -4245,7 +4528,6 @@
             <p class="eyebrow">Waters</p>
             <h1>${topWater.name}</h1>
             <p class="subtle">${waterSortMode === "Near" && userLocation ? "Best nearby water" : "Highest rated today"} - ${fishScore(topWater)} fishability${distanceLabel(topWater) ? ` - ${distanceLabel(topWater)} away` : ""} - ${scoreSourceLabel(topWater)} - ${topWater.section}</p>
-            <p class="subtle">${syncing ? "Updating local cache for all waters..." : cacheSummary()}</p>
             <p class="subtle">${locationSummary()}</p>
           </div>
           <div class="toolbar">
@@ -4263,6 +4545,7 @@
             </label>
           </div>
         </div>
+        ${dataStatusStrip("waters")}
         ${waterRankCard(topWater, 1, true)}
         <div class="content-grid waters-accordion-grid">
           <div class="panel">
@@ -5205,6 +5488,7 @@
             requestUserLocation();
             return;
           }
+          renderToday();
           renderWaters();
           bindDynamic();
         });
