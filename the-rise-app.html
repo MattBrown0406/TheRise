@@ -928,6 +928,151 @@
       grid-template-columns: minmax(0, 1fr);
     }
 
+    .waters-screen {
+      display: grid;
+      gap: 10px;
+    }
+
+    .waters-header {
+      padding: 16px;
+      background: #155a6b;
+      color: white;
+      display: grid;
+      gap: 12px;
+    }
+
+    .waters-header .eyebrow,
+    .waters-header .subtle {
+      color: rgba(255, 255, 255, .78);
+    }
+
+    .waters-header h1 {
+      font-size: 28px;
+      margin-bottom: 3px;
+    }
+
+    .waters-header-row {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .waters-score-badge {
+      border: 1px solid rgba(255, 255, 255, .28);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, .16);
+      color: white;
+      min-width: 72px;
+      padding: 8px 10px;
+      text-align: center;
+    }
+
+    .waters-score-badge strong,
+    .waters-score-badge span {
+      display: block;
+    }
+
+    .waters-score-badge strong {
+      font-size: 25px;
+      line-height: 1;
+    }
+
+    .waters-score-badge span {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      opacity: .78;
+      margin-top: 3px;
+    }
+
+    .waters-toolbar {
+      display: grid;
+      gap: 8px;
+    }
+
+    .waters-toolbar-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      align-items: center;
+    }
+
+    .waters-toolbar .ghost-btn,
+    .waters-toolbar .segmented button,
+    .waters-toolbar input {
+      min-height: 34px;
+      font-size: 12px;
+      padding: 7px 9px;
+    }
+
+    .waters-toolbar .segmented button.active {
+      background: #fffdf7;
+      color: #155a6b;
+      border-color: #fffdf7;
+    }
+
+    .waters-toolbar .segmented button,
+    .waters-toolbar .ghost-btn {
+      background: rgba(255, 255, 255, .14);
+      color: white;
+      border-color: rgba(255, 255, 255, .24);
+    }
+
+    .waters-search {
+      display: block;
+      width: 100%;
+    }
+
+    .waters-search input {
+      background: rgba(255, 255, 255, .96);
+      color: var(--ink);
+    }
+
+    .waters-sync-line {
+      color: rgba(255, 255, 255, .78);
+      font-size: 11px;
+      font-weight: 750;
+      line-height: 1.25;
+    }
+
+    .waters-quick-strip {
+      padding: 0 12px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .waters-main-list {
+      padding: 0 12px 18px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .waters-screen .data-status {
+      margin: 0 12px;
+      padding: 9px 10px;
+      gap: 8px;
+    }
+
+    .waters-screen .data-status strong {
+      font-size: 12px;
+    }
+
+    .waters-screen .data-status span {
+      font-size: 11px;
+    }
+
+    .waters-list-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 850;
+      padding: 2px 2px 0;
+    }
+
     .panel {
       border: 1px solid var(--line);
       border-radius: 8px;
@@ -977,10 +1122,29 @@
       margin-bottom: 16px;
     }
 
+    .waters-screen .top-water-card,
+    .waters-screen .ranked-water-card {
+      grid-template-columns: minmax(0, 1fr) 76px;
+      gap: 10px;
+      padding: 12px;
+      margin-bottom: 0;
+      align-items: center;
+    }
+
+    .waters-screen .top-water-card {
+      border-color: rgba(47, 91, 69, .42);
+      background: #fffdf7;
+    }
+
     .top-water-card h2 {
       font-size: clamp(26px, 4vw, 38px);
       line-height: 1;
       margin-bottom: 7px;
+    }
+
+    .waters-screen .top-water-card h2 {
+      font-size: 21px;
+      margin-bottom: 3px;
     }
 
     .top-water-score {
@@ -996,6 +1160,11 @@
       margin: 0 0 16px;
     }
 
+    .waters-screen .water-shelves {
+      gap: 8px;
+      margin: 0;
+    }
+
     .water-shelf {
       border: 1px solid var(--line);
       border-radius: 8px;
@@ -1003,6 +1172,11 @@
       padding: 12px;
       display: grid;
       gap: 10px;
+    }
+
+    .waters-screen .water-shelf {
+      padding: 10px;
+      gap: 7px;
     }
 
     .water-shelf h3 {
@@ -1027,6 +1201,11 @@
       text-align: left;
       display: grid;
       gap: 4px;
+    }
+
+    .waters-screen .water-chip-card {
+      flex-basis: 142px;
+      padding: 8px;
     }
 
     .water-chip-card span,
@@ -1084,6 +1263,10 @@
       min-width: 0;
     }
 
+    .waters-screen .water-card-main {
+      gap: 7px;
+    }
+
     .water-rank-label {
       color: var(--muted);
       font-size: 12px;
@@ -1111,6 +1294,12 @@
       font-weight: 800;
     }
 
+    .waters-screen .water-summary-row b,
+    .waters-screen .water-summary-row span {
+      padding: 5px 7px;
+      font-size: 11px;
+    }
+
     .water-summary-row b {
       color: var(--ink);
       background: #eef6f2;
@@ -1133,6 +1322,15 @@
       font-weight: 850;
     }
 
+    .waters-screen .water-fly-badge {
+      padding: 5px 7px;
+      font-size: 11px;
+      max-width: 150px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
     .water-fly-badge.active {
       background: #e7f1ef;
       color: var(--pine);
@@ -1149,6 +1347,11 @@
       background-size: 200% 200%;
       box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .38);
       align-self: center;
+    }
+
+    .waters-screen .water-fly-preview {
+      width: 76px;
+      max-width: 76px;
     }
 
     .model-note {
@@ -1173,12 +1376,89 @@
       width: 132px;
     }
 
+    .waters-screen .top-water-card .water-fly-preview {
+      width: 76px;
+    }
+
     .accordion-detail {
       grid-column: 1 / -1;
       border-top: 1px solid var(--line);
       padding-top: 14px;
       display: grid;
       gap: 14px;
+    }
+
+    .waters-screen .accordion-detail {
+      padding-top: 10px;
+      gap: 10px;
+    }
+
+    .compact-detail-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .compact-detail-grid .metric {
+      padding: 8px;
+    }
+
+    .compact-detail-grid .metric strong {
+      font-size: 14px;
+    }
+
+    .compact-note {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfaf5;
+      padding: 10px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .compact-note b {
+      color: var(--ink);
+    }
+
+    .compact-lines {
+      display: grid;
+      gap: 0;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .compact-lines .line-row {
+      padding: 8px 10px;
+      background: #fbfaf5;
+      font-size: 12px;
+    }
+
+    .compact-fly-row {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .compact-fly-row .fly {
+      align-items: flex-start;
+      padding: 8px;
+    }
+
+    .compact-fly-row .fly-photo {
+      width: 54px;
+      height: 42px;
+    }
+
+    .compact-fly-row .fly-reason,
+    .compact-fly-row .fly .subtle:last-of-type {
+      display: none;
+    }
+
+    .compact-fly-row .fly-feedback button {
+      padding: 4px 7px;
+      font-size: 10px;
     }
 
     .accordion-detail h3 {
@@ -3038,6 +3318,7 @@
     let waterSortMode = "Best";
     let userLocation = null;
     let locationStatus = "idle";
+    let expandedWaterId = null;
     let activeBug = bugs[0].id;
     let activeKnot = knots[0].id;
     let knotStep = 0;
@@ -3987,9 +4268,37 @@
       return [...new Set(items.filter(Boolean))];
     }
 
+    function hatchAllowedForWater(hatch, water) {
+      const text = String(hatch || "").toLowerCase();
+      if (water.type !== "Lake" && (text.includes("callibaetis") || text.includes("damsel"))) return false;
+      if (water.type !== "Lake" && text.includes("chironomid")) return false;
+      return true;
+    }
+
+    function flyAllowedForWater(fly, water) {
+      const text = String(fly || "").toLowerCase();
+      if (water.type !== "Lake" && (text.includes("callibaetis") || text.includes("damsel"))) return false;
+      if (water.type !== "Lake" && (text.includes("chromie") || text.includes("ice cream") || text.includes("chironomid"))) return false;
+      if (water.type !== "Lake" && text.includes("balanced leech")) return false;
+      return true;
+    }
+
+    function waterAppropriateHatches(hatches, water) {
+      return uniqueItems(hatches.map((hatch) => normalizeHatchForWater(hatch, water)).filter((hatch) => hatchAllowedForWater(hatch, water)));
+    }
+
+    function waterAppropriateFlies(flies, water) {
+      return uniqueItems(flies.filter((fly) => flyAllowedForWater(fly, water)));
+    }
+
     function localIntelForWater(water) {
       const intel = liveReports.cache?.localIntel?.byWater?.[water.id];
-      return intel || { hatches: [], flies: [], sources: [], cues: [], scoreBoost: 0 };
+      if (!intel) return { hatches: [], flies: [], sources: [], cues: [], scoreBoost: 0 };
+      return {
+        ...intel,
+        hatches: waterAppropriateHatches(intel.hatches || [], water),
+        flies: waterAppropriateFlies(intel.flies || [], water)
+      };
     }
 
     function normalizeHatchForWater(hatch, water) {
@@ -4018,7 +4327,7 @@
           if (forecast.includes("cloud") || forecast.includes("rain")) hatches.unshift("BWO");
         }
       }
-      return uniqueItems(hatches.map((hatch) => normalizeHatchForWater(hatch, water))).slice(0, 4);
+      return waterAppropriateHatches(hatches, water).slice(0, 4);
     }
 
     function primeWindowFor(water) {
@@ -4285,10 +4594,12 @@
       if (!mentioned) return null;
       const hatches = hatchSignalMap
         .filter(([needle]) => lower.includes(needle))
-        .map(([, hatch]) => hatch);
+        .map(([, hatch]) => hatch)
+        .filter((hatch) => hatchAllowedForWater(normalizeHatchForWater(hatch, water), water));
       const flies = flySignalMap
         .filter(([needle]) => lower.includes(needle))
-        .map(([, fly]) => fly);
+        .map(([, fly]) => fly)
+        .filter((fly) => flyAllowedForWater(fly, water));
       const cues = cueSignalsFromText(lower);
       return {
         hatches: uniqueItems(hatches),
@@ -4495,7 +4806,7 @@
         if (forecast.includes("cloud") || forecast.includes("rain")) flies.unshift("BWO Soft Hackle #18");
         if (hatchText.includes("caddis")) flies.unshift("X-Caddis #16");
       }
-      return applyFlyFeedback(flies).slice(0, 4);
+      return applyFlyFeedback(waterAppropriateFlies(flies, water)).slice(0, 4);
     }
 
     function flyRecommendationReason(water, fly) {
@@ -4721,25 +5032,23 @@
       const liveSource = liveReports.byWater[water.id]?.status === "ready" ? "USGS/NWS + local report cache" : water.source;
       return `
         <div class="accordion-detail">
-          <div class="metric-grid">
+          <div class="compact-detail-grid">
             <div class="metric"><span>Flow</span><strong>${liveDisplayValue(water, "flow")}</strong></div>
             <div class="metric"><span>Water</span><strong>${liveDisplayValue(water, "temp")}</strong></div>
             <div class="metric"><span>Air</span><strong>${liveDisplayValue(water, "air")}</strong></div>
             <div class="metric"><span>Wind</span><strong>${liveDisplayValue(water, "wind")}</strong></div>
             <div class="metric"><span>Distance</span><strong>${distanceLabel(water) || "Use location"}</strong></div>
+            <div class="metric"><span>Confidence</span><strong>${confidenceForWater(water)}</strong></div>
           </div>
-          ${liveReportPanel(water)}
-          <div>
-            <h3>${water.name} Detail</h3>
-            <p class="subtle">${water.read}</p>
+          <div class="compact-note"><b>Read:</b> ${water.read}</div>
+          <div class="compact-lines">
+            <div class="line-row"><span>Regulations</span><b>${water.regs}</b></div>
+            <div class="line-row"><span>Stocking</span><b>${water.stocking}</b></div>
+            <div class="line-row"><span>Source</span><b>${liveSource}</b></div>
           </div>
-          <div class="line-row"><span>Regulations</span><b>${water.regs}</b></div>
-          <div class="line-row"><span>Stocking</span><b>${water.stocking}</b></div>
-          <div class="line-row"><span>Source</span><b>${liveSource}</b></div>
           <div>
-            <h3>Fly Match</h3>
-            <p class="subtle">${liveRecommendationReason(water)}</p>
-            <div class="fly-stack">${flies.map((fly) => flyCard(fly, hatches.join(" / "), flyRecommendationReason(water, fly))).join("")}</div>
+            <div class="compact-note"><b>Why this set:</b> ${liveRecommendationReason(water)}</div>
+            <div class="compact-fly-row">${flies.slice(0, 4).map((fly) => flyCard(fly, hatches.join(" / "), flyRecommendationReason(water, fly))).join("")}</div>
           </div>
         </div>
       `;
@@ -4759,10 +5068,13 @@
       const score = fishScore(water);
       const sortScore = rankedScore(water);
       const hatches = predictedHatches(water);
+      const visibleHatches = hatches.slice(0, 3);
       const distance = distanceLabel(water);
-      const isExpanded = water.id === activeWater;
+      const isExpanded = water.id === expandedWaterId;
       const summaryScore = waterSortMode === "Near" && userLocation ? `${sortScore.toFixed(1)} nearby / ${score} fish` : `${score} fishability`;
       const feedback = flyFeedbackLabel(selectedFly);
+      const reason = flyRecommendationReason(water, selectedFly);
+      const visibleFlies = uniqueItems([selectedFly, ...flies]).slice(0, 3);
       return `
         <div class="${cardClass} ${water.id === activeWater ? "active" : ""}" data-water="${water.id}">
           <div class="water-card-main">
@@ -4783,12 +5095,12 @@
               <span>${distance || "Use location"}</span>
               <span>${confidenceForWater(water)}</span>
             </div>
-            <div class="chips">${hatches.map((hatch) => `<span class="chip copper">${hatch}</span>`).join("")}</div>
+            <div class="chips">${visibleHatches.map((hatch) => `<span class="chip copper">${hatch}</span>`).join("")}</div>
             <div class="water-fly-badges" aria-label="${water.name} recommended flies">
-              ${flies.map((fly) => `<button class="water-fly-badge ${fly === selectedFly ? "active" : ""}" data-water-fly="${fly}" data-water-id="${water.id}">${fly}</button>`).join("")}
+              ${visibleFlies.map((fly) => `<button class="water-fly-badge ${fly === selectedFly ? "active" : ""}" data-water-fly="${fly}" data-water-id="${water.id}">${fly}</button>`).join("")}
             </div>
-            <div class="fly-reason"><b>Why ${selectedFly}:</b> ${flyRecommendationReason(water, selectedFly)}${feedback ? ` ${feedback}.` : ""}</div>
-            <div class="subtle">${scoreSourceLabel(water)} - tap card for flow, regs, and report inputs</div>
+            ${isExpanded ? `<div class="fly-reason"><b>Why ${selectedFly}:</b> ${reason}${feedback ? ` ${feedback}.` : ""}</div>` : ""}
+            <div class="subtle">${scoreSourceLabel(water)} - ${isExpanded ? "tap again to collapse" : "tap for details"}</div>
           </div>
           <div class="water-fly-preview" style="background-image:url('${ref.plate}');background-position:${ref.pos};background-size:${ref.size || "200% 200%"};" role="img" aria-label="${selectedFly} artificial fly reference"></div>
           ${isExpanded ? waterAccordionDetail(water) : ""}
@@ -4969,38 +5281,39 @@
       const syncing = Boolean(liveReports.bulkStatus);
 
       $("#waters").innerHTML = `
-        <div class="topbar">
-          <div>
-            <p class="eyebrow">Waters</p>
-            <h1>${topWater.name}</h1>
-            <p class="subtle">${waterSortMode === "Near" && userLocation ? "Best nearby water" : "Highest rated today"} - ${fishScore(topWater)} fishability${distanceLabel(topWater) ? ` - ${distanceLabel(topWater)} away` : ""} - ${scoreSourceLabel(topWater)} - ${topWater.section}</p>
-            <p class="subtle">${locationSummary()}</p>
-          </div>
-          <div class="toolbar">
-            <button class="ghost-btn" data-refresh-all>${syncing ? "Updating..." : "Update Waters"}</button>
-            <button class="ghost-btn" data-use-location>${locationStatus === "loading" ? "Locating..." : userLocation ? "Update Location" : "Use Location"}</button>
-            <div class="segmented">
-              ${["Best", "Near"].map((label) => `<button class="${waterSortMode === label ? "active" : ""}" data-water-sort="${label}">${label === "Near" ? "Near Me" : "Best"}</button>`).join("")}
-            </div>
-            <div class="segmented">
-              ${["All", "River", "Lake"].map((label) => `<button class="${waterFilter === label ? "active" : ""}" data-water-filter="${label}">${label}</button>`).join("")}
-            </div>
-            <label style="width: min(260px, 100%);">
-              <span class="subtle">Search</span>
-              <input data-water-search value="${waterQuery}" placeholder="Name, hatch, section">
-            </label>
-          </div>
-        </div>
-        ${dataStatusStrip("waters")}
-        ${savedRecentPanel()}
-        ${waterRankCard(topWater, 1, true)}
-        <div class="content-grid waters-accordion-grid">
-          <div class="panel">
-            <div class="panel-head">
+        <div class="waters-screen">
+          <div class="waters-header">
+            <div class="waters-header-row">
               <div>
-                <h2>Ranked Waters</h2>
-                <p class="subtle">${filtered.length} visible, sorted by ${waterSortMode === "Near" && userLocation ? "fishability plus proximity." : "today's 1-10 fishability rating."}</p>
+                <p class="eyebrow">Waters</p>
+                <h1>${topWater.name}</h1>
+                <p class="subtle">${waterSortMode === "Near" && userLocation ? "Best nearby water" : "Highest rated today"} - ${topWater.section}</p>
               </div>
+              <div class="waters-score-badge"><strong>${fishScore(topWater)}</strong><span>Fishability</span></div>
+            </div>
+            <div class="waters-toolbar">
+              <div class="waters-toolbar-row">
+                <button class="ghost-btn" data-refresh-all>${syncing ? "Updating..." : "Update"}</button>
+                <button class="ghost-btn" data-use-location>${locationStatus === "loading" ? "Locating..." : userLocation ? "Location" : "Use Location"}</button>
+                <div class="segmented">
+                  ${["Best", "Near"].map((label) => `<button class="${waterSortMode === label ? "active" : ""}" data-water-sort="${label}">${label === "Near" ? "Near Me" : "Best"}</button>`).join("")}
+                </div>
+                <div class="segmented">
+                  ${["All", "River", "Lake"].map((label) => `<button class="${waterFilter === label ? "active" : ""}" data-water-filter="${label}">${label}</button>`).join("")}
+                </div>
+              </div>
+              <label class="waters-search" aria-label="Search waters">
+                <input data-water-search value="${waterQuery}" placeholder="Search water, hatch, section">
+              </label>
+            </div>
+            <div class="waters-sync-line">${dataFreshnessLabel()} - ${cachedWaterCount()}/${waters.length} waters saved locally</div>
+          </div>
+          <div class="waters-quick-strip">${savedRecentPanel()}</div>
+          <div class="waters-main-list">
+            ${waterRankCard(topWater, 1, true)}
+            <div class="waters-list-head">
+              <span>${filtered.length} waters</span>
+              <span>${waterSortMode === "Near" && userLocation ? "Fishability + proximity" : "Ranked by fishability"}</span>
             </div>
             <div class="water-list">
               ${rankedRest.length ? rankedRest.map((water, index) => waterRankCard(water, index + 2)).join("") : `<p class="subtle">No additional waters match this filter.</p>`}
@@ -5954,6 +6267,7 @@
       all("[data-water]").forEach((button) => {
         button.addEventListener("click", (event) => {
           if (event.target.closest("button, a, input, select, textarea, [data-library-fly]")) return;
+          expandedWaterId = expandedWaterId === button.dataset.water ? null : button.dataset.water;
           saveActiveWater(button.dataset.water);
           renderAll();
           if (!liveReports.byWater[activeWater] && navigator.onLine !== false) refreshLiveReport(activeWater, { mode: "manual" });
