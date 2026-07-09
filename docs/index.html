@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>The Rise | Central Oregon Fly Fishing</title>
+  <meta name="description" content="The Rise is an iOS fly-fishing companion for Central Oregon waters, hatches, fly selection, and catch logging.">
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #17231d;
+      --muted: #637064;
+      --paper: #f8f5ed;
+      --panel: #fffdf7;
+      --river: #155f6f;
+      --pine: #2f5b45;
+      --gold: #d6a94a;
+      --line: #d9ded4;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--paper);
+    }
+
+    header {
+      background:
+        linear-gradient(180deg, rgba(21, 95, 111, .94), rgba(21, 95, 111, .88)),
+        radial-gradient(circle at 20% 0%, rgba(214, 169, 74, .26), transparent 34%);
+      color: white;
+      padding: 34px 22px 52px;
+    }
+
+    .wrap {
+      width: min(980px, 100%);
+      margin: 0 auto;
+    }
+
+    nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 62px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 900;
+      letter-spacing: .01em;
+    }
+
+    .mark {
+      width: 42px;
+      height: 42px;
+      border-radius: 9px;
+      background: var(--pine);
+      display: grid;
+      place-items: center;
+      box-shadow: inset 0 -8px 0 rgba(0, 0, 0, .16);
+    }
+
+    .mark svg {
+      width: 27px;
+      height: 27px;
+    }
+
+    nav a {
+      color: rgba(255, 255, 255, .86);
+      text-decoration: none;
+      font-weight: 750;
+    }
+
+    h1 {
+      max-width: 760px;
+      margin: 0 0 18px;
+      font-size: clamp(42px, 8vw, 74px);
+      line-height: .94;
+      letter-spacing: 0;
+    }
+
+    .hero-copy {
+      max-width: 660px;
+      margin: 0;
+      color: rgba(255, 255, 255, .86);
+      font-size: clamp(18px, 3vw, 24px);
+      line-height: 1.35;
+    }
+
+    main {
+      padding: 34px 22px 54px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      margin: -56px 0 32px;
+    }
+
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--panel);
+      padding: 20px;
+      box-shadow: 0 18px 44px rgba(30, 43, 34, .12);
+    }
+
+    .card h2,
+    .section h2 {
+      margin: 0 0 8px;
+      font-size: 22px;
+      line-height: 1.1;
+    }
+
+    .card p,
+    .section p,
+    li {
+      color: var(--muted);
+      line-height: 1.55;
+    }
+
+    .section {
+      border-top: 1px solid var(--line);
+      padding: 28px 0 0;
+      margin-top: 28px;
+      display: grid;
+      grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr);
+      gap: 30px;
+      align-items: start;
+    }
+
+    ul {
+      margin: 0;
+      padding-left: 20px;
+    }
+
+    .button-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 22px;
+    }
+
+    .button {
+      display: inline-flex;
+      min-height: 44px;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8px;
+      padding: 10px 16px;
+      background: var(--pine);
+      color: white;
+      text-decoration: none;
+      font-weight: 850;
+    }
+
+    .button.secondary {
+      background: transparent;
+      color: var(--pine);
+      border: 1px solid rgba(47, 91, 69, .28);
+    }
+
+    footer {
+      border-top: 1px solid var(--line);
+      padding: 24px 22px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    @media (max-width: 760px) {
+      nav {
+        margin-bottom: 44px;
+      }
+
+      .grid,
+      .section {
+        grid-template-columns: 1fr;
+      }
+
+      .grid {
+        margin-top: -40px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <nav>
+        <div class="brand">
+          <span class="mark" aria-hidden="true">
+            <svg viewBox="0 0 64 64" fill="none">
+              <path d="M12 40c8-16 22-24 42-24-10 3-15 9-17 18 5-4 10-5 15-4-11 5-19 12-25 22 0-12-5-16-15-12Z" fill="white"/>
+              <path d="M18 36c9 1 17-1 24-6" stroke="#d6a94a" stroke-width="4" stroke-linecap="round"/>
+            </svg>
+          </span>
+          The Rise
+        </div>
+        <a href="support.html">Support</a>
+      </nav>
+      <h1>Fish the right Central Oregon water at the right time.</h1>
+      <p class="hero-copy">The Rise helps anglers compare local waters, understand likely hatch windows, choose practical fly patterns, and keep a simple catch journal.</p>
+    </div>
+  </header>
+
+  <main>
+    <div class="wrap">
+      <section class="grid" aria-label="App highlights">
+        <article class="card">
+          <h2>Daily Water Picks</h2>
+          <p>Rank rivers, lakes, and spring creeks by fishability, prime windows, conditions, and local hatch logic.</p>
+        </article>
+        <article class="card">
+          <h2>Bug-To-Fly Matching</h2>
+          <p>Use visual references for aquatic insects and artificial flies so newer anglers can match what they see on the water.</p>
+        </article>
+        <article class="card">
+          <h2>Offline Ready</h2>
+          <p>Save the latest daily water data for early starts and low-service areas, with manual refresh when signal is available.</p>
+        </article>
+      </section>
+
+      <section class="section">
+        <div>
+          <h2>Built For Central Oregon</h2>
+          <p>Designed around the waters anglers actually talk about before a trip: the Deschutes, Metolius, Crooked, Fall River, Cascade lakes, reservoirs, and smaller nearby options.</p>
+        </div>
+        <ul>
+          <li>Fishability ratings on a 1-10 scale</li>
+          <li>Prime fishing windows based on conditions and hatch timing</li>
+          <li>Recommended dries, nymphs, emergers, streamers, terrestrials, and stillwater patterns</li>
+          <li>Saved waters, trip mode, fly-box planning, and catch logging</li>
+        </ul>
+      </section>
+
+      <section class="section">
+        <div>
+          <h2>For Newer And Experienced Anglers</h2>
+          <p>The Rise keeps the daily answer simple while still showing the reasoning behind the recommendation.</p>
+        </div>
+        <ul>
+          <li>Beginner-friendly hatch and fly-stage explanations</li>
+          <li>Confidence labels for recommendations</li>
+          <li>Fly feedback so anglers can track what worked and what did not</li>
+          <li>Photo catch log with fish, length, water, fly, and conditions</li>
+        </ul>
+      </section>
+
+      <div class="button-row">
+        <a class="button" href="support.html">Get Support</a>
+        <a class="button secondary" href="support.html#privacy">Privacy Notes</a>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <div class="wrap">The Rise is an independent fly-fishing companion app. Always check current local regulations before fishing.</div>
+  </footer>
+</body>
+</html>
