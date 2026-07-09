@@ -1,0 +1,137 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="820" viewBox="0 0 1200 820">
+  <defs>
+    <radialGradient id="paper" cx="48%" cy="46%" r="72%">
+      <stop offset="0" stop-color="#f7f4ec"/>
+      <stop offset=".62" stop-color="#e8e5dd"/>
+      <stop offset="1" stop-color="#d8d5ce"/>
+    </radialGradient>
+    <linearGradient id="hook" x1="150" x2="1040" y1="390" y2="430">
+      <stop offset="0" stop-color="#4b3a25"/>
+      <stop offset=".38" stop-color="#181513"/>
+      <stop offset=".72" stop-color="#49381f"/>
+      <stop offset="1" stop-color="#0f0f0e"/>
+    </linearGradient>
+    <linearGradient id="abdomen" x1="315" x2="760" y1="393" y2="388">
+      <stop offset="0" stop-color="#b9a868"/>
+      <stop offset=".35" stop-color="#d8c57d"/>
+      <stop offset=".72" stop-color="#a98745"/>
+      <stop offset="1" stop-color="#6f5830"/>
+    </linearGradient>
+    <linearGradient id="thorax" x1="700" x2="930" y1="352" y2="444">
+      <stop offset="0" stop-color="#9b7b45"/>
+      <stop offset=".4" stop-color="#4a3322"/>
+      <stop offset="1" stop-color="#1f1714"/>
+    </linearGradient>
+    <linearGradient id="wingcase" x1="720" x2="890" y1="292" y2="372">
+      <stop offset="0" stop-color="#dbbc77" stop-opacity=".82"/>
+      <stop offset=".55" stop-color="#735128" stop-opacity=".9"/>
+      <stop offset="1" stop-color="#2a1d16"/>
+    </linearGradient>
+    <filter id="softShadow" x="-20%" y="-30%" width="140%" height="170%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="10"/>
+      <feOffset dx="4" dy="22" result="offset"/>
+      <feComponentTransfer>
+        <feFuncA type="linear" slope=".22"/>
+      </feComponentTransfer>
+      <feMerge>
+        <feMergeNode/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="hairBlur" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation=".35"/>
+    </filter>
+  </defs>
+
+  <rect width="1200" height="820" fill="url(#paper)"/>
+  <ellipse cx="604" cy="582" rx="430" ry="44" fill="#8a8276" opacity=".16"/>
+
+  <g filter="url(#softShadow)">
+    <!-- Curved emerger hook with down eye and open gape. -->
+    <path d="M928 382
+             C1010 382 1048 418 1036 462
+             C1026 500 983 505 950 486
+             C914 466 907 419 933 391
+             M930 382
+             C835 390 724 404 606 417
+             C474 431 337 430 217 403
+             C155 390 130 419 154 459
+             C181 504 255 522 312 488"
+          fill="none" stroke="url(#hook)" stroke-width="16" stroke-linecap="round"/>
+    <path d="M312 488 L268 483 L296 455" fill="none" stroke="#15130f" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+    <ellipse cx="944" cy="385" rx="33" ry="21" transform="rotate(18 944 385)" fill="none" stroke="#15130f" stroke-width="10"/>
+
+    <!-- Sparse trailing shuck / tails. -->
+    <g fill="none" stroke-linecap="round" opacity=".82" filter="url(#hairBlur)">
+      <path d="M322 391 C236 355 160 333 71 328" stroke="#d3b47a" stroke-width="3"/>
+      <path d="M324 397 C228 392 145 401 69 431" stroke="#b28c53" stroke-width="2"/>
+      <path d="M330 407 C248 438 173 477 91 535" stroke="#c9a26a" stroke-width="2"/>
+      <path d="M338 386 C255 323 185 285 111 257" stroke="#8c6e45" stroke-width="1.5"/>
+    </g>
+
+    <!-- Abdomen: Barr-style dubbed body on a curved hook. -->
+    <path d="M320 394
+             C424 404 559 405 703 386
+             C727 383 746 396 745 418
+             C744 438 725 452 700 450
+             C559 438 430 432 321 414
+             C305 411 303 394 320 394Z"
+          fill="url(#abdomen)" stroke="#6f5830" stroke-width="3"/>
+    <g fill="none" stroke="#70582e" stroke-width="4" stroke-linecap="round" opacity=".82">
+      <path d="M367 396 C354 404 351 413 359 425"/>
+      <path d="M422 401 C408 410 406 421 414 431"/>
+      <path d="M480 402 C465 414 464 424 474 435"/>
+      <path d="M541 400 C525 413 526 427 538 438"/>
+      <path d="M604 394 C589 411 592 429 607 443"/>
+      <path d="M664 388 C651 409 656 431 676 447"/>
+    </g>
+    <path d="M325 388 C454 391 585 392 714 374" fill="none" stroke="#efe0a1" stroke-width="5" opacity=".55"/>
+
+    <!-- Wing case and thorax. -->
+    <path d="M704 383
+             C752 316 832 287 898 323
+             C926 338 922 373 892 386
+             C846 407 770 407 711 402Z"
+          fill="url(#wingcase)" stroke="#5f4021" stroke-width="3"/>
+    <path d="M690 396
+             C755 356 869 358 935 404
+             C963 424 951 464 910 475
+             C842 493 740 461 696 432
+             C681 421 678 405 690 396Z"
+          fill="url(#thorax)" stroke="#312016" stroke-width="3"/>
+
+    <!-- Legs and sparse hackle around the thorax. -->
+    <g fill="none" stroke-linecap="round" filter="url(#hairBlur)">
+      <path d="M764 397 C716 355 680 327 627 303" stroke="#b79a6d" stroke-width="2"/>
+      <path d="M790 403 C745 341 714 302 654 260" stroke="#7d603f" stroke-width="2"/>
+      <path d="M823 406 C800 338 777 300 739 241" stroke="#d8be87" stroke-width="1.7"/>
+      <path d="M842 419 C904 359 948 318 1016 284" stroke="#9e7648" stroke-width="2"/>
+      <path d="M825 434 C897 461 954 490 1022 547" stroke="#d1b078" stroke-width="2"/>
+      <path d="M790 435 C757 491 723 530 663 586" stroke="#8f6b43" stroke-width="2"/>
+      <path d="M735 424 C680 463 632 488 558 511" stroke="#c7aa77" stroke-width="1.8"/>
+    </g>
+
+    <!-- Pale emerging wing / PMD trigger, kept compact so this is not the generic translucent emerger. -->
+    <path d="M804 326
+             C837 266 911 226 976 244
+             C952 312 895 359 819 363Z"
+          fill="#f3e0b0" opacity=".62" stroke="#b89a61" stroke-width="2"/>
+    <path d="M822 336 C865 297 910 270 956 253" fill="none" stroke="#8d7042" stroke-width="1.6" opacity=".55"/>
+    <path d="M813 351 C861 334 905 316 950 294" fill="none" stroke="#8d7042" stroke-width="1.2" opacity=".45"/>
+
+    <!-- Head thread and eye detail. -->
+    <ellipse cx="933" cy="409" rx="27" ry="22" transform="rotate(18 933 409)" fill="#19120f"/>
+    <path d="M908 397 C921 413 926 430 925 452" fill="none" stroke="#b66f28" stroke-width="6" opacity=".85"/>
+    <circle cx="948" cy="400" r="5" fill="#e6d5a3" opacity=".7"/>
+
+    <!-- Fine dubbing fibers on body. -->
+    <g fill="none" stroke-linecap="round" opacity=".38" filter="url(#hairBlur)">
+      <path d="M374 376 C363 353 353 338 337 316" stroke="#6f5830" stroke-width="1.2"/>
+      <path d="M438 421 C432 454 420 477 403 503" stroke="#f0d99d" stroke-width="1.3"/>
+      <path d="M505 382 C492 350 484 325 473 295" stroke="#8a6d3c" stroke-width="1.2"/>
+      <path d="M580 431 C572 464 560 488 540 517" stroke="#f0d99d" stroke-width="1.2"/>
+      <path d="M650 377 C648 345 646 319 646 288" stroke="#7a5c34" stroke-width="1.1"/>
+      <path d="M711 447 C704 476 691 500 670 528" stroke="#dfc185" stroke-width="1.2"/>
+    </g>
+  </g>
+</svg>
