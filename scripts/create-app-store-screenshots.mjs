@@ -247,7 +247,7 @@ function generateDevice(device, viewport, size, outDir) {
 ensureTools();
 prepareHarness();
 cleanOutputs();
-generateDevice("iphone", { width: 440, height: 956 }, { width: 1320, height: 2868 }, iphoneDir);
+generateDevice("iphone", { width: 440, height: 956 }, { width: 1242, height: 2688 }, iphoneDir);
 generateDevice("ipad", { width: 768, height: 1024 }, { width: 2064, height: 2752 }, ipadDir);
 console.log(`Created ${shots.length} iPhone screenshots in ${iphoneDir}`);
 console.log(`Created ${shots.length} iPad screenshots in ${ipadDir}`);
