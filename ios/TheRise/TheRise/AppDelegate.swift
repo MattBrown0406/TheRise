@@ -1,4 +1,5 @@
 import UIKit
+import RevenueCat
 
 @main
 final class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -8,6 +9,9 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
     ) -> Bool {
+        Purchases.logLevel = .debug
+        Purchases.configure(withAPIKey: SubscriptionConfig.RevenueCat.publicSDKKey)
+
         let window = UIWindow(frame: UIScreen.main.bounds)
         window.rootViewController = RiseViewController()
         window.makeKeyAndVisible()

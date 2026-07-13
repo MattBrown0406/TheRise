@@ -13,6 +13,7 @@
 		0A0000010000000000000004 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 0A0000020000000000000005 /* Assets.xcassets */; };
 		0A0000010000000000000005 /* Web in Resources */ = {isa = PBXBuildFile; fileRef = 0A0000020000000000000006 /* Web */; };
 		0A0000010000000000000006 /* SubscriptionConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A0000020000000000000008 /* SubscriptionConfig.swift */; };
+		0A0000010000000000000007 /* RevenueCat in Frameworks */ = {isa = PBXBuildFile; productRef = 0A00000D0000000000000002 /* RevenueCat */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -31,6 +32,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				0A0000010000000000000007 /* RevenueCat in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -83,6 +85,9 @@
 			dependencies = (
 			);
 			name = TheRise;
+			packageProductDependencies = (
+				0A00000D0000000000000002 /* RevenueCat */,
+			);
 			productName = "The Rise";
 			productReference = 0A0000020000000000000007 /* The Rise.app */;
 			productType = "com.apple.product-type.application";
@@ -111,6 +116,9 @@
 				Base,
 			);
 			mainGroup = 0A0000040000000000000001;
+			packageReferences = (
+				0A00000C0000000000000001 /* XCRemoteSwiftPackageReference "purchases-ios-spm" */,
+			);
 			productRefGroup = 0A0000040000000000000003 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -145,6 +153,25 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		0A00000C0000000000000001 /* XCRemoteSwiftPackageReference "purchases-ios-spm" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/RevenueCat/purchases-ios-spm.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 5.80.3;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		0A00000D0000000000000002 /* RevenueCat */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 0A00000C0000000000000001 /* XCRemoteSwiftPackageReference "purchases-ios-spm" */;
+			productName = RevenueCat;
+		};
+/* End XCSwiftPackageProductDependency section */
 
 /* Begin XCBuildConfiguration section */
 		0A0000090000000000000001 /* Debug */ = {

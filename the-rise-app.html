@@ -2156,6 +2156,11 @@
       border-color: var(--pine);
     }
 
+    .ghost-btn:disabled,
+    .primary-btn:disabled {
+      opacity: .68;
+    }
+
     .ghost-btn svg,
     .primary-btn svg,
     .icon-btn svg {
@@ -2516,6 +2521,18 @@
     .price strong {
       font-size: 52px;
       line-height: .9;
+    }
+
+    .pro-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .pro-status {
+      margin-top: 12px;
+      color: rgba(255, 255, 255, .86);
     }
 
     .toggle {
@@ -3653,6 +3670,9 @@
     let activeKnot = knots[0].id;
     let knotStep = 0;
     let billing = "annual";
+    let proAccessActive = false;
+    let subscriptionLoading = false;
+    let subscriptionMessage = "Purchases are ready in the iOS app build.";
     let logFormOpen = false;
     let editingLogIndex = null;
     let activeBugStage = null;
@@ -6626,6 +6646,8 @@
 
     function renderPro() {
       const isAnnual = billing === "annual";
+      const planLabel = isAnnual ? "Annual" : "Monthly";
+      const purchaseLabel = proAccessActive ? "Pro active" : subscriptionLoading ? "Working..." : `Subscribe ${planLabel}`;
       $("#pro").innerHTML = `
         <div class="topbar">
           <div>
@@ -6644,7 +6666,11 @@
             <p class="eyebrow">The Rise Pro</p>
             <h1>The Rise Pro</h1>
             <div class="price"><strong>${isAnnual ? "$49.99" : "$6.99"}</strong><span>${isAnnual ? "per year" : "per month"}</span></div>
-            <button class="primary-btn">${icon.bell}Subscribe for access</button>
+            <div class="pro-actions">
+              <button class="primary-btn" data-subscribe-plan="${isAnnual ? "annual" : "monthly"}" ${subscriptionLoading || proAccessActive ? "disabled" : ""}>${icon.bell}${purchaseLabel}</button>
+              <button class="ghost-btn" data-restore-purchases ${subscriptionLoading ? "disabled" : ""}>Restore</button>
+            </div>
+            <p class="subtle pro-status">${subscriptionMessage}</p>
           </div>
           <div class="panel">
             <h2>Unlocked</h2>
@@ -6666,6 +6692,30 @@
         </div>
       `;
     }
+
+    function hasSubscriptionBridge() {
+      return Boolean(window.webkit?.messageHandlers?.riseSubscription);
+    }
+
+    function postSubscriptionMessage(payload) {
+      if (!hasSubscriptionBridge()) {
+        subscriptionLoading = false;
+        subscriptionMessage = "Purchases run in the iOS app. This browser mockup is showing the same screen without App Store checkout.";
+        renderPro();
+        bindDynamic();
+        return false;
+      }
+      window.webkit.messageHandlers.riseSubscription.postMessage(payload);
+      return true;
+    }
+
+    window.riseSubscriptionResult = function(result) {
+      proAccessActive = Boolean(result?.active);
+      subscriptionLoading = false;
+      subscriptionMessage = result?.message || (proAccessActive ? "The Rise Pro is active." : "The Rise Pro is not active yet.");
+      renderPro();
+      bindDynamic();
+    };
 
     function renderAll() {
       renderToday();
@@ -7040,6 +7090,28 @@
           bindDynamic();
         });
       }
+      all("[data-subscribe-plan]").forEach((button) => {
+        button.addEventListener("click", () => {
+          subscriptionLoading = true;
+          subscriptionMessage = `Starting ${button.dataset.subscribePlan === "annual" ? "annual" : "monthly"} checkout...`;
+          renderPro();
+          bindDynamic();
+          postSubscriptionMessage({ action: "purchase", plan: button.dataset.subscribePlan });
+        });
+      });
+      all("[data-restore-purchases]").forEach((button) => {
+        button.addEventListener("click", () => {
+          subscriptionLoading = true;
+          subscriptionMessage = "Checking past purchases...";
+          renderPro();
+          bindDynamic();
+          postSubscriptionMessage({ action: "restore" });
+        });
+      });
+    }
+
+    function syncSubscriptionStatus() {
+      if (hasSubscriptionBridge()) postSubscriptionMessage({ action: "status" });
     }
 
     all(".tab").forEach((button) => {
@@ -7049,6 +7121,7 @@
     userLocation = readUserLocation();
     hydrateWaterCache();
     renderAll();
+    syncSubscriptionStatus();
     runInitialDataSync();
     startDailyOpenSyncWatcher();
   </script>
