@@ -12,6 +12,7 @@
 		0A0000010000000000000003 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 0A0000020000000000000004 /* LaunchScreen.storyboard */; };
 		0A0000010000000000000004 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 0A0000020000000000000005 /* Assets.xcassets */; };
 		0A0000010000000000000005 /* Web in Resources */ = {isa = PBXBuildFile; fileRef = 0A0000020000000000000006 /* Web */; };
+		0A0000010000000000000006 /* SubscriptionConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A0000020000000000000008 /* SubscriptionConfig.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -22,6 +23,7 @@
 		0A0000020000000000000005 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		0A0000020000000000000006 /* Web */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Web; sourceTree = "<group>"; };
 		0A0000020000000000000007 /* The Rise.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "The Rise.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		0A0000020000000000000008 /* SubscriptionConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubscriptionConfig.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -48,6 +50,7 @@
 			children = (
 				0A0000020000000000000001 /* AppDelegate.swift */,
 				0A0000020000000000000002 /* RiseViewController.swift */,
+				0A0000020000000000000008 /* SubscriptionConfig.swift */,
 				0A0000020000000000000003 /* Info.plist */,
 				0A0000020000000000000004 /* LaunchScreen.storyboard */,
 				0A0000020000000000000005 /* Assets.xcassets */,
@@ -137,6 +140,7 @@
 			files = (
 				0A0000010000000000000001 /* AppDelegate.swift in Sources */,
 				0A0000010000000000000002 /* RiseViewController.swift in Sources */,
+				0A0000010000000000000006 /* SubscriptionConfig.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

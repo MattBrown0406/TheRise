@@ -30,3 +30,24 @@ Expected URLs after GitHub Pages is enabled:
 
 - Marketing URL: `https://mattbrown0406.github.io/TheRise/`
 - Support URL: `https://mattbrown0406.github.io/TheRise/support.html`
+
+## RevenueCat setup
+
+The RevenueCat entitlement identifier is intentionally:
+
+```text
+The Rise Pro
+```
+
+RevenueCat will not allow renaming the original entitlement identifier, so keep the app code matched to that exact value. The product identifiers are:
+
+```text
+therise_pro_monthly
+therise_pro_annual
+```
+
+The expected current offering identifier is:
+
+```text
+default
+```
