@@ -7,6 +7,7 @@ final class RiseViewController: UIViewController, WKNavigationDelegate, WKScript
         let configuration = WKWebViewConfiguration()
         configuration.defaultWebpagePreferences.allowsContentJavaScript = true
         configuration.userContentController.add(self, name: "riseSubscription")
+        configuration.userContentController.add(self, name: "riseData")
 
         let webView = WKWebView(frame: .zero, configuration: configuration)
         webView.navigationDelegate = self
@@ -19,6 +20,7 @@ final class RiseViewController: UIViewController, WKNavigationDelegate, WKScript
 
     deinit {
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "riseSubscription")
+        webView.configuration.userContentController.removeScriptMessageHandler(forName: "riseData")
     }
 
     override func viewDidLoad() {
@@ -46,6 +48,11 @@ final class RiseViewController: UIViewController, WKNavigationDelegate, WKScript
     }
 
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+        if message.name == "riseData" {
+            handleDataFetchMessage(message)
+            return
+        }
+
         guard let payload = message.body as? [String: Any],
               let action = payload["action"] as? String else {
             sendSubscriptionResult(status: "error", message: "The purchase request was incomplete.")
@@ -148,6 +155,53 @@ final class RiseViewController: UIViewController, WKNavigationDelegate, WKScript
 
         DispatchQueue.main.async { [weak self] in
             self?.webView.evaluateJavaScript("window.riseSubscriptionResult && window.riseSubscriptionResult(\(json));")
+        }
+    }
+
+    private func handleDataFetchMessage(_ message: WKScriptMessage) {
+        guard let payload = message.body as? [String: Any],
+              let requestId = payload["id"] as? String,
+              let urlString = payload["url"] as? String,
+              let url = URL(string: urlString),
+              ["https", "http"].contains(url.scheme?.lowercased() ?? "") else {
+            sendDataFetchResult(id: (message.body as? [String: Any])?["id"] as? String ?? "", statusCode: 0, body: "", error: "Invalid data request.")
+            return
+        }
+
+        Task {
+            do {
+                var request = URLRequest(url: url)
+                request.timeoutInterval = 12
+                request.setValue("The Rise iOS/1.0 (Central Oregon fly-fishing companion)", forHTTPHeaderField: "User-Agent")
+                request.setValue("*/*", forHTTPHeaderField: "Accept")
+
+                let (data, response) = try await URLSession.shared.data(for: request)
+                let statusCode = (response as? HTTPURLResponse)?.statusCode ?? 200
+                let body = String(data: data, encoding: .utf8) ?? ""
+                let error = (200..<300).contains(statusCode) ? "" : "HTTP \(statusCode)"
+                sendDataFetchResult(id: requestId, statusCode: statusCode, body: body, error: error)
+            } catch {
+                sendDataFetchResult(id: requestId, statusCode: 0, body: "", error: error.localizedDescription)
+            }
+        }
+    }
+
+    private func sendDataFetchResult(id: String, statusCode: Int, body: String, error: String) {
+        let payload: [String: Any] = [
+            "id": id,
+            "ok": error.isEmpty,
+            "status": statusCode,
+            "body": body,
+            "error": error
+        ]
+
+        guard let data = try? JSONSerialization.data(withJSONObject: payload),
+              let json = String(data: data, encoding: .utf8) else {
+            return
+        }
+
+        DispatchQueue.main.async { [weak self] in
+            self?.webView.evaluateJavaScript("window.riseNativeFetchResult && window.riseNativeFetchResult(\(json));")
         }
     }
 }

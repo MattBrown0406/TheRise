@@ -3435,6 +3435,8 @@
     const LIVE_FETCH_TIMEOUT_MS = 6500;
     const BULK_SYNC_CONCURRENCY = 4;
     const liveReports = { byWater: {}, lastRequested: null, cache: null, bulkStatus: "" };
+    const nativeFetchCallbacks = new Map();
+    let nativeFetchSequence = 0;
 
     const bugs = [
       {
@@ -4742,7 +4744,8 @@
     function liveMetaFor(water) {
       if (liveSources[water.id]) return liveSources[water.id];
       const fallback = water.type === "Lake" ? { lat: 44.05, lon: -121.32 } : { lat: 44.06, lon: -121.31 };
-      return { ...fallback, reportKey: water.name };
+      const coordinates = waterCoordinates[water.id] || fallback;
+      return { ...coordinates, reportKey: water.name };
     }
 
     function emptyWaterCache() {
@@ -4886,7 +4889,48 @@
       return points.length ? points[points.length - 1] : null;
     }
 
+    function hasNativeDataBridge() {
+      return Boolean(window.webkit?.messageHandlers?.riseData);
+    }
+
+    function nativeFetch(url, label, responseType = "text") {
+      return new Promise((resolve, reject) => {
+        if (!hasNativeDataBridge()) {
+          reject(new Error("Native fetch unavailable"));
+          return;
+        }
+        const id = `fetch-${Date.now()}-${nativeFetchSequence++}`;
+        const timeout = setTimeout(() => {
+          nativeFetchCallbacks.delete(id);
+          reject(new Error(`${label} timeout`));
+        }, LIVE_FETCH_TIMEOUT_MS + 7000);
+        nativeFetchCallbacks.set(id, { resolve, reject, timeout, responseType, label });
+        window.webkit.messageHandlers.riseData.postMessage({ id, url, responseType });
+      });
+    }
+
+    window.riseNativeFetchResult = function(result) {
+      const callback = nativeFetchCallbacks.get(result?.id);
+      if (!callback) return;
+      nativeFetchCallbacks.delete(result.id);
+      clearTimeout(callback.timeout);
+      if (!result.ok) {
+        callback.reject(new Error(result.error || `${callback.label} ${result.status || "failed"}`));
+        return;
+      }
+      if (callback.responseType === "json") {
+        try {
+          callback.resolve(JSON.parse(result.body || "{}"));
+        } catch {
+          callback.reject(new Error(`${callback.label} invalid JSON`));
+        }
+        return;
+      }
+      callback.resolve(result.body || "");
+    };
+
     async function fetchJsonWithTimeout(url, label) {
+      if (hasNativeDataBridge()) return nativeFetch(url, label, "json");
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), LIVE_FETCH_TIMEOUT_MS);
       try {
@@ -4902,6 +4946,7 @@
     }
 
     async function fetchTextWithTimeout(url, label) {
+      if (hasNativeDataBridge()) return nativeFetch(url, label, "text");
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), LIVE_FETCH_TIMEOUT_MS);
       try {
@@ -5143,6 +5188,7 @@
 
     function liveDisplayValue(water, key) {
       const report = liveReports.byWater[water.id];
+      if (key === "flow" && water.type !== "Lake" && !liveMetaFor(water).usgs) return "No live gauge";
       if (report?.status !== "ready") return water[key];
       if (key === "flow") return report.usgs?.flow || water.flow;
       if (key === "temp") return report.usgs?.waterTemp || water.temp;
