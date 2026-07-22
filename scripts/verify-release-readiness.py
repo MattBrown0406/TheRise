@@ -4,6 +4,8 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
+import json
 import plistlib
 import re
 import struct
@@ -20,6 +22,7 @@ SWIFT = ROOT / "ios/TheRise/TheRise/RiseViewController.swift"
 SUBSCRIPTIONS = ROOT / "ios/TheRise/TheRise/SubscriptionConfig.swift"
 REVIEW_DOC = ROOT / "docs/app-store-review.md"
 SCREENSHOT_SCRIPT = ROOT / "scripts/create-app-store-screenshots.mjs"
+SCREENSHOT_MANIFEST = ROOT / "app-store-screenshots/subscription-review-manifest.json"
 
 PRIVACY_URL = "https://mattbrown0406.github.io/TheRise/privacy.html"
 EULA_URL = "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/"
@@ -40,6 +43,10 @@ def png_dimensions(path: Path) -> tuple[int, int]:
     data = path.read_bytes()[:24]
     require(data[:8] == b"\x89PNG\r\n\x1a\n" and data[12:16] == b"IHDR", f"invalid PNG: {path}")
     return struct.unpack(">II", data[16:24])
+
+
+def sha256(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 def main() -> int:
@@ -72,6 +79,10 @@ def main() -> int:
     pro_start = web.index("function renderPro()")
     pro_end = web.index("function hasSubscriptionBridge()", pro_start)
     pro = web[pro_start:pro_end]
+    require(
+        'let subscriptionPrices = { monthly: null, annual: null };' in web,
+        "subscription prices must fail closed until StoreKit supplies localized values",
+    )
     for token in (
         "The Rise Pro — ${planLabel}",
         "per ${renewalPeriod}",
@@ -80,6 +91,7 @@ def main() -> int:
         "Restore Purchases",
         PRIVACY_URL,
         EULA_URL,
+        '!priceReady || subscriptionLoading || proAccessActive',
     ):
         require(token in pro, f"subscription screen is missing: {token}")
 
@@ -112,7 +124,7 @@ def main() -> int:
         require(token in review_doc, f"App Store review documentation is missing: {token}")
 
     screenshot_script = SCREENSHOT_SCRIPT.read_text(encoding="utf-8")
-    for token in ("generateSubscriptionMetadata", "billing=${plan}", "metadataDir"):
+    for token in ("generateSubscriptionMetadata", "billing=${plan}", "metadataDir", "subscriptionPrices = fixturePrices"):
         require(token in screenshot_script, f"subscription screenshot generator is missing: {token}")
     expected_screenshots = {
         ROOT / "app-store-screenshots/iphone/10-pro-upgrade.png": (1242, 2688),
@@ -122,6 +134,14 @@ def main() -> int:
     }
     for path, expected in expected_screenshots.items():
         require(png_dimensions(path) == expected, f"unexpected screenshot dimensions: {path}")
+    require(SCREENSHOT_MANIFEST.is_file(), "subscription screenshot freshness manifest is missing")
+    manifest = json.loads(SCREENSHOT_MANIFEST.read_text(encoding="utf-8"))
+    require(manifest.get("sourceSha256") == sha256(WEB), "subscription screenshots are stale relative to the app HTML")
+    require(manifest.get("generatorSha256") == sha256(SCREENSHOT_SCRIPT), "subscription screenshots are stale relative to the generator")
+    output_hashes = manifest.get("outputs", {})
+    for path in expected_screenshots:
+        relative = path.relative_to(ROOT).as_posix()
+        require(output_hashes.get(relative) == sha256(path), f"stale or modified subscription screenshot: {relative}")
 
     if args.online:
         check_online(PRIVACY_URL)

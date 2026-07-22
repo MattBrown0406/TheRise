@@ -1,15 +1,18 @@
 import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
+import { dirname, relative, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
-const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const generatorPath = fileURLToPath(import.meta.url);
+const root = resolve(dirname(generatorPath), "..");
 const sourceHtml = resolve(root, "the-rise-app.html");
 const tmpDir = resolve(root, "app-store-screenshots/tmp");
 const rawDir = resolve(root, "app-store-screenshots/raw");
 const iphoneDir = resolve(root, "app-store-screenshots/iphone");
 const ipadDir = resolve(root, "app-store-screenshots/ipad");
 const metadataDir = resolve(root, "app-store-screenshots/metadata");
+const subscriptionManifestPath = resolve(root, "app-store-screenshots/subscription-review-manifest.json");
 const harnessPath = resolve(tmpDir, "the-rise-screenshot-harness.html");
 
 const chrome = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
@@ -107,6 +110,7 @@ const screenshotCss = `
 const screenshotJs = `
 <script id="app-store-screenshot-js">
   document.documentElement.classList.add("screenshot-mode", "screenshot-" + (new URLSearchParams(location.search).get("device") || "iphone"));
+  const fixturePrices = { monthly: "$6.99", annual: "$49.99" };
   window.addEventListener("load", () => {
     const params = new URLSearchParams(location.search);
     const shot = params.get("shot") || "today";
@@ -158,6 +162,9 @@ const screenshotJs = `
         if (typeof renderLog === "function") renderLog();
         setTab("log");
       } else if (shot === "pro") {
+        subscriptionPrices = fixturePrices;
+        subscriptionLoading = false;
+        subscriptionMessage = "Purchases are ready in the iOS app build.";
         billing = params.get("billing") === "monthly" ? "monthly" : "annual";
         if (typeof renderPro === "function") renderPro();
         setTab("pro");
@@ -284,12 +291,33 @@ function generateSubscriptionMetadata() {
   }
 }
 
+function sha256(path) {
+  return createHash("sha256").update(readFileSync(path)).digest("hex");
+}
+
+function writeSubscriptionManifest() {
+  const outputs = [
+    resolve(iphoneDir, "10-pro-upgrade.png"),
+    resolve(ipadDir, "10-pro-upgrade.png"),
+    resolve(metadataDir, "iphone-monthly-subscription-6.99.png"),
+    resolve(metadataDir, "iphone-annual-subscription-49.99.png")
+  ];
+  const manifest = {
+    version: 1,
+    sourceSha256: sha256(sourceHtml),
+    generatorSha256: sha256(generatorPath),
+    outputs: Object.fromEntries(outputs.map((path) => [relative(root, path).replaceAll("\\", "/"), sha256(path)]))
+  };
+  writeFileSync(subscriptionManifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+}
+
 ensureTools();
 prepareHarness();
 cleanOutputs();
 generateDevice("iphone", { width: 440, height: 956 }, { width: 1242, height: 2688 }, iphoneDir);
 generateDevice("ipad", { width: 768, height: 1024 }, { width: 2064, height: 2752 }, ipadDir);
 generateSubscriptionMetadata();
+writeSubscriptionManifest();
 console.log(`Created ${shots.length} iPhone screenshots in ${iphoneDir}`);
 console.log(`Created ${shots.length} iPad screenshots in ${ipadDir}`);
 console.log(`Created monthly and annual IAP review screenshots in ${metadataDir}`);

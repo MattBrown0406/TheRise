@@ -3698,9 +3698,9 @@
     let knotStep = 0;
     let billing = "annual";
     let proAccessActive = false;
-    let subscriptionLoading = false;
-    let subscriptionMessage = "Purchases are ready in the iOS app build.";
-    let subscriptionPrices = { monthly: "$6.99", annual: "$49.99" };
+    let subscriptionLoading = true;
+    let subscriptionMessage = "Loading localized subscription prices from the App Store...";
+    let subscriptionPrices = { monthly: null, annual: null };
     let logFormOpen = false;
     let logSaveMessage = "";
     let editingLogIndex = null;
@@ -6727,8 +6727,9 @@
       const isAnnual = billing === "annual";
       const planLabel = isAnnual ? "Annual" : "Monthly";
       const displayPrice = subscriptionPrices[isAnnual ? "annual" : "monthly"];
+      const priceReady = Boolean(displayPrice);
       const renewalPeriod = isAnnual ? "year" : "month";
-      const purchaseLabel = proAccessActive ? "Pro active" : subscriptionLoading ? "Working..." : `Subscribe ${planLabel}`;
+      const purchaseLabel = proAccessActive ? "Pro active" : subscriptionLoading ? "Loading price..." : priceReady ? `Subscribe ${planLabel}` : "Price unavailable";
       $("#pro").innerHTML = `
         <div class="topbar">
           <div>
@@ -6746,14 +6747,15 @@
           <div class="pro-hero">
             <p class="eyebrow">The Rise Pro</p>
             <h1>The Rise Pro — ${planLabel}</h1>
-            <div class="price"><strong>${displayPrice}</strong><span>per ${renewalPeriod}</span></div>
+            <div class="price"><strong>${priceReady ? displayPrice : subscriptionLoading ? "Loading..." : "Unavailable"}</strong><span>${priceReady ? `per ${renewalPeriod}` : "localized App Store price"}</span></div>
             <div class="pro-actions">
-              <button class="primary-btn" data-subscribe-plan="${isAnnual ? "annual" : "monthly"}" ${subscriptionLoading || proAccessActive ? "disabled" : ""}>${icon.bell}${purchaseLabel}</button>
+              <button class="primary-btn" data-subscribe-plan="${isAnnual ? "annual" : "monthly"}" ${!priceReady || subscriptionLoading || proAccessActive ? "disabled" : ""}>${icon.bell}${purchaseLabel}</button>
               <button class="ghost-btn" data-restore-purchases ${subscriptionLoading ? "disabled" : ""}>Restore Purchases</button>
+              ${!priceReady && !subscriptionLoading ? `<button class="ghost-btn" data-refresh-subscription>Retry App Store Price</button>` : ""}
             </div>
             <p class="subtle pro-status">${subscriptionMessage}</p>
             <div class="subscription-disclosure" aria-label="Subscription terms">
-              <p>The Rise Pro ${planLabel} is an auto-renewable subscription at ${displayPrice} per ${renewalPeriod}. Payment is charged to your Apple Account when you confirm the purchase. The subscription renews automatically unless auto-renew is turned off at least 24 hours before the end of the current period. Your account is charged for renewal within 24 hours before the current period ends. Manage or cancel your subscription in your Apple Account settings.</p>
+              <p>${priceReady ? `The Rise Pro ${planLabel} is an auto-renewable subscription at ${displayPrice} per ${renewalPeriod}. Payment is charged to your Apple Account when you confirm the purchase. The subscription renews automatically unless auto-renew is turned off at least 24 hours before the end of the current period. Your account is charged for renewal within 24 hours before the current period ends. Manage or cancel your subscription in your Apple Account settings.` : "Subscription pricing is loaded directly from the App Store for your region. Purchase remains unavailable until the localized price is displayed."}</p>
               <div class="subscription-legal-links">
                 <a href="https://mattbrown0406.github.io/TheRise/privacy.html">Privacy Policy</a>
                 <a href="https://www.apple.com/legal/internet-services/itunes/dev/stdeula/">Terms of Use (EULA)</a>
@@ -7230,10 +7232,25 @@
           postSubscriptionMessage({ action: "restore" });
         });
       });
+      all("[data-refresh-subscription]").forEach((button) => {
+        button.addEventListener("click", syncSubscriptionStatus);
+      });
     }
 
     function syncSubscriptionStatus() {
-      if (hasSubscriptionBridge()) postSubscriptionMessage({ action: "status" });
+      if (!hasSubscriptionBridge()) {
+        subscriptionLoading = false;
+        subscriptionMessage = "Localized subscription prices are available in the iOS app.";
+        renderPro();
+        bindDynamic();
+        return;
+      }
+      subscriptionPrices = { monthly: null, annual: null };
+      subscriptionLoading = true;
+      subscriptionMessage = "Loading localized subscription prices from the App Store...";
+      renderPro();
+      bindDynamic();
+      postSubscriptionMessage({ action: "status" });
     }
 
     all(".tab").forEach((button) => {
