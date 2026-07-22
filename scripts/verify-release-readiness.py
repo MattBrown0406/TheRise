@@ -94,6 +94,8 @@ def main() -> int:
         '!priceReady || subscriptionLoading || proAccessActive',
     ):
         require(token in pro, f"subscription screen is missing: {token}")
+    require("grid-template-columns: minmax(0, 1fr)" in web, "mobile Pro grid can overflow the viewport")
+    require("overflow-wrap: anywhere" in web, "subscription disclosure can overflow horizontally")
 
     swift = SWIFT.read_text(encoding="utf-8")
     require("localizedPriceString" in swift, "native bridge does not return localized StoreKit prices")
@@ -124,7 +126,14 @@ def main() -> int:
         require(token in review_doc, f"App Store review documentation is missing: {token}")
 
     screenshot_script = SCREENSHOT_SCRIPT.read_text(encoding="utf-8")
-    for token in ("generateSubscriptionMetadata", "billing=${plan}", "metadataDir", "subscriptionPrices = fixturePrices"):
+    for token in (
+        "generateSubscriptionMetadata",
+        "billing=${plan}",
+        "metadataDir",
+        "subscriptionPrices = fixturePrices",
+        "verifySubscriptionLayout",
+        "data-screenshot-overflow",
+    ):
         require(token in screenshot_script, f"subscription screenshot generator is missing: {token}")
     expected_screenshots = {
         ROOT / "app-store-screenshots/iphone/10-pro-upgrade.png": (1242, 2688),

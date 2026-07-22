@@ -2501,6 +2501,8 @@
 
     .pro-hero {
       min-height: 520px;
+      min-width: 0;
+      max-width: 100%;
       border-radius: 8px;
       color: white;
       padding: 28px;
@@ -2537,7 +2539,9 @@
 
     .subscription-disclosure {
       margin-top: 16px;
+      width: 100%;
       max-width: 620px;
+      overflow-wrap: anywhere;
       color: rgba(255, 255, 255, .92);
       font-size: 12px;
       line-height: 1.55;
@@ -2613,9 +2617,23 @@
       .content-grid,
       .bug-layout,
       .knot-layout,
-      .pro-layout,
       .detail-hero {
         grid-template-columns: 1fr;
+      }
+
+      .pro-layout {
+        width: 100%;
+        max-width: 100%;
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .pro-actions {
+        max-width: 100%;
+      }
+
+      .pro-actions button {
+        min-width: 0;
+        white-space: normal;
       }
 
       .top-water-card,

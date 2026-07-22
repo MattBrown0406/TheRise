@@ -111,6 +111,18 @@ const screenshotJs = `
 <script id="app-store-screenshot-js">
   document.documentElement.classList.add("screenshot-mode", "screenshot-" + (new URLSearchParams(location.search).get("device") || "iphone"));
   const fixturePrices = { monthly: "$6.99", annual: "$49.99" };
+  const subscriptionOverflow = () => {
+    const viewportWidth = document.documentElement.clientWidth;
+    const selectors = ["#pro", ".pro-layout", ".pro-hero", ".pro-actions", ".subscription-disclosure", ".subscription-disclosure p"];
+    const offenders = selectors.filter((selector) => {
+      const element = document.querySelector(selector);
+      if (!element) return false;
+      const rect = element.getBoundingClientRect();
+      return rect.left < -1 || rect.right > viewportWidth + 1 || element.scrollWidth > element.clientWidth + 1;
+    });
+    if (document.documentElement.scrollWidth > viewportWidth + 1) offenders.push("html");
+    return offenders.length ? offenders.join(",") : "none";
+  };
   window.addEventListener("load", () => {
     const params = new URLSearchParams(location.search);
     const shot = params.get("shot") || "today";
@@ -174,6 +186,7 @@ const screenshotJs = `
         setTab("today");
       }
       if (typeof bindDynamic === "function") bindDynamic();
+      if (shot === "pro") document.documentElement.dataset.screenshotOverflow = subscriptionOverflow();
       setTimeout(() => {
         if (shot !== "pack") window.scrollTo(0, 0);
         document.documentElement.dataset.screenshotReady = "true";
@@ -263,6 +276,36 @@ function runSubscriptionScreenshot(plan, viewport) {
   return rawPath;
 }
 
+function verifySubscriptionLayout(plan) {
+  const viewport = { width: 500, height: 1082 };
+  const url = `${pathToFileURL(harnessPath).href}?device=iphone&shot=pro&billing=${plan}`;
+  let html = "";
+  try {
+    html = execFileSync(chrome, [
+      "--headless=new",
+      "--disable-gpu",
+      "--hide-scrollbars",
+      "--no-first-run",
+      "--no-default-browser-check",
+      "--disable-background-networking",
+      "--disable-sync",
+      "--disable-extensions",
+      `--user-data-dir=${resolve(tmpDir, `chrome-layout-${plan}`)}`,
+      `--window-size=${viewport.width},${viewport.height}`,
+      "--force-device-scale-factor=1",
+      "--dump-dom",
+      url
+    ], { encoding: "utf8", timeout: 3000 });
+  } catch (error) {
+    html = String(error.stdout || "");
+    if (!html.includes("data-screenshot-overflow=")) throw error;
+  }
+  const overflow = html.match(/data-screenshot-overflow="([^"]+)"/)?.[1];
+  if (overflow !== "none") {
+    throw new Error(`Subscription screenshot layout failed for ${plan}: overflow=${overflow || "missing"}`);
+  }
+}
+
 function resizeForStore(rawPath, outPath, size) {
   execFileSync(magick, [
     rawPath,
@@ -282,7 +325,7 @@ function generateDevice(device, viewport, size, outDir) {
 }
 
 function generateSubscriptionMetadata() {
-  const viewport = { width: 440, height: 956 };
+  const viewport = { width: 500, height: 1082 };
   const size = { width: 1242, height: 2688 };
   for (const [plan, price] of [["monthly", "6.99"], ["annual", "49.99"]]) {
     const rawPath = runSubscriptionScreenshot(plan, viewport);
@@ -314,7 +357,9 @@ function writeSubscriptionManifest() {
 ensureTools();
 prepareHarness();
 cleanOutputs();
-generateDevice("iphone", { width: 440, height: 956 }, { width: 1242, height: 2688 }, iphoneDir);
+verifySubscriptionLayout("monthly");
+verifySubscriptionLayout("annual");
+generateDevice("iphone", { width: 500, height: 1082 }, { width: 1242, height: 2688 }, iphoneDir);
 generateDevice("ipad", { width: 768, height: 1024 }, { width: 2064, height: 2752 }, ipadDir);
 generateSubscriptionMetadata();
 writeSubscriptionManifest();
