@@ -9,6 +9,7 @@ const tmpDir = resolve(root, "app-store-screenshots/tmp");
 const rawDir = resolve(root, "app-store-screenshots/raw");
 const iphoneDir = resolve(root, "app-store-screenshots/iphone");
 const ipadDir = resolve(root, "app-store-screenshots/ipad");
+const metadataDir = resolve(root, "app-store-screenshots/metadata");
 const harnessPath = resolve(tmpDir, "the-rise-screenshot-harness.html");
 
 const chrome = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
@@ -157,6 +158,8 @@ const screenshotJs = `
         if (typeof renderLog === "function") renderLog();
         setTab("log");
       } else if (shot === "pro") {
+        billing = params.get("billing") === "monthly" ? "monthly" : "annual";
+        if (typeof renderPro === "function") renderPro();
         setTab("pro");
       } else {
         scoreBreakdownOpen = false;
@@ -193,7 +196,7 @@ function prepareHarness() {
 }
 
 function cleanOutputs() {
-  [rawDir, iphoneDir, ipadDir].forEach((dir) => {
+  [rawDir, iphoneDir, ipadDir, metadataDir].forEach((dir) => {
     rmSync(dir, { recursive: true, force: true });
     mkdirSync(dir, { recursive: true });
   });
@@ -226,6 +229,33 @@ function runChromeScreenshot(device, shotId, shotKey, viewport) {
   return rawPath;
 }
 
+function runSubscriptionScreenshot(plan, viewport) {
+  const rawPath = resolve(rawDir, `metadata-${plan}.png`);
+  const url = `${pathToFileURL(harnessPath).href}?device=iphone&shot=pro&billing=${plan}`;
+  try {
+    execFileSync(chrome, [
+      "--headless=new",
+      "--disable-gpu",
+      "--hide-scrollbars",
+      "--no-first-run",
+      "--no-default-browser-check",
+      "--disable-background-networking",
+      "--disable-sync",
+      "--disable-extensions",
+      `--user-data-dir=${resolve(tmpDir, `chrome-metadata-${plan}`)}`,
+      `--window-size=${viewport.width},${viewport.height}`,
+      "--force-device-scale-factor=1",
+      "--run-all-compositor-stages-before-draw",
+      "--timeout=5000",
+      `--screenshot=${rawPath}`,
+      url
+    ], { stdio: "ignore", timeout: 10000 });
+  } catch (error) {
+    if (!existsSync(rawPath)) throw error;
+  }
+  return rawPath;
+}
+
 function resizeForStore(rawPath, outPath, size) {
   execFileSync(magick, [
     rawPath,
@@ -244,10 +274,22 @@ function generateDevice(device, viewport, size, outDir) {
   }
 }
 
+function generateSubscriptionMetadata() {
+  const viewport = { width: 440, height: 956 };
+  const size = { width: 1242, height: 2688 };
+  for (const [plan, price] of [["monthly", "6.99"], ["annual", "49.99"]]) {
+    const rawPath = runSubscriptionScreenshot(plan, viewport);
+    const outPath = resolve(metadataDir, `iphone-${plan}-subscription-${price}.png`);
+    resizeForStore(rawPath, outPath, size);
+  }
+}
+
 ensureTools();
 prepareHarness();
 cleanOutputs();
 generateDevice("iphone", { width: 440, height: 956 }, { width: 1242, height: 2688 }, iphoneDir);
 generateDevice("ipad", { width: 768, height: 1024 }, { width: 2064, height: 2752 }, ipadDir);
+generateSubscriptionMetadata();
 console.log(`Created ${shots.length} iPhone screenshots in ${iphoneDir}`);
 console.log(`Created ${shots.length} iPad screenshots in ${ipadDir}`);
+console.log(`Created monthly and annual IAP review screenshots in ${metadataDir}`);

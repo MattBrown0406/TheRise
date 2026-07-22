@@ -75,9 +75,11 @@ final class RiseViewController: UIViewController, WKNavigationDelegate, WKScript
     private func refreshSubscriptionStatus() async {
         do {
             let customerInfo = try await Purchases.shared.customerInfo()
+            let prices = await localizedSubscriptionPrices()
             sendSubscriptionResult(
                 status: hasProAccess(customerInfo) ? "active" : "inactive",
-                message: hasProAccess(customerInfo) ? "The Rise Pro is active." : "The Rise Pro is not active yet."
+                message: hasProAccess(customerInfo) ? "The Rise Pro is active." : "The Rise Pro is not active yet.",
+                prices: prices
             )
         } catch {
             sendSubscriptionResult(status: "error", message: "Could not check subscription status.")
@@ -141,12 +143,35 @@ final class RiseViewController: UIViewController, WKNavigationDelegate, WKScript
         customerInfo.entitlements[SubscriptionConfig.RevenueCat.proEntitlementIdentifier]?.isActive == true
     }
 
-    private func sendSubscriptionResult(status: String, message: String) {
-        let payload: [String: Any] = [
+    private func localizedSubscriptionPrices() async -> [String: String] {
+        do {
+            let offerings = try await Purchases.shared.offerings()
+            guard let offering = offerings.offering(identifier: SubscriptionConfig.RevenueCat.defaultOfferingIdentifier) ?? offerings.current else {
+                return [:]
+            }
+
+            var prices: [String: String] = [:]
+            if let monthly = package(for: "monthly", in: offering) {
+                prices["monthly"] = monthly.storeProduct.localizedPriceString
+            }
+            if let annual = package(for: "annual", in: offering) {
+                prices["annual"] = annual.storeProduct.localizedPriceString
+            }
+            return prices
+        } catch {
+            return [:]
+        }
+    }
+
+    private func sendSubscriptionResult(status: String, message: String, prices: [String: String] = [:]) {
+        var payload: [String: Any] = [
             "status": status,
             "active": status == "active",
             "message": message
         ]
+        if !prices.isEmpty {
+            payload["prices"] = prices
+        }
 
         guard let data = try? JSONSerialization.data(withJSONObject: payload),
               let json = String(data: data, encoding: .utf8) else {
@@ -203,5 +228,21 @@ final class RiseViewController: UIViewController, WKNavigationDelegate, WKScript
         DispatchQueue.main.async { [weak self] in
             self?.webView.evaluateJavaScript("window.riseNativeFetchResult && window.riseNativeFetchResult(\(json));")
         }
+    }
+
+    func webView(
+        _ webView: WKWebView,
+        decidePolicyFor navigationAction: WKNavigationAction,
+        decisionHandler: @escaping (WKNavigationActionPolicy) -> Void
+    ) {
+        guard navigationAction.navigationType == .linkActivated,
+              let url = navigationAction.request.url,
+              ["http", "https"].contains(url.scheme?.lowercased() ?? "") else {
+            decisionHandler(.allow)
+            return
+        }
+
+        UIApplication.shared.open(url)
+        decisionHandler(.cancel)
     }
 }

@@ -30,6 +30,19 @@ Expected URLs after GitHub Pages is enabled:
 
 - Marketing URL: `https://mattbrown0406.github.io/TheRise/`
 - Support URL: `https://mattbrown0406.github.io/TheRise/support.html`
+- Privacy Policy URL: `https://mattbrown0406.github.io/TheRise/privacy.html`
+
+## App Store release checks
+
+Run the deterministic pre-build checks, including live legal-link validation:
+
+```bash
+python3 scripts/verify-release-readiness.py --online
+```
+
+The App Store Connect metadata, in-app purchase submission steps, reviewer notes,
+and rejection-response copy for version 1.0 build 5 are in
+[`docs/app-store-review.md`](docs/app-store-review.md).
 
 ## RevenueCat setup
 

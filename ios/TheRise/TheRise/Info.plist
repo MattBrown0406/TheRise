@@ -22,6 +22,12 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>The Rise uses the camera only when you choose to add a catch photo to your fishing journal.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>The Rise uses your location only when you ask to rank nearby fishing waters.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>The Rise lets you choose a catch photo from your library for your fishing journal.</string>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIRequiresFullScreen</key>
