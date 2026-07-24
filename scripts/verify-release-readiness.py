@@ -21,6 +21,12 @@ PROJECT = ROOT / "ios/TheRise/TheRise.xcodeproj/project.pbxproj"
 SWIFT = ROOT / "ios/TheRise/TheRise/RiseViewController.swift"
 SUBSCRIPTIONS = ROOT / "ios/TheRise/TheRise/SubscriptionConfig.swift"
 REVIEW_DOC = ROOT / "docs/app-store-review.md"
+METADATA_DIR = ROOT / "app-store-metadata/en-US"
+APP_DESCRIPTION = METADATA_DIR / "description.txt"
+REVIEW_NOTES = METADATA_DIR / "review-notes.txt"
+PRIVACY_METADATA = METADATA_DIR / "privacy-url.txt"
+SUBSCRIPTION_METADATA = ROOT / "app-store-metadata/subscriptions.json"
+METADATA_SYNC_SCRIPT = ROOT / "scripts/sync-app-store-metadata.rb"
 SCREENSHOT_SCRIPT = ROOT / "scripts/create-app-store-screenshots.mjs"
 SCREENSHOT_MANIFEST = ROOT / "app-store-screenshots/subscription-review-manifest.json"
 
@@ -109,7 +115,7 @@ def main() -> int:
     project = PROJECT.read_text(encoding="utf-8")
     build_numbers = re.findall(r"CURRENT_PROJECT_VERSION = ([^;]+);", project)
     versions = re.findall(r"MARKETING_VERSION = ([^;]+);", project)
-    require(bool(build_numbers) and set(build_numbers) == {"5"}, f"expected build 5, found {build_numbers}")
+    require(bool(build_numbers) and set(build_numbers) == {"6"}, f"expected build 6, found {build_numbers}")
     require(bool(versions) and set(versions) == {"1.0"}, f"expected version 1.0, found {versions}")
 
     review_doc = REVIEW_DOC.read_text(encoding="utf-8")
@@ -124,6 +130,53 @@ def main() -> int:
         "App Review screenshot",
     ):
         require(token in review_doc, f"App Store review documentation is missing: {token}")
+
+    description = APP_DESCRIPTION.read_text(encoding="utf-8")
+    notes = REVIEW_NOTES.read_text(encoding="utf-8")
+    privacy_metadata = PRIVACY_METADATA.read_text(encoding="utf-8").strip()
+    subscription_metadata = json.loads(SUBSCRIPTION_METADATA.read_text(encoding="utf-8"))
+    require(EULA_URL in description, "App Store description metadata is missing the Standard EULA link")
+    require(len(description.strip()) <= 4000, "App Store description exceeds the 4,000-character limit")
+    require(len(notes.strip()) <= 4000, "App Review notes exceed the 4,000-character limit")
+    require(PRIVACY_URL == privacy_metadata, "Privacy Policy metadata URL is incorrect")
+    for token in (
+        "Version 1.0 build 6",
+        "The Rise Pro Monthly",
+        "The Rise Pro Annual",
+        "therise_pro_monthly",
+        "therise_pro_annual",
+        PRIVACY_URL,
+        EULA_URL,
+    ):
+        require(token in notes, f"App Review notes are missing: {token}")
+    require(
+        "once products are configured" not in notes.lower(),
+        "App Review notes still describe subscriptions as unconfigured",
+    )
+    products = subscription_metadata.get("products", [])
+    require(
+        {product.get("productId") for product in products} == {"therise_pro_monthly", "therise_pro_annual"},
+        "subscription metadata manifest does not contain both products",
+    )
+    for product in products:
+        require(product.get("reviewScreenshot"), f"missing review screenshot mapping for {product.get('productId')}")
+        require(product.get("reviewNote"), f"missing review note for {product.get('productId')}")
+        require(product.get("displayName"), f"missing display name for {product.get('productId')}")
+        require(product.get("description"), f"missing description for {product.get('productId')}")
+        require(len(product["displayName"]) <= 30, f"display name exceeds App Store limit for {product.get('productId')}")
+        require(len(product["description"]) <= 45, f"description exceeds App Store limit for {product.get('productId')}")
+        require(product.get("duration") in {"ONE_MONTH", "ONE_YEAR"}, f"invalid duration for {product.get('productId')}")
+        require((ROOT / product["reviewScreenshot"]).is_file(), f"missing review screenshot for {product.get('productId')}")
+    metadata_sync = METADATA_SYNC_SCRIPT.read_text(encoding="utf-8")
+    for token in (
+        "--apply",
+        "subscriptionGroupLocalizations",
+        "appStoreVersionLocalizations",
+        "appStoreReviewDetails",
+        "subscriptionLocalizations",
+        "MISSING_METADATA",
+    ):
+        require(token in metadata_sync, f"App Store metadata sync script is missing: {token}")
 
     screenshot_script = SCREENSHOT_SCRIPT.read_text(encoding="utf-8")
     for token in (
@@ -161,7 +214,7 @@ def main() -> int:
     print("PASS: bounded catch-photo compression and storage failure handling")
     print("PASS: subscription disclosure, legal links, and localized-price bridge")
     print("PASS: regenerated Pro and IAP review screenshots")
-    print("PASS: version 1.0 build 5 and RevenueCat product identifiers")
+    print("PASS: version 1.0 build 6 and RevenueCat product identifiers")
     print("PASS: App Store metadata/IAP submission checklist")
     if args.online:
         print("PASS: public Privacy Policy and Apple Standard EULA URLs")

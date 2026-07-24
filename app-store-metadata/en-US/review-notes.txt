@@ -1,0 +1,33 @@
+Version 1.0 build 6 addresses the July 24, 2026 review feedback for submission 80533227-abed-4218-b443-1cdef4bc50c7.
+
+AUTO-RENEWABLE SUBSCRIPTIONS
+To locate the subscriptions:
+1. Launch The Rise. No account is required.
+2. Tap Pro in the bottom navigation.
+3. The Pro screen displays The Rise Pro Annual by default.
+4. Use the Monthly / Annual toggle to display The Rise Pro Monthly or The Rise Pro Annual.
+5. Tap Subscribe Monthly or Subscribe Annual to open Apple’s purchase confirmation.
+
+Before purchase, the Pro screen displays the selected subscription title, duration, localized StoreKit price, auto-renewal and cancellation disclosure, Restore Purchases, Privacy Policy, and Terms of Use.
+
+Products submitted with this version:
+• The Rise Pro Monthly — therise_pro_monthly — one month
+• The Rise Pro Annual — therise_pro_annual — one year
+
+Privacy Policy:
+https://mattbrown0406.github.io/TheRise/privacy.html
+
+Terms of Use (Apple Standard EULA):
+https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
+
+The App Store description includes the same Standard EULA link. Both subscription products include completed en-US localization, pricing and availability, product-specific App Review screenshots, and review notes.
+
+PHOTO PICKER
+To verify the catch-photo flow:
+1. Tap Log.
+2. Tap New Entry.
+3. Tap Choose File in the Photo field.
+4. Choose Camera or Photo Library and grant the requested permission.
+5. Select a photo, complete the required catch fields, and save the entry.
+
+Build 6 includes NSCameraUsageDescription, NSPhotoLibraryUsageDescription, and NSLocationWhenInUseUsageDescription.

@@ -3,6 +3,8 @@ tmp/
 output/
 xcuserdata/
 *.xcuserstate
+__pycache__/
+*.pyc
 
 # Other local project folders that share this parent directory.
 FamilyBridgeApp/

@@ -1,0 +1,34 @@
+{
+  "appStoreConnectAppId": "6788934203",
+  "bundleId": "com.mattbrown.therise",
+  "subscriptionGroupId": "22219106",
+  "subscriptionGroupReferenceName": "Rise Subscriptions",
+  "subscriptionGroupLocalization": {
+    "locale": "en-US",
+    "name": "The Rise Pro"
+  },
+  "products": [
+    {
+      "id": "6788981547",
+      "productId": "therise_pro_monthly",
+      "referenceName": "The Rise Pro Monthly",
+      "displayName": "The Rise Pro Monthly",
+      "locale": "en-US",
+      "duration": "ONE_MONTH",
+      "description": "Monthly Pro alerts, insights, and planning.",
+      "reviewScreenshot": "app-store-screenshots/metadata/iphone-monthly-subscription-6.99.png",
+      "reviewNote": "Open the app and tap Pro. Select Monthly in the Monthly / Annual toggle. The screen displays The Rise Pro Monthly, one-month duration, localized StoreKit price, renewal and cancellation terms, Restore Purchases, Privacy Policy, and Terms of Use before the Subscribe Monthly button."
+    },
+    {
+      "id": "6788987820",
+      "productId": "therise_pro_annual",
+      "referenceName": "The Rise Pro Annual",
+      "displayName": "The Rise Pro Annual",
+      "locale": "en-US",
+      "duration": "ONE_YEAR",
+      "description": "Annual Pro alerts, insights, and planning.",
+      "reviewScreenshot": "app-store-screenshots/metadata/iphone-annual-subscription-49.99.png",
+      "reviewNote": "Open the app and tap Pro. Select Annual in the Monthly / Annual toggle. The screen displays The Rise Pro Annual, one-year duration, localized StoreKit price, renewal and cancellation terms, Restore Purchases, Privacy Policy, and Terms of Use before the Subscribe Annual button."
+    }
+  ]
+}

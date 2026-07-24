@@ -1,0 +1,21 @@
+The Rise is a fly-fishing companion built for Central Oregon anglers.
+
+Compare rivers, lakes, reservoirs, and spring creeks by fishability, prime windows, water conditions, hatch timing, and practical fly recommendations. The Rise helps you decide where to fish, what to pack, and what patterns are most likely to match the day.
+
+Features include:
+• Daily fishability ratings on a 1–10 scale
+• Prime fishing windows based on conditions and hatch activity
+• Central Oregon water profiles for rivers, lakes, reservoirs, and spring creeks
+• Bug and hatch reference library with life stages
+• Artificial fly recommendations matched to bugs and conditions
+• Pack My Fly Box planning for dries, nymphs, streamers, and terrestrials
+• Saved waters and recently viewed waters
+• Catch log with fish, length, fly, water, notes, and photos
+• Offline-ready saved water data for low-service fishing days
+• Optional Pro tools for alerts, deeper condition reads, and advanced planning
+
+The Rise is designed to make local fly-fishing decisions easier, especially for anglers who are still learning how weather, water clarity, hatches, and fly selection fit together.
+
+Always check current Oregon fishing regulations and local conditions before heading out.
+
+Terms of Use (Apple Standard EULA): https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
