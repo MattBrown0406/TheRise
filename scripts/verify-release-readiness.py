@@ -115,7 +115,7 @@ def main() -> int:
     project = PROJECT.read_text(encoding="utf-8")
     build_numbers = re.findall(r"CURRENT_PROJECT_VERSION = ([^;]+);", project)
     versions = re.findall(r"MARKETING_VERSION = ([^;]+);", project)
-    require(bool(build_numbers) and set(build_numbers) == {"6"}, f"expected build 6, found {build_numbers}")
+    require(bool(build_numbers) and set(build_numbers) == {"7"}, f"expected build 7, found {build_numbers}")
     require(bool(versions) and set(versions) == {"1.0"}, f"expected version 1.0, found {versions}")
 
     review_doc = REVIEW_DOC.read_text(encoding="utf-8")
@@ -140,7 +140,7 @@ def main() -> int:
     require(len(notes.strip()) <= 4000, "App Review notes exceed the 4,000-character limit")
     require(PRIVACY_URL == privacy_metadata, "Privacy Policy metadata URL is incorrect")
     for token in (
-        "Version 1.0 build 6",
+        "Version 1.0 build 7",
         "The Rise Pro Monthly",
         "The Rise Pro Annual",
         "therise_pro_monthly",
@@ -214,7 +214,7 @@ def main() -> int:
     print("PASS: bounded catch-photo compression and storage failure handling")
     print("PASS: subscription disclosure, legal links, and localized-price bridge")
     print("PASS: regenerated Pro and IAP review screenshots")
-    print("PASS: version 1.0 build 6 and RevenueCat product identifiers")
+    print("PASS: version 1.0 build 7 and RevenueCat product identifiers")
     print("PASS: App Store metadata/IAP submission checklist")
     if args.online:
         print("PASS: public Privacy Policy and Apple Standard EULA URLs")
