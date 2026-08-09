@@ -650,6 +650,274 @@
       border-color: var(--pine);
     }
 
+    .skill-mode-selector {
+      display: grid;
+      gap: 8px;
+      border: 1px solid rgba(255, 255, 255, .26);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, .12);
+      padding: 10px;
+      margin-top: 14px;
+      color: white;
+    }
+
+    .skill-mode-selector.compact {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin: 0;
+      padding: 6px;
+      background: #f5f1e8;
+      border-color: #e0dbcf;
+      color: var(--ink);
+    }
+
+    .skill-mode-selector span {
+      font-size: 10px;
+      font-weight: 950;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      opacity: .86;
+    }
+
+    .skill-mode-selector div {
+      display: inline-grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 5px;
+    }
+
+    .skill-mode-selector.compact div {
+      display: inline-flex;
+    }
+
+    .skill-mode-selector button {
+      border: 1px solid rgba(255, 255, 255, .34);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, .14);
+      color: inherit;
+      padding: 7px 9px;
+      font-size: 11px;
+      font-weight: 900;
+    }
+
+    .skill-mode-selector.compact button {
+      border-color: rgba(47, 91, 69, .18);
+      background: white;
+      color: var(--pine);
+    }
+
+    .skill-mode-selector button.active {
+      background: #f1b43c;
+      border-color: #f1b43c;
+      color: #123743;
+    }
+
+    .skill-mode-selector small {
+      font-size: 12px;
+      line-height: 1.35;
+      opacity: .9;
+    }
+
+    .insight-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .insight-grid.compact {
+      margin-bottom: 0;
+    }
+
+    .why-card,
+    .memory-card,
+    .fish-plan,
+    .hatch-assistant {
+      border: 1px solid #e0dbcf;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, .96);
+      padding: 14px;
+      box-shadow: 0 8px 18px rgba(30, 43, 34, .05);
+      min-width: 0;
+    }
+
+    .why-card.compact,
+    .memory-card.compact {
+      padding: 10px;
+      box-shadow: none;
+    }
+
+    .insight-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .insight-head span,
+    .plan-card span,
+    .trait-grid label span {
+      display: block;
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 950;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      margin-bottom: 4px;
+    }
+
+    .insight-head strong {
+      display: block;
+      color: #16485a;
+      font-size: 17px;
+      line-height: 1.1;
+    }
+
+    .insight-head b {
+      border-radius: 999px;
+      background: #edf5f1;
+      color: var(--pine);
+      padding: 8px 10px;
+      font-size: 18px;
+      min-width: 46px;
+      text-align: center;
+    }
+
+    .reason-stack {
+      display: grid;
+      gap: 7px;
+    }
+
+    .reason-stack p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.38;
+    }
+
+    .fish-plan {
+      margin-bottom: 18px;
+    }
+
+    .fish-plan.compact {
+      margin-bottom: 0;
+      padding: 10px;
+      box-shadow: none;
+    }
+
+    .plan-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .fish-plan.compact .plan-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .plan-card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfaf5;
+      padding: 10px;
+      min-width: 0;
+    }
+
+    .plan-card strong,
+    .plan-card small {
+      display: block;
+      overflow-wrap: anywhere;
+    }
+
+    .plan-card strong {
+      color: var(--ink);
+      font-size: 14px;
+      line-height: 1.15;
+      margin-bottom: 6px;
+    }
+
+    .plan-card small {
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.3;
+    }
+
+    .hatch-assistant {
+      margin: 0 18px 14px;
+    }
+
+    .trait-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+      margin: 10px 0;
+    }
+
+    .trait-grid label {
+      min-width: 0;
+    }
+
+    .trait-grid select {
+      width: 100%;
+      min-height: 38px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfaf5;
+      color: var(--ink);
+      font-weight: 800;
+      padding: 0 9px;
+    }
+
+    .hatch-results {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .hatch-result {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfaf5;
+      padding: 8px;
+      display: grid;
+      grid-template-columns: 48px minmax(0, 1fr);
+      gap: 8px;
+      text-align: left;
+      align-items: center;
+      min-width: 0;
+    }
+
+    .hatch-result.active {
+      border-color: rgba(22, 72, 90, .42);
+      background: #edf5f1;
+    }
+
+    .hatch-result strong,
+    .hatch-result span,
+    .hatch-result small {
+      display: block;
+      overflow-wrap: anywhere;
+    }
+
+    .hatch-result strong {
+      font-size: 13px;
+      color: var(--ink);
+      margin-bottom: 2px;
+    }
+
+    .hatch-result span,
+    .hatch-result small {
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.25;
+    }
+
+    .fly-confidence.worked-here {
+      background: #e0f2dc;
+      color: #2f5b45;
+    }
+
     .pack-box {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2654,6 +2922,25 @@
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
 
+      .insight-grid,
+      .plan-grid,
+      .hatch-results {
+        grid-template-columns: 1fr;
+      }
+
+      .trait-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .hatch-assistant {
+        margin: 0 14px 14px;
+      }
+
+      .skill-mode-selector.compact {
+        width: 100%;
+        justify-content: space-between;
+      }
+
       .score-breakdown-head,
       .score-breakdown-row {
         grid-template-columns: minmax(0, .75fr) minmax(0, 1fr);
@@ -3475,6 +3762,14 @@
     const HIDDEN_WATERS_KEY = "riseHiddenWaters.v1";
     const FLY_FEEDBACK_KEY = "riseFlyFeedback.v1";
     const BEGINNER_MODE_KEY = "riseBeginnerMode.v1";
+    const SKILL_MODE_KEY = "riseSkillMode.v1";
+    const skillModes = ["Beginner", "Intermediate", "Expert"];
+    const hatchTraitOptions = {
+      size: [["", "Any size"], ["tiny", "Tiny #18-24"], ["small", "Small #14-18"], ["large", "Large #4-12"]],
+      color: [["", "Any color"], ["olive", "Olive/dark"], ["yellow", "Pale/yellow"], ["tan", "Tan/orange"], ["black", "Black/red"]],
+      water: [["", "Any water"], ["river", "River/current"], ["lake", "Lake/stillwater"], ["bank", "Banks/grass"]],
+      behavior: [["", "Any behavior"], ["deep", "Deep/subsurface"], ["rising", "Film/rising"], ["surface", "Surface/dry"], ["moving", "Swimming/chasing"]]
+    };
     const LIVE_FETCH_TIMEOUT_MS = 6500;
     const BULK_SYNC_CONCURRENCY = 4;
     const liveReports = { byWater: {}, lastRequested: null, cache: null, bulkStatus: "" };
@@ -3728,7 +4023,9 @@
     let recentWaterIds = readStoredArray(RECENT_WATERS_KEY);
     let hiddenWaterIds = readStoredArray(HIDDEN_WATERS_KEY);
     let flyFeedback = readStoredObject(FLY_FEEDBACK_KEY);
-    let beginnerMode = readStoredBoolean(BEGINNER_MODE_KEY);
+    let skillMode = readStoredSkillMode();
+    let beginnerMode = skillMode === "Beginner";
+    let hatchIdTraits = readStoredObject("riseHatchIdTraits.v1");
 
     const nativeFish = [
       "Redband Trout",
@@ -4263,6 +4560,16 @@
       }
     }
 
+    function readStoredSkillMode() {
+      try {
+        const saved = localStorage.getItem(SKILL_MODE_KEY);
+        if (skillModes.includes(saved)) return saved;
+      } catch {
+        // Local persistence is a convenience for the prototype.
+      }
+      return readStoredBoolean(BEGINNER_MODE_KEY) ? "Beginner" : "Intermediate";
+    }
+
     function writeStoredArray(key, value) {
       try {
         localStorage.setItem(key, JSON.stringify(value));
@@ -4353,6 +4660,35 @@
       return groups;
     }
 
+    function skillModeDescription() {
+      if (skillMode === "Beginner") return "Plain-English terms, fewer choices, and direct first-fly guidance.";
+      if (skillMode === "Expert") return "More source context, score logic, and tactical tradeoffs.";
+      return "Balanced field notes with reasons, confidence, and practical fly changes.";
+    }
+
+    function skillModeSelector(compact = false) {
+      return `
+        <div class="skill-mode-selector ${compact ? "compact" : ""}" aria-label="Angler skill mode">
+          <span>Skill Mode</span>
+          <div>
+            ${skillModes.map((mode) => `<button class="${skillMode === mode ? "active" : ""}" data-skill-mode="${mode}">${mode}</button>`).join("")}
+          </div>
+          ${compact ? "" : `<small>${skillModeDescription()}</small>`}
+        </div>
+      `;
+    }
+
+    function setSkillMode(mode) {
+      skillMode = skillModes.includes(mode) ? mode : "Intermediate";
+      beginnerMode = skillMode === "Beginner";
+      try {
+        localStorage.setItem(SKILL_MODE_KEY, skillMode);
+        localStorage.setItem(BEGINNER_MODE_KEY, beginnerMode ? "true" : "false");
+      } catch {
+        // Local persistence is a convenience for the prototype.
+      }
+    }
+
     const beginnerGlossary = {
       nymph: "The young underwater stage. Fish these below the surface.",
       larva: "A very early underwater stage. Usually fish it deep and slow.",
@@ -4379,12 +4715,7 @@
     }
 
     function setBeginnerMode(value) {
-      beginnerMode = Boolean(value);
-      try {
-        localStorage.setItem(BEGINNER_MODE_KEY, beginnerMode ? "true" : "false");
-      } catch {
-        // Local persistence is a convenience for the prototype.
-      }
+      setSkillMode(value ? "Beginner" : "Intermediate");
     }
 
     function waterChipCard(waterId, label) {
@@ -5327,7 +5658,9 @@
       const intel = localIntelForWater(water);
       const text = String(fly || "").toLowerCase();
       const hatchText = predictedHatches(water).join(" ").toLowerCase();
+      const memory = personalMemoryFor(water);
       if (flyFeedback[fly] === "worked") return "Your history";
+      if (memory.logs.some((entry) => entry.fly === fly)) return "Worked here";
       if (intel.flies?.includes(fly)) return "Local report signal";
       if (hatchText && hatchText.split(/\s+/).some((word) => word.length > 3 && text.includes(word))) return "Match the hatch";
       if (text.includes("leech") || text.includes("bugger") || text.includes("minnow") || text.includes("hopper") || text.includes("ant") || text.includes("beetle")) return "Weather play";
@@ -5372,6 +5705,211 @@
               <small>${note}</small>
             </div>
           `).join("")}
+        </div>
+      `;
+    }
+
+    function whyThisWaterReasons(water) {
+      const clarity = clarityFor(water);
+      const temp = liveDisplayValue(water, "temp");
+      const hatches = predictedHatches(water).slice(0, 3);
+      const intel = localIntelForWater(water);
+      const reasons = [
+        `${primeWindowFor(water).replace("Prime window: ", "")} lines up with ${hatches[0] || "expected feeding"}.`,
+        `${temp} water and ${clarity.label.toLowerCase()} clarity support a ${fishScore(water)}/10 rating.`,
+        `${confidenceForWater(water)}: ${intel.sources?.length ? `local signal from ${intel.sources.slice(0, 2).join(" + ")}` : "weather, baseline hatch timing, and saved water profile"}.`
+      ];
+      if (skillMode !== "Beginner") reasons.push(`${waterLogicLabel(water)}: ${waterLogicDescription(water)}`);
+      if (skillMode === "Expert") {
+        const report = liveReports.byWater[water.id];
+        reasons.push(`${report?.status === "ready" ? "Live inputs are stored locally for offline use." : "Refresh when you have signal to replace the baseline profile."}`);
+      }
+      return reasons;
+    }
+
+    function whyThisWaterCard(water, compact = false) {
+      return `
+        <div class="why-card ${compact ? "compact" : ""}">
+          <div class="insight-head">
+            <div>
+              <span>Why this water today</span>
+              <strong>${water.name}</strong>
+            </div>
+            <b>${fishScore(water)}</b>
+          </div>
+          <div class="reason-stack">
+            ${whyThisWaterReasons(water).map((reason) => `<p>${reason}</p>`).join("")}
+          </div>
+        </div>
+      `;
+    }
+
+    function fishPlanFor(water) {
+      const flies = liveRecommendedFlies(water);
+      const hatches = predictedHatches(water);
+      const firstFly = flies[0] || water.flies[0];
+      const secondFly = flies[1] || firstFly;
+      if (water.type === "Lake") {
+        return [
+          ["Start", `${firstFly}`, "Fish wind lanes, reed edges, or the first visible cruisers."],
+          ["Set Depth", "Find fish before changing flies", "Move the indicator or retrieve depth every few minutes until you touch fish."],
+          ["Switch", `${secondFly}`, "Change when follows stop, chop increases, or fish suspend deeper."],
+          ["Backup", "Balanced Leech #10", "Use low light, stained water, or steady wind to sell movement."]
+        ];
+      }
+      return [
+        ["Start", `${firstFly}`, "Begin in soft seams beside riffles and banks before walking past good water."],
+        ["Watch", `${hatches.slice(0, 2).join(" / ") || "rise forms"}`, "Match the feeding lane first, then adjust size or stage."],
+        ["Switch", `${secondFly}`, "If fish refuse, change stage before changing bug family."],
+        ["Backup", "Soft hackle or small nymph", "Use when surface fish disappear or glare hides subtle eats."]
+      ];
+    }
+
+    function fishPlanPanel(water, compact = false) {
+      return `
+        <div class="fish-plan ${compact ? "compact" : ""}">
+          <div class="panel-head">
+            <div>
+              <h3>Fish This Plan</h3>
+              <p class="subtle">${primeWindowFor(water)} - ${confidenceForWater(water)}</p>
+            </div>
+            <button class="ghost-btn" data-trip-mode="${water.id}">Open Trip</button>
+          </div>
+          <div class="plan-grid">
+            ${fishPlanFor(water).map(([label, title, note]) => `
+              <div class="plan-card">
+                <span>${label}</span>
+                <strong>${title}</strong>
+                <small>${note}</small>
+              </div>
+            `).join("")}
+          </div>
+        </div>
+      `;
+    }
+
+    function logsForWater(water) {
+      return getLogs().filter((entry) => entry.waterId === water.id || entry.waterName === water.name);
+    }
+
+    function personalMemoryFor(water) {
+      const logs = logsForWater(water);
+      const recommended = liveRecommendedFlies(water);
+      const worked = Object.keys(flyFeedback).filter((fly) => flyFeedback[fly] === "worked");
+      const ignored = Object.keys(flyFeedback).filter((fly) => flyFeedback[fly] === "ignored");
+      const loggedFlyCounts = logs.reduce((counts, entry) => {
+        if (entry.fly) counts[entry.fly] = (counts[entry.fly] || 0) + (Number(entry.count) || 1);
+        return counts;
+      }, {});
+      const topLoggedFly = Object.entries(loggedFlyCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || "";
+      const workedHere = worked.find((fly) => recommended.includes(fly) || logs.some((entry) => entry.fly === fly));
+      const ignoredHere = ignored.find((fly) => recommended.includes(fly));
+      const lastCatch = logs[0];
+      const lines = [];
+      if (logs.length) lines.push(`${logs.length} local ${logs.length === 1 ? "entry" : "entries"} saved for ${water.name}.`);
+      if (topLoggedFly) lines.push(`Your best logged fly here: ${topLoggedFly}.`);
+      if (workedHere) lines.push(`Prioritize ${workedHere}; you marked it as worked.`);
+      if (ignoredHere) lines.push(`Deprioritize ${ignoredHere}; you ignored it last time.`);
+      if (lastCatch) lines.push(`Last catch: ${lastCatch.fish || "fish"}${lastCatch.length ? `, ${lastCatch.length}"` : ""} on ${lastCatch.fly || "unknown fly"}.`);
+      if (!lines.length) lines.push("No local memory yet. Log catches or mark flies as worked/ignored to train this device.");
+      return { logs, lines, topLoggedFly, workedHere, ignoredHere };
+    }
+
+    function personalMemoryCard(water, compact = false) {
+      const memory = personalMemoryFor(water);
+      return `
+        <div class="memory-card ${compact ? "compact" : ""}">
+          <div class="insight-head">
+            <div>
+              <span>Your local memory</span>
+              <strong>${memory.logs.length ? `${memory.logs.length} entries here` : "Learning this water"}</strong>
+            </div>
+            <button class="mini-action" data-quick-log="${water.id}">Quick log</button>
+          </div>
+          <div class="reason-stack">
+            ${memory.lines.slice(0, compact ? 2 : 4).map((line) => `<p>${line}</p>`).join("")}
+          </div>
+        </div>
+      `;
+    }
+
+    function hatchTraitSummary(bug) {
+      const text = `${bug.name} ${bug.sizes} ${bug.water} ${bug.body} ${bug.stages.join(" ")}`.toLowerCase();
+      return text;
+    }
+
+    function hatchCandidateScore(bug) {
+      const text = hatchTraitSummary(bug);
+      let score = 0;
+      const size = hatchIdTraits.size || "";
+      const color = hatchIdTraits.color || "";
+      const water = hatchIdTraits.water || "";
+      const behavior = hatchIdTraits.behavior || "";
+      if (!size && !color && !water && !behavior) {
+        return bug.id === activeBug ? 5 : predictedHatches(getWater()).some((hatch) => hatchProfileFor(hatch).bugId === bug.id) ? 4 : 1;
+      }
+      if (size === "tiny" && /#1[8-9]|#2[0-4]|18-24|18-22/.test(text)) score += 3;
+      if (size === "small" && /#1[4-8]|14-18|12-18/.test(text)) score += 3;
+      if (size === "large" && /#4|#6|#8|#10|4-10|6-12|8-12/.test(text)) score += 3;
+      if (color && text.includes(color)) score += 3;
+      if (color === "yellow" && /pale|cream|golden|sally/.test(text)) score += 3;
+      if (color === "tan" && /tan|orange|caddis|hopper|sedge/.test(text)) score += 3;
+      if (color === "black" && /black|dark|red|blood|midge|chironomid/.test(text)) score += 3;
+      if (water === "river" && /river|deschutes|crooked|metolius|fall|whychus|current|riffle/.test(text)) score += 3;
+      if (water === "lake" && /lake|stillwater|hosmer|east|crane|davis|paulina|weed|suspended/.test(text)) score += 3;
+      if (water === "bank" && /bank|grass|terrestrial|hopper|ant|beetle|stone/.test(text)) score += 3;
+      if (behavior === "deep" && /nymph|larva|pupa|bottom|deep/.test(text)) score += 2;
+      if (behavior === "rising" && /emerger|pupa|film|rising/.test(text)) score += 2;
+      if (behavior === "surface" && /adult|dun|spinner|dry|surface/.test(text)) score += 2;
+      if (behavior === "moving" && /leech|streamer|baitfish|swimming|damsel|chasing/.test(text)) score += 2;
+      return score;
+    }
+
+    function hatchIdResults() {
+      return bugs
+        .map((bug) => ({ bug, score: hatchCandidateScore(bug) }))
+        .sort((a, b) => b.score - a.score || a.bug.name.localeCompare(b.bug.name))
+        .slice(0, 3);
+    }
+
+    function hatchIdAssistantPanel() {
+      const hasFilters = Object.values(hatchIdTraits).some(Boolean);
+      const results = hatchIdResults();
+      return `
+        <div class="hatch-assistant">
+          <div class="panel-head">
+            <div>
+              <h3>Hatch ID Assistant</h3>
+              <p class="subtle">${skillMode === "Beginner" ? "Choose what you can see. The app suggests likely bugs and matching flies." : "Filter by size, color, water type, and behavior to narrow the likely hatch."}</p>
+            </div>
+            ${hasFilters ? `<button class="ghost-btn" data-hatch-clear>Clear</button>` : ""}
+          </div>
+          <div class="trait-grid">
+            ${Object.entries(hatchTraitOptions).map(([key, options]) => `
+              <label>
+                <span>${key}</span>
+                <select data-hatch-trait="${key}">
+                  ${options.map(([value, label]) => `<option value="${value}" ${hatchIdTraits[key] === value ? "selected" : ""}>${label}</option>`).join("")}
+                </select>
+              </label>
+            `).join("")}
+          </div>
+          <div class="hatch-results">
+            ${results.map(({ bug, score }) => {
+              const profile = hatchProfileFor(bug.name);
+              const flies = flyLibraryForBug(bug.id).slice(0, 3);
+              return `
+                <button class="hatch-result ${bug.id === activeBug ? "active" : ""}" data-hatch-pick="${bug.id}">
+                  <div class="hatch-thumb" style="${hatchThumbStyle(profile, 2)}" role="img" aria-label="${bug.name} reference"></div>
+                  <div>
+                    <strong>${bug.name}</strong>
+                    <span>${score ? `${score} match points` : "Baseline match"} - ${bug.cue}</span>
+                    <small>${flies.map((fly) => fly.name).join(", ")}</small>
+                  </div>
+                </button>
+              `;
+            }).join("")}
+          </div>
         </div>
       `;
     }
@@ -5571,6 +6109,11 @@
             <div class="metric"><span>Distance</span><strong>${distanceLabel(water) || "Use location"}</strong></div>
             <div class="metric"><span>Confidence</span><strong>${confidenceForWater(water)}</strong></div>
           </div>
+          <div class="insight-grid compact">
+            ${whyThisWaterCard(water, true)}
+            ${personalMemoryCard(water, true)}
+          </div>
+          ${fishPlanPanel(water, true)}
           <div class="compact-note"><b>Read:</b> ${water.read}</div>
           <div class="compact-lines">
             <div class="line-row"><span>Regulations</span><b>${water.regs}</b></div>
@@ -5731,10 +6274,18 @@
                 <small>${scoreSourceLabel(best)}</small>
               </div>
             </div>
+            ${skillModeSelector()}
             ${scoreBreakdownOpen ? scoreBreakdownPanel(best) : ""}
           </section>
 
           <section class="today-body">
+            <div class="insight-grid">
+              ${whyThisWaterCard(topPick)}
+              ${personalMemoryCard(topPick)}
+            </div>
+
+            ${fishPlanPanel(topPick)}
+
             <div class="command-grid">
               <div class="command-card primary" role="button" tabindex="0" data-water="${topPick.id}" data-go="waters">
                 <span>Best option now</span>
@@ -5770,9 +6321,8 @@
               </div>
               <div class="command-card">
                 <span>Learning layer</span>
-                <strong>Beginner mode</strong>
-                <small>${beginnerMode ? "Plain-English hatch and stage notes are on." : "Adds simple explanations for hatch terms and life stages."}</small>
-                <button class="mini-action beginner-toggle ${beginnerMode ? "active" : ""}" data-beginner-mode>${beginnerMode ? "On" : "Off"}</button>
+                <strong>${skillMode}</strong>
+                <small>${skillModeDescription()}</small>
               </div>
             </div>
 
@@ -5841,6 +6391,7 @@
                 <button class="ghost-btn" data-refresh-all>${syncing ? "Updating..." : "Update"}</button>
                 <button class="ghost-btn" data-use-location>${locationStatus === "loading" ? "Locating..." : userLocation ? "Location" : "Use Location"}</button>
                 <button class="ghost-btn ${showHiddenWaters ? "active" : ""}" data-show-hidden>${showHiddenWaters ? "Showing Hidden" : `Hidden ${hiddenWaterIds.length}`}</button>
+                ${skillModeSelector(true)}
                 <div class="segmented">
                   ${["Best", "Near"].map((label) => `<button class="${waterSortMode === label ? "active" : ""}" data-water-sort="${label}">${label === "Near" ? "Near Me" : "Best"}</button>`).join("")}
                 </div>
@@ -5921,6 +6472,13 @@
               <p>${liveDisplayValue(water, "flow")} - ${liveDisplayValue(water, "wind")} - ${clarity.label}</p>
             </div>
           </div>
+
+          <div class="insight-grid">
+            ${whyThisWaterCard(water)}
+            ${personalMemoryCard(water)}
+          </div>
+
+          ${fishPlanPanel(water)}
 
           ${scoreBreakdownPanel(water)}
 
@@ -6045,10 +6603,11 @@
             <p class="subtle">${selected.cue}</p>
           </div>
           <div class="toolbar">
-            <button class="ghost-btn ${beginnerMode ? "active" : ""}" data-beginner-mode>Beginner ${beginnerMode ? "On" : "Off"}</button>
+            ${skillModeSelector(true)}
             <div class="sync-pill">Bundled reference</div>
           </div>
         </div>
+        ${hatchIdAssistantPanel()}
         <div class="bug-layout">
           <div class="panel">
             <div class="bug-list">
@@ -6966,6 +7525,14 @@
           bindDynamic();
         });
       });
+      all("[data-skill-mode]").forEach((button) => {
+        button.addEventListener("click", (event) => {
+          event.stopPropagation();
+          setSkillMode(button.dataset.skillMode);
+          renderAll();
+          bindDynamic();
+        });
+      });
       all("[data-quick-log]").forEach((button) => {
         button.addEventListener("click", (event) => {
           event.stopPropagation();
@@ -7096,6 +7663,32 @@
           bindDynamic();
         });
       });
+      all("[data-hatch-trait]").forEach((select) => {
+        select.addEventListener("change", () => {
+          hatchIdTraits[select.dataset.hatchTrait] = select.value;
+          writeStoredObject("riseHatchIdTraits.v1", hatchIdTraits);
+          renderBugs();
+          bindDynamic();
+        });
+      });
+      all("[data-hatch-clear]").forEach((button) => {
+        button.addEventListener("click", () => {
+          hatchIdTraits = {};
+          writeStoredObject("riseHatchIdTraits.v1", hatchIdTraits);
+          renderBugs();
+          bindDynamic();
+        });
+      });
+      all("[data-hatch-pick]").forEach((button) => {
+        button.addEventListener("click", () => {
+          activeBug = button.dataset.hatchPick;
+          activeBugStage = null;
+          activeFlyName = null;
+          renderBugs();
+          bindDynamic();
+          requestAnimationFrame(() => $(".bug-card.active")?.scrollIntoView({ behavior: "smooth", block: "start" }));
+        });
+      });
       all("[data-library-fly]").forEach((button) => {
         const openLibraryFly = (event) => {
           event.stopPropagation();
@@ -7216,6 +7809,10 @@
             renderLog();
             bindDynamic();
             return;
+          }
+          if (entry.fly && flyFeedback[entry.fly] !== "worked") {
+            flyFeedback[entry.fly] = "worked";
+            writeStoredObject(FLY_FEEDBACK_KEY, flyFeedback);
           }
           logSaveMessage = "";
           logFormOpen = false;
