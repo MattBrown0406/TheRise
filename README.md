@@ -31,6 +31,8 @@ Expected URLs after GitHub Pages is enabled:
 - Marketing URL: `https://mattbrown0406.github.io/TheRise/`
 - Support URL: `https://mattbrown0406.github.io/TheRise/support.html`
 - Privacy Policy URL: `https://mattbrown0406.github.io/TheRise/privacy.html`
+- Terms of Use URL: `https://mattbrown0406.github.io/TheRise/terms.html`
+- Apple Standard EULA URL: `https://www.apple.com/legal/internet-services/itunes/dev/stdeula/`
 
 ## App Store release checks
 
