@@ -1,4 +1,4 @@
-Version 1.0 build 7 addresses the July 24, 2026 review feedback for submission 80533227-abed-4218-b443-1cdef4bc50c7.
+Version 1.0 build 8 addresses the August 12, 2026 review feedback for submission 80533227-abed-4218-b443-1cdef4bc50c7.
 
 AUTO-RENEWABLE SUBSCRIPTIONS
 To locate the subscriptions:
@@ -10,7 +10,7 @@ To locate the subscriptions:
 
 Before purchase, the Pro screen displays the selected subscription title, duration, localized StoreKit price, auto-renewal and cancellation disclosure, Restore Purchases, Privacy Policy, and Terms of Use.
 
-Products submitted with this version:
+This App Review submission includes the iOS app version, the Rise Subscriptions subscription group, and both subscription products:
 • The Rise Pro Monthly — therise_pro_monthly — one month
 • The Rise Pro Annual — therise_pro_annual — one year
 
@@ -30,4 +30,4 @@ To verify the catch-photo flow:
 4. Choose Camera or Photo Library and grant the requested permission.
 5. Select a photo, complete the required catch fields, and save the entry.
 
-Build 7 includes NSCameraUsageDescription, NSPhotoLibraryUsageDescription, and NSLocationWhenInUseUsageDescription.
+Build 8 includes NSCameraUsageDescription, NSPhotoLibraryUsageDescription, and NSLocationWhenInUseUsageDescription.
