@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "sourceSha256": "d882f7683a280c92edf0af3ce77b299bcf5bcbd823a5b109b9ba5a133ca355b8",
-  "generatorSha256": "bae4011edc018c32ee74a288594c354661935bd9dd3c6a598474210c54cb262c",
+  "sourceSha256": "68b8df8e4ba3e28052604bc1716a8ab98c83c147735caf2ca74228effd86eb73",
+  "generatorSha256": "52cdb2b6d299210bd061c464ae250090e735ca1fcfe66668bcc0acd2e7a627ec",
   "outputs": {
     "app-store-screenshots/iphone/10-pro-upgrade.png": "1fd57c7303dca56fa39eb7d1736a8fe884b955ef3990712bdb59978ec732d5dc",
     "app-store-screenshots/ipad/10-pro-upgrade.png": "d8ceb49fd219d83196197cad9646578df0c619eb71703b766abc4dce3fd02a5b",

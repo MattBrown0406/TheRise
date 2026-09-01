@@ -1,4 +1,4 @@
-Version 1.0 build 10 addresses the August 12, 2026 review feedback for submission 80533227-abed-4218-b443-1cdef4bc50c7, and adds the functionality the subscription unlocks.
+Version 1.0 build 11 addresses the August 12, 2026 review feedback for submission 80533227-abed-4218-b443-1cdef4bc50c7, and adds the functionality the subscription unlocks.
 
 AUTO-RENEWABLE SUBSCRIPTIONS
 To locate the subscriptions:

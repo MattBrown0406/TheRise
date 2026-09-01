@@ -142,6 +142,7 @@ vm.runInContext(`${scriptBody}\n;globalThis.__app = {
   predictedHatches, waterAppropriateHatches,
   getLogs, setLogs, logCsv, formatLogDate, normalizeLogEntry,
   esc, attr, safeText, mentionsTerm, mentionsNoun,
+  waterAliasMap, waterAliasExclusions, aliasesForWater, scoreBoostFromSignals,
   passageAboutWater, extractSignalsForWater, watersForBulkSync,
   localIntelSources, referenceLinks, reportLinks, clickActions,
   liveReports, PRO_FEATURES, screenRenderers
@@ -364,6 +365,54 @@ assert(/function writeWaterCache\(cache\) \{\n      liveReports\.cache = cache;\
   "the water cache write is wrapped against a full quota");
 assert(/\} finally \{\n        \/\/ Without this, one thrown quota error left bulkStatus set/.test(html),
   "a failed sync always clears bulkStatus");
+
+group("Every alias key is a real water id (#4 round three)");
+const aliasIds = Object.keys(app.waterAliasMap);
+const orphanAliasKeys = aliasIds.filter((id) => !app.waters.some((water) => water.id === id));
+assert(orphanAliasKeys.length === 0,
+  `no alias key is dead code (${orphanAliasKeys.join(", ") || "none orphaned"})`);
+const orphanExclusionKeys = Object.keys(app.waterAliasExclusions).filter((id) => !app.waters.some((water) => water.id === id));
+assert(orphanExclusionKeys.length === 0,
+  `no exclusion key is dead code (${orphanExclusionKeys.join(", ") || "none orphaned"})`);
+["lower-deschutes", "middle-deschutes", "upper-deschutes"].forEach((id) => {
+  assert(Array.isArray(app.waterAliasMap[id]), `${id} has an alias list reachable by its id`);
+});
+assert(app.aliasesForWater(app.waters.find((water) => water.id === "lower-deschutes")).includes("maupin"),
+  "the Lower Deschutes answers to Maupin again");
+
+const odfwDeschutes = "Deschutes River near Maupin is fishing well with caddis in the evening. Trout Creek to Warm Springs is open.";
+["lower-deschutes"].forEach((id) => {
+  const water = app.waters.find((item) => item.id === id);
+  assert(/caddis/i.test(app.passageAboutWater(water, odfwDeschutes)),
+    `a report written as "Deschutes River" reaches ${id}`);
+});
+
+group("A report belongs to the water it names most specifically (#5 round three)");
+const reservoirReport = "Prineville Reservoir is fishing well for bass with good numbers near the dam.";
+const reservoir = app.waters.find((water) => water.id === "prineville-reservoir");
+assert(/bass/i.test(app.passageAboutWater(reservoir, reservoirReport)),
+  "the reservoir keeps its own report");
+assert(app.passageAboutWater(crooked, reservoirReport) === "",
+  "the Crooked does not inherit the reservoir's report through the word 'prineville'");
+
+const paulinaLake = app.waters.find((water) => water.id === "paulina");
+if (paulinaLake) {
+  assert(app.passageAboutWater(paulinaLake, "Paulina Creek trail is closed and access is slow.") === "",
+    "a Paulina Creek notice is not a Paulina Lake report");
+  assert(/callibaetis|fishing/i.test(app.passageAboutWater(paulinaLake, "Paulina Lake is fishing well on callibaetis.")),
+    "a Paulina Lake report still reaches Paulina Lake");
+}
+
+group("Being mentioned is not a fishing report (#5 round three)");
+const roadNotice = "Metolius River. The campground road is now open for the season.";
+assert(app.extractSignalsForWater(metoliusWater, roadNotice, { label: "ODFW", type: "agency", readable: true }) === null,
+  "a passage with no fishing content yields no signals and names no source");
+assert(app.scoreBoostFromSignals("the campground road is now open", { type: "agency" }, [], []) === 0,
+  "an agency source earns no boost for content it does not have");
+assert(app.scoreBoostFromSignals("fishing well with good numbers", { type: "agency" }, [], []) > 0,
+  "an actual positive report still raises the score");
+assert(app.scoreBoostFromSignals("fishing has been slow and tough", { type: "agency" }, [], []) < 0,
+  "an actual slow report still lowers it");
 
 console.log(`\n${checks - failures}/${checks} checks passed`);
 process.exit(failures ? 1 : 0);

@@ -130,9 +130,17 @@ const instrumentation = `
   };
 `;
 
-async function openApp(browser, { fetchPlan } = {}) {
-  const page = await browser.newPage();
-  await page.setViewport({ width: 430, height: 932 });
+/* Every page gets its own browser context.
+   file:// pages share one localStorage origin, so tests used to inherit each
+   other's journal and water cache. That made a fresh-install test impossible
+   to write - which is exactly why the fresh-install path was never tested. */
+const openContexts = [];
+
+async function openApp(browser, { fetchPlan, viewport } = {}) {
+  const context = await browser.createBrowserContext();
+  openContexts.push(context);
+  const page = await context.newPage();
+  await page.setViewport(viewport || { width: 430, height: 932 });
   await page.evaluateOnNewDocument(instrumentation);
   if (fetchPlan) {
     await page.evaluateOnNewDocument((plan) => {
@@ -422,7 +430,272 @@ try {
     console.log(`  note not reachable from a cold start: ${outcome.missing.join(", ") || "none"}`);
     await page.close();
   }
+  /* ---------------------------------------------------------------- */
+  group("The shell fills the device on iPad, with no simulated phone (#1 round three)");
+
+  {
+    const devices = [
+      { label: "iPad portrait", width: 810, height: 1080 },
+      { label: "iPad landscape", width: 1180, height: 820 },
+      { label: "iPad mini portrait", width: 744, height: 1133 }
+    ];
+    for (const device of devices) {
+      const page = await openApp(browser, { viewport: { width: device.width, height: device.height } });
+      const shell = await page.evaluate(() => {
+        const element = document.querySelector(".app-shell");
+        const style = getComputedStyle(element);
+        return {
+          width: Math.round(element.getBoundingClientRect().width),
+          radius: style.borderTopLeftRadius,
+          shadow: style.boxShadow,
+          commandColumns: getComputedStyle(document.querySelector(".command-grid") || element).gridTemplateColumns
+        };
+      });
+      assert(shell.width >= device.width - 1, `${device.label}: the shell fills the viewport (${shell.width} of ${device.width})`);
+      assert(shell.radius === "0px", `${device.label}: no simulated device corner radius (${shell.radius})`);
+      assert(shell.shadow === "none", `${device.label}: no simulated bezel ring (${shell.shadow})`);
+      assert(shell.commandColumns.split(" ").length === 3, `${device.label}: the command grid is three-up (${shell.commandColumns.split(" ").length} columns)`);
+      await page.close();
+    }
+
+    const phone = await openApp(browser);
+    const phoneShell = await phone.evaluate(() => ({
+      width: Math.round(document.querySelector(".app-shell").getBoundingClientRect().width),
+      commandColumns: getComputedStyle(document.querySelector(".command-grid")).gridTemplateColumns.split(" ").length
+    }));
+    assert(phoneShell.width === 430, `iPhone: the shell still fills the viewport (${phoneShell.width})`);
+    assert(phoneShell.commandColumns === 2, `iPhone: the command grid stays two-up (${phoneShell.commandColumns})`);
+    await phone.close();
+  }
+
+  /* ---------------------------------------------------------------- */
+  group("A fresh install has no fishing history (#2 round three)");
+
+  {
+    const page = await openApp(browser);
+    const fresh = await page.evaluate(() => {
+      activateTab("log");
+      return {
+        stats: [...document.querySelectorAll("#log .log-stat strong")].map((node) => node.textContent.trim()),
+        realCards: document.querySelectorAll("#log .catch-card:not(.example-card)").length,
+        exampleCards: document.querySelectorAll("#log .example-card").length,
+        exampleControls: document.querySelectorAll("#log .example-card [data-edit-log], #log .example-card [data-delete-log]").length,
+        labelled: Boolean(document.querySelector("#log [data-example-logs-label]")),
+        logs: getLogs().length,
+        stored: localStorage.getItem("riseLogs"),
+        memory: personalMemoryFor(waters.find((water) => water.id === "lower-deschutes")).lines.join(" | ")
+      };
+    });
+    assert(fresh.stats[0] === "0", `the fish count starts at zero (${fresh.stats[0]})`);
+    assert(fresh.stats[1] === "0", `the trip count starts at zero (${fresh.stats[1]})`);
+    assert(fresh.stats[2] === "-", `there is no top fly yet (${fresh.stats[2]})`);
+    assert(fresh.realCards === 1, `only the empty-state card is shown as a journal entry (${fresh.realCards})`);
+    assert(fresh.exampleCards === 3, `the three illustrations are marked as examples (${fresh.exampleCards})`);
+    assert(fresh.exampleControls === 0, `examples carry no edit or delete controls (${fresh.exampleControls})`);
+    assert(fresh.labelled, "the examples are labelled as not the user's catches");
+    assert(fresh.logs === 0, `getLogs() returns an empty journal (${fresh.logs})`);
+    assert(fresh.stored === null, "nothing has been written to storage");
+    assert(!/Elk Hair Caddis/.test(fresh.memory), `local memory claims no history (${fresh.memory})`);
+
+    // The path that used to make the demo permanent: one real save.
+    const afterSave = await page.evaluate(async () => {
+      document.querySelector("[data-new-log]").click();
+      await new Promise((done) => setTimeout(done, 60));
+      document.querySelector("#logForm [name=fly]").value = "MY REAL FLY";
+      document.querySelector("#logForm").dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+      await new Promise((done) => setTimeout(done, 200));
+      const stored = JSON.parse(localStorage.getItem("riseLogs") || "[]");
+      return { count: stored.length, flies: stored.map((entry) => entry.fly) };
+    });
+    assert(afterSave.count === 1, `saving one catch stores exactly one catch (${afterSave.count})`);
+    assert(afterSave.flies.join(",") === "MY REAL FLY", `no example entry was persisted alongside it (${afterSave.flies.join(",")})`);
+    await page.close();
+  }
+
+  /* ---------------------------------------------------------------- */
+  group("A launch where every request failed reports failure (#3 round three)");
+
+  {
+    const page = await openApp(browser, { fetchPlan: { mode: "offline", body: "" } });
+    await page.evaluate(async () => {
+      await refreshAllWaterReports("daily-open");
+    });
+    const outcome = await page.evaluate(() => {
+      const report = liveReports.byWater[activeWater];
+      return {
+        status: report?.status,
+        cached: cachedWaterCount(),
+        cacheKey: liveReports.cache?.lastDailyOpen || "",
+        freshness: dataFreshnessLabel(),
+        scoreLabel: scoreSourceLabel(getWater()),
+        willRetry: shouldRunDailyOpenSync()
+      };
+    });
+    assert(outcome.status === "error", `a report with no payload is not "ready" (${outcome.status})`);
+    assert(outcome.cached === 0, `nothing was written to the offline cache (${outcome.cached})`);
+    assert(!/Offline-ready/.test(outcome.freshness), `the app does not claim to be offline-ready (${outcome.freshness})`);
+    assert(!/Live-adjusted/.test(outcome.scoreLabel), `the score is not described as live (${outcome.scoreLabel})`);
+    assert(outcome.cacheKey === "", "the day was not marked as synced");
+    assert(outcome.willRetry === true, "the app will try again when signal returns");
+
+    // Signal comes back: the same day must still sync.
+    const recovered = await page.evaluate(async () => {
+      window.__fetchPlan = { mode: "online", body: "<html><body>Deschutes River is fishing well.</body></html>" };
+      await refreshAllWaterReports("daily-open");
+      return { cached: cachedWaterCount(), marked: Boolean(liveReports.cache?.lastDailyOpen) };
+    });
+    assert(recovered.cached > 0, `a later sync on the same day still runs and caches (${recovered.cached} waters)`);
+    assert(recovered.marked, "a sync that actually fetched marks the day complete");
+    await page.close();
+  }
+
+  /* ---------------------------------------------------------------- */
+  group("Switching tabs returns to the top of the screen (#6 round three)");
+
+  {
+    const page = await openApp(browser);
+    const scroll = await page.evaluate(async () => {
+      const main = document.querySelector("main");
+      activateTab("waters");
+      await new Promise((done) => setTimeout(done, 60));
+      main.scrollTop = main.scrollHeight;
+      await new Promise((done) => setTimeout(done, 60));
+      const scrolled = main.scrollTop;
+      activateTab("bugs");
+      await new Promise((done) => setTimeout(done, 500));
+      return { scrolled, after: main.scrollTop };
+    });
+    assert(scroll.scrolled > 200, `the Waters screen scrolls (${scroll.scrolled})`);
+    assert(scroll.after === 0, `switching to Bugs lands at the top (${scroll.after})`);
+    await page.close();
+  }
+
+  /* ---------------------------------------------------------------- */
+  group("The container backup never overwrites a live journal (#7 round three)");
+
+  {
+    const page = await openApp(browser);
+    await seedLogs(page, [sampleEntry({ notes: "KEEP-ME", loggedAt: "2026-07-01T18:00:00.000Z" })]);
+    const stale = await page.evaluate(() => {
+      const older = JSON.stringify({
+        version: 2,
+        savedAt: "2020-01-01T00:00:00.000Z",
+        logs: [
+          { loggedAt: "2019-01-01T00:00:00.000Z", notes: "DELETED-1", fly: "x", fish: "y", waterName: "z" },
+          { loggedAt: "2019-01-02T00:00:00.000Z", notes: "DELETED-2", fly: "x", fish: "y", waterName: "z" }
+        ]
+      });
+      window.riseLogRestore({ body: older });
+      return getLogs().map((entry) => entry.notes);
+    });
+    assert(stale.join(",") === "KEEP-ME", `a longer stale backup does not replace the journal (${stale.join(",")})`);
+
+    const purged = await page.evaluate(() => {
+      localStorage.removeItem("riseLogs");
+      localStorage.removeItem("riseLogsSavedAt");
+      logCache = null;
+      window.riseLogRestore({ body: JSON.stringify({
+        version: 2,
+        savedAt: "2026-08-01T00:00:00.000Z",
+        logs: [{ loggedAt: "2026-07-01T18:00:00.000Z", notes: "KEEP-ME", fly: "x", fish: "y", waterName: "z" }]
+      }) });
+      return getLogs().map((entry) => entry.notes);
+    });
+    assert(purged.join(",") === "KEEP-ME", `a purged journal is restored from the backup (${purged.join(",")})`);
+
+    const legacy = await page.evaluate(() => {
+      localStorage.removeItem("riseLogs");
+      localStorage.removeItem("riseLogsSavedAt");
+      logCache = null;
+      window.riseLogRestore({ body: JSON.stringify([{ loggedAt: "2026-06-01T00:00:00.000Z", notes: "OLD-BUILD", fly: "x", fish: "y", waterName: "z" }]) });
+      return getLogs().map((entry) => entry.notes);
+    });
+    assert(legacy.join(",") === "OLD-BUILD", `a bare array from an older build still restores (${legacy.join(",")})`);
+
+    const editing = await page.evaluate(() => {
+      localStorage.setItem("riseLogs", JSON.stringify([
+        { loggedAt: "2026-07-01T00:00:00.000Z", notes: "FLY-A", fly: "a", fish: "y", waterName: "z" },
+        { loggedAt: "2026-07-02T00:00:00.000Z", notes: "FLY-B", fly: "b", fish: "y", waterName: "z" },
+        { loggedAt: "2026-07-03T00:00:00.000Z", notes: "FLY-C", fly: "c", fish: "y", waterName: "z" }
+      ]));
+      localStorage.setItem("riseLogsSavedAt", "2026-07-03T00:00:00.000Z");
+      logCache = null;
+      activateTab("log");
+      renderLog();
+      document.querySelector("[data-edit-log='2']").click();
+      const before = getLogs()[editingLogIndex]?.notes;
+      window.riseLogRestore({ body: JSON.stringify({
+        version: 2,
+        savedAt: "2026-09-01T00:00:00.000Z",
+        logs: [
+          { loggedAt: "2026-07-03T00:00:00.000Z", notes: "FLY-C", fly: "c", fish: "y", waterName: "z" },
+          { loggedAt: "2026-07-02T00:00:00.000Z", notes: "FLY-B", fly: "b", fish: "y", waterName: "z" },
+          { loggedAt: "2026-07-01T00:00:00.000Z", notes: "FLY-A", fly: "a", fish: "y", waterName: "z" }
+        ]
+      }) });
+      return { before, after: editingLogIndex === null ? null : getLogs()[editingLogIndex]?.notes };
+    });
+    assert(editing.before === "FLY-C", `the edit form opened on FLY-C (${editing.before})`);
+    assert(editing.after === "FLY-C", `a restore that reorders the journal keeps the form on the same catch (${editing.after})`);
+    await page.close();
+  }
+
+  /* ---------------------------------------------------------------- */
+  group("A logged reading carries where it came from (#8 round three)");
+
+  {
+    const page = await openApp(browser);
+    await seedLogs(page, [
+      sampleEntry({ notes: "measured", flow: "235 cfs", flowSource: "measured", temp: "53 F", tempSource: "measured", loggedAt: "2026-07-03T00:00:00.000Z" }),
+      sampleEntry({ notes: "reference", flow: "4,160 cfs", flowSource: "reference", temp: "54 F", tempSource: "reference", loggedAt: "2026-07-02T00:00:00.000Z" }),
+      sampleEntry({ notes: "legacy", flow: "1,020 cfs", temp: "51 F", loggedAt: "2026-07-01T00:00:00.000Z" })
+    ]);
+    const shown = await page.evaluate(() => {
+      activateTab("log");
+      return {
+        cards: [...document.querySelectorAll("#log .catch-card .catch-conditions")].map((node) => node.textContent.trim()),
+        csv: logCsv()
+      };
+    });
+    assert(/235 cfs \(measured\)/.test(shown.cards[0]), `a gauge reading is shown as measured (${shown.cards[0]})`);
+    assert(/4,160 cfs \(reference\)/.test(shown.cards[1]), `a seasonal value is shown as reference (${shown.cards[1]})`);
+    assert(/source unknown/.test(shown.cards[2]), `an entry from an older build says so (${shown.cards[2]})`);
+    assert(/"Flow source"/.test(shown.csv) && /"Water temp source"/.test(shown.csv), "the CSV carries both source columns");
+    assert(/"4,160 cfs","reference"/.test(shown.csv), "the CSV pairs each reading with its source");
+    await page.close();
+  }
+
+  /* ---------------------------------------------------------------- */
+  group("The water search keeps the caret where the angler put it (#9 round three)");
+
+  {
+    const page = await openApp(browser);
+    // Real keystrokes. Assigning .value in script moves the caret to the end
+    // by itself, which would have made this test pass against the bug.
+    await page.evaluate(async () => {
+      activateTab("waters");
+      await new Promise((done) => setTimeout(done, 60));
+      document.querySelector("[data-water-search]").focus();
+    });
+    await page.keyboard.type("deschutes", { delay: 10 });
+    await page.evaluate(() => {
+      const field = document.querySelector("[data-water-search]");
+      field.focus();
+      field.setSelectionRange(3, 3);
+    });
+    await page.keyboard.type("X", { delay: 10 });
+    const caret = await page.evaluate(() => {
+      const field = document.querySelector("[data-water-search]");
+      return { value: field.value, start: field.selectionStart, end: field.selectionEnd };
+    });
+    assert(caret.value === "desXchutes", `the character lands where the caret was (${caret.value})`);
+    assert(caret.start === 4 && caret.end === 4, `the caret stays mid-word, ready for the next character (${caret.start},${caret.end})`);
+    await page.close();
+  }
 } finally {
+  for (const context of openContexts) {
+    await context.close().catch(() => {});
+  }
   await browser.close();
   if (!process.env.RISE_DOM_TEST_WORKDIR) rmSync(workRoot, { recursive: true, force: true });
 }

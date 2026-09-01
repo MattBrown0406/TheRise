@@ -125,7 +125,7 @@ def main() -> int:
     project = PROJECT.read_text(encoding="utf-8")
     build_numbers = re.findall(r"CURRENT_PROJECT_VERSION = ([^;]+);", project)
     versions = re.findall(r"MARKETING_VERSION = ([^;]+);", project)
-    require(bool(build_numbers) and set(build_numbers) == {"10"}, f"expected build 10, found {build_numbers}")
+    require(bool(build_numbers) and set(build_numbers) == {"11"}, f"expected build 11, found {build_numbers}")
     require(bool(versions) and set(versions) == {"1.0"}, f"expected version 1.0, found {versions}")
 
     review_doc = REVIEW_DOC.read_text(encoding="utf-8")
@@ -150,7 +150,7 @@ def main() -> int:
     require(len(notes.strip()) <= 4000, "App Review notes exceed the 4,000-character limit")
     require(PRIVACY_URL == privacy_metadata, "Privacy Policy metadata URL is incorrect")
     for token in (
-        "Version 1.0 build 10",
+        "Version 1.0 build 11",
         "The Rise Pro Monthly",
         "The Rise Pro Annual",
         "therise_pro_monthly",
@@ -349,6 +349,81 @@ def main() -> int:
     require("nwsRequestChain" in web, "weather requests are not serialised")
     require("function watersForBulkSync()" in web, "a sync still covers every water")
 
+    # --- iPad layout ----------------------------------------------------------
+    # The app ships to iPad. It used to draw a simulated 430px phone at every
+    # viewport wider than 600px, and the screenshot harness overrode the shell
+    # only for captures, so Apple reviewed a layout no device could render.
+    require(
+        "@media (min-width: 700px)" in web,
+        "the tablet layout is gone; iPad would fall back to the phone layout",
+    )
+    require(
+        "0 0 0 10px #0d0d0c" not in web,
+        "the simulated device bezel is back in a shipping build",
+    )
+    screenshot_generator = SCREENSHOT_SCRIPT.read_text(encoding="utf-8")
+    require(
+        "screenshot-ipad ." not in screenshot_generator,
+        "the screenshot harness is injecting an iPad layout again; the app must own its own layout",
+    )
+
+    # --- No invented history --------------------------------------------------
+    # A fresh install used to report 34 fish over 11 trips from three demo
+    # catches, then persist those catches the first time anything was saved.
+    require(
+        "const exampleLogs = [" in web and "sampleLogs" not in web,
+        "demo catches are back in the journal's data path",
+    )
+    require(
+        "logCache = readLogsFromStorage() || [];" in web,
+        "getLogs() no longer returns the user's own journal and only that",
+    )
+    require(
+        not re.search(r"saved \? .*: (34|11)\b", web),
+        "the catch journal is showing hardcoded fish or trip counts again",
+    )
+
+    # --- A failed sync must report failure -------------------------------------
+    require(
+        "if (!usgs && !nws) {" in web,
+        "a report with no payload can be cached as ready again",
+    )
+    require(
+        "if (mode === \"daily-open\" && anySucceeded) markDailyOpenSyncComplete();" in web,
+        "a failed daily-open sync can mark the day complete again and block every retry",
+    )
+
+    # --- Alias table ----------------------------------------------------------
+    # Three keys were written with spaces where the ids use hyphens, which
+    # switched local-report matching off on the Deschutes.
+    alias_block = web[web.index("const waterAliasMap = {"): web.index("const waterAliasExclusions = {")]
+    require(
+        not re.search(r'^\s*"[a-z]+ [a-z]', alias_block, re.MULTILINE),
+        "an alias key contains a space; water ids are hyphenated and the key would be dead code",
+    )
+    require(
+        "function waterMentionStrength(" in web,
+        "report attribution is back to first-substring-wins; a reservoir report can land on a tailwater",
+    )
+    require(
+        "let boost = 0;" in web,
+        "a source earns a score boost again just for naming the water",
+    )
+
+    # --- Journal integrity ----------------------------------------------------
+    require(
+        "current.length >= parsed.length" not in web,
+        "the container backup compares row counts again and can delete real catches",
+    )
+    require(
+        "function scrollAppToTop()" in web,
+        "tab switching scrolls the document again, which is not the app's scroller",
+    )
+    require(
+        "function loggedReadingLabel(" in web and '"Flow source"' in web,
+        "logged readings are displayed and exported without saying where they came from",
+    )
+
     # --- Behaviour suite ------------------------------------------------------
     require(APP_LOGIC_TESTS.is_file(), "app behaviour tests are missing")
     result = subprocess.run(
@@ -399,7 +474,7 @@ def main() -> int:
     print("PASS: subscription disclosure, legal links, and localized-price bridge")
     if not args.skip_screenshots:
         print("PASS: regenerated Pro and IAP review screenshots")
-    print("PASS: version 1.0 build 10 and RevenueCat product identifiers")
+    print("PASS: version 1.0 build 11 and RevenueCat product identifiers")
     print("PASS: App Store metadata/IAP submission checklist")
     print("PASS: catch-log durability, export, and native container storage")
     print("PASS: subscription claims match shipped functionality")
@@ -410,6 +485,11 @@ def main() -> int:
     print("PASS: catch-log and network text escaped before rendering")
     print("PASS: agency-only report parsing, commercial reports link-only")
     print("PASS: bounded weather request volume and cached NWS grid lookups")
+    print("PASS: real iPad layout in the app, no layout injected at capture time")
+    print("PASS: a fresh install has no invented catch history")
+    print("PASS: a sync that fetched nothing reports failure and retries")
+    print("PASS: alias keys reachable, reports attributed to one water, no boost for being named")
+    print("PASS: journal restore, tab scrolling, and logged-reading provenance")
     print(f"PASS: app behaviour tests ({logic_summary})")
     print(f"PASS: real-DOM tests ({dom_summary})")
     print(f"PASS: native storage tests ({store_summary})")

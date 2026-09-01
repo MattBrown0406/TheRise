@@ -2114,6 +2114,19 @@
       box-shadow: 0 8px 18px rgba(30, 43, 34, .05);
     }
 
+    /* Illustrations shown in the empty journal. Deliberately not styled like a
+       real entry, so nobody mistakes one for their own catch. */
+    .example-card {
+      border-style: dashed;
+      background: transparent;
+      box-shadow: none;
+      opacity: .62;
+    }
+
+    [data-example-logs-label] {
+      margin: 4px 0 0;
+    }
+
     .catch-actions {
       display: flex;
       gap: 8px;
@@ -3287,34 +3300,40 @@
       }
     }
 
-    /* iOS app shell */
+    /* iOS app shell.
+
+       This app ships to iPhone and iPad (TARGETED_DEVICE_FAMILY = "1,2"), so
+       the shell fills the device at every size.
+
+       It used to draw a simulated 430px-wide phone - rounded corners and a
+       10px black bezel ring - at any viewport wider than 600px. That is every
+       iPad. The full-bleed rule was scoped to `max-width: 600px`, so only
+       phones escaped it. The App Store screenshot harness hid the problem by
+       overriding the shell width for captures, which meant the iPad
+       screenshots depicted a layout that existed nowhere but the harness. */
     html {
       height: 100%;
-      background: #155f6f;
+      background: #f8f5ed;
     }
 
     body {
       min-height: 100dvh;
-      display: grid;
-      place-items: center;
-      padding: 18px;
-      background:
-        radial-gradient(circle at 50% 0%, rgba(255, 255, 255, .16), transparent 28%),
-        linear-gradient(150deg, #155f6f, #2f5b45);
+      display: block;
+      padding: 0;
+      background: #f8f5ed;
     }
 
     .app-shell {
       position: relative;
-      width: min(430px, calc(100vw - 36px));
-      height: min(932px, calc(100dvh - 36px));
+      width: 100vw;
+      max-width: 100vw;
+      height: 100dvh;
       min-height: 0;
       grid-template-columns: 1fr;
       overflow: hidden;
-      border-radius: 36px;
+      border-radius: 0;
       background: #f8f5ed;
-      box-shadow:
-        0 0 0 10px #0d0d0c,
-        0 28px 80px rgba(0, 0, 0, .34);
+      box-shadow: none;
     }
 
     .rail {
@@ -3583,18 +3602,61 @@
       white-space: normal;
     }
 
-    @media (max-width: 600px) {
-      body {
-        padding: 0;
-        display: block;
-        background: #f8f5ed;
+    /* Tablet.
+
+       The smallest iPad is 744pt wide and the largest iPhone is 430pt, so
+       700px separates the two cleanly and an iPad Split View pane narrower
+       than that correctly keeps the phone layout.
+
+       Every rule below used to live only inside
+       scripts/create-app-store-screenshots.mjs, injected at capture time under
+       an `html.screenshot-ipad` selector. The layout Apple reviewed therefore
+       did not exist in the app. It does now, and the harness no longer
+       injects any layout of its own. */
+    @media (min-width: 700px) {
+      .today-screen,
+      .waters-screen,
+      .trip-screen,
+      .log-screen,
+      .pro-layout,
+      .bug-layout {
+        max-width: 100%;
       }
 
-      .app-shell {
-        width: 100vw;
-        height: 100dvh;
-        border-radius: 0;
-        box-shadow: none;
+      main {
+        padding-bottom: 104px;
+      }
+
+      .command-grid,
+      .condition-cards,
+      .trip-grid,
+      .fly-library-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .pack-box,
+      .stage-grid,
+      .bug-stage-strip,
+      .bench-stage-row {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+
+      .top-water-card,
+      .ranked-water-card {
+        grid-template-columns: minmax(0, 1fr) 116px;
+      }
+
+      .water-fly-preview,
+      .top-water-card .water-fly-preview {
+        width: 116px;
+        max-width: 116px;
+      }
+
+      .today-body,
+      .trip-screen,
+      .log-screen {
+        padding-left: 28px;
+        padding-right: 28px;
       }
     }
   </style>
@@ -4135,10 +4197,27 @@
       "Pacific Lamprey"
     ];
 
-    const sampleLogs = [
-      { loggedAt: "2026-06-21T09:40:00", date: "Jun 21, 2026", time: "9:40 AM", waterName: "Deschutes", waterId: "lower-deschutes", fly: "Elk Hair Caddis #14", fish: "Redband Trout", length: "17", count: "1", notes: "Soft inside seam below riffle.", flow: "4,160 cfs", temp: "54 F", photo: "" },
-      { loggedAt: "2026-06-18T18:50:00", date: "Jun 18, 2026", time: "6:50 PM", waterName: "Hosmer Lake", waterId: "hosmer", fly: "Callibaetis #14", fish: "Redband Trout", length: "19", count: "1", notes: "Cruising the channel edge.", flow: "Stillwater", temp: "62 F", photo: "" },
-      { loggedAt: "2026-06-14T07:30:00", date: "Jun 14, 2026", time: "7:30 AM", waterName: "Deschutes", waterId: "middle-deschutes", fly: "BWO Emerger #18", fish: "Redband Trout", length: "20", count: "1", notes: "Ate during the first overcast push.", flow: "1,020 cfs", temp: "51 F", photo: "" }
+    /* ---------------------------------------------------------------------
+       These three entries are an illustration of what a journal entry looks
+       like. They are NOT the user's data and they never enter it.
+
+       They used to be the return value of getLogs() whenever storage was
+       empty, which meant a fresh install reported "34 Fish, 11 Trips" (both
+       hardcoded) over three invented catches, told the angler in the second
+       person that his best fly on the Lower Deschutes was an Elk Hair Caddis,
+       and - because every write path persists whatever getLogs() returned -
+       wrote all three into real storage and mirrored them to the device
+       backup the first time he saved or deleted anything. They then exported
+       in his CSV, permanently indistinguishable from real fish.
+
+       They are now rendered only in the empty state, labelled as examples,
+       with no edit or delete controls, and are invisible to getLogs(),
+       logsForWater(), the stat row and the exporter.
+       --------------------------------------------------------------------- */
+    const exampleLogs = [
+      { example: true, loggedAt: "2026-06-21T09:40:00", date: "Jun 21, 2026", time: "9:40 AM", waterName: "Deschutes", waterId: "lower-deschutes", fly: "Elk Hair Caddis #14", fish: "Redband Trout", length: "17", count: "1", notes: "Soft inside seam below riffle.", flow: "", temp: "", photo: "" },
+      { example: true, loggedAt: "2026-06-18T18:50:00", date: "Jun 18, 2026", time: "6:50 PM", waterName: "Hosmer Lake", waterId: "hosmer", fly: "Callibaetis #14", fish: "Redband Trout", length: "19", count: "1", notes: "Cruising the channel edge.", flow: "", temp: "", photo: "" },
+      { example: true, loggedAt: "2026-06-14T07:30:00", date: "Jun 14, 2026", time: "7:30 AM", waterName: "Deschutes", waterId: "middle-deschutes", fly: "BWO Emerger #18", fish: "Redband Trout", length: "20", count: "1", notes: "Ate during the first overcast push.", flow: "", temp: "", photo: "" }
     ];
 
     const icon = {
@@ -5091,9 +5170,12 @@
       const intel = localIntelForWater(water);
       if (report?.refreshing) return "Updating local cache";
       if (report?.status === "ready" && intel.sources?.length) return "Live data + local report score";
+      if (report?.status === "ready" && report.refreshError) return "Cached live score - update failed";
       if (report?.status === "ready" && report.fromCache) return "Cached live score";
       if (report?.status === "ready") return "Live-adjusted score";
       if (report?.status === "loading") return "Checking live inputs";
+      // A refresh that returned nothing must not read as live data.
+      if (report?.status === "error") return "Seasonal reference score - live update failed";
       if (!hasLiveSource(water)) return "Seasonal reference score - no live feed";
       return "Seasonal baseline score - not yet updated";
     }
@@ -5165,10 +5247,17 @@
       ["clouser", "Clouser Minnow #6"]
     ];
 
+    /* Keys are water ids. Three of them - the three Deschutes reaches, which
+       is the flagship water - used to be written with spaces where the ids use
+       hyphens, so `waterAliasMap[water.id]` missed them entirely and "trout
+       creek", "maupin", "pelton", "warm springs", "deschutes river", "tumalo",
+       "cline falls", "sunriver" and "benham" were dead code. The alias table
+       exists precisely to catch a report that says "Deschutes River", and on
+       the Deschutes it was switched off. */
     const waterAliasMap = {
-      "lower deschutes": ["lower deschutes", "trout creek", "maupin", "pelton", "warm springs", "deschutes river"],
-      "middle deschutes": ["middle deschutes", "bend to lake billy chinook", "tumalo", "cline falls"],
-      "upper deschutes": ["upper deschutes", "wickiup", "benham", "sunriver", "little lava"],
+      "lower-deschutes": ["lower deschutes", "trout creek", "maupin", "pelton", "warm springs", "deschutes river"],
+      "middle-deschutes": ["middle deschutes", "bend to lake billy chinook", "tumalo", "cline falls"],
+      "upper-deschutes": ["upper deschutes", "wickiup", "benham", "sunriver", "little lava"],
       metolius: ["metolius", "camp sherman", "bridge 99"],
       crooked: ["crooked", "bowman", "prineville"],
       "fall-river": ["fall river"],
@@ -5188,6 +5277,21 @@
       walton: ["walton"],
       "crescent-lake": ["crescent lake"],
       "odell-lake": ["odell"]
+    };
+
+    /* Names that contain a water's alias but are a different place.
+       "Prineville" is a useful alias for the Crooked - reports say "below
+       Prineville dam" - but "Prineville Reservoir" is twenty miles away and a
+       different fishery, and a bass report from the reservoir was being read
+       onto a tailwater. "Paulina" is Paulina Lake; Paulina Creek is not. */
+    const waterAliasExclusions = {
+      crooked: ["prineville reservoir"],
+      paulina: ["paulina creek", "paulina falls", "paulina peak"],
+      "lower-deschutes": ["deschutes county", "deschutes national forest", "little deschutes"],
+      "middle-deschutes": ["deschutes county", "deschutes national forest", "little deschutes"],
+      "upper-deschutes": ["deschutes county", "deschutes national forest", "little deschutes"],
+      "clear-lake": ["clear lake cutoff"],
+      davis: ["davis creek"]
     };
 
     function uniqueItems(items) {
@@ -5819,6 +5923,30 @@
       ].map((item) => String(item || "").toLowerCase()));
     }
 
+    function exclusionsForWater(water) {
+      return (waterAliasExclusions[water.id] || []).map((item) => item.toLowerCase());
+    }
+
+    // Length of the longest term in `terms` that appears in `text` on word
+    // boundaries, or 0. Length is the specificity signal: "prineville
+    // reservoir" beating "prineville" is what stops a reservoir's bass report
+    // from landing on the Crooked.
+    function longestTermMatch(text, terms) {
+      let longest = 0;
+      terms.forEach((term) => {
+        if (term.length > longest && mentionsTerm(text, term)) longest = term.length;
+      });
+      return longest;
+    }
+
+    // How specifically this segment names this water. Zero means it does not.
+    function waterMentionStrength(segment, water) {
+      const own = longestTermMatch(segment, aliasesForWater(water).filter((alias) => alias.length > 3));
+      if (!own) return 0;
+      // A more specific name for somewhere else wins outright.
+      return own > longestTermMatch(segment, exclusionsForWater(water)) ? own : 0;
+    }
+
     // Word-boundary matching. Bare substring matching had "good" firing on
     // "goods", "clear" on "clearance" and "slow" on "slowly", which is how a
     // shop's shipping footer used to become a positive fishing report.
@@ -5847,13 +5975,20 @@
       return uniqueItems(cues);
     }
 
+    /* This used to open at +0.08 (+0.18 for a shop) before reading a word, so
+       "Metolius River. The campground road is now open for the season."
+       raised the Metolius by being mentioned. Being named is not a fishing
+       report. The score now moves only on what the passage actually says, and
+       source credibility scales that content rather than substituting for it. */
     function scoreBoostFromSignals(text, source, hatches, flies) {
-      let boost = source.type === "shop" || source.type === "guide" ? .18 : .08;
+      let boost = 0;
       if (hatches.length) boost += .08;
       if (flies.length) boost += .06;
       if (["fishing well", "good", "productive"].some((term) => mentionsTerm(text, term))) boost += .16;
       if (["slow", "tough", "poor"].some((term) => mentionsTerm(text, term))) boost -= .24;
-      return Math.max(-.35, Math.min(.45, boost));
+      if (!boost) return 0;
+      const credibility = source.type === "shop" || source.type === "guide" ? 1.2 : 1;
+      return Math.max(-.35, Math.min(.45, boost * credibility));
     }
 
     /* ---------------------------------------------------------------------
@@ -5867,27 +6002,35 @@
        sentence naming it, plus the sentence after it when that sentence does
        not name a different water.
        --------------------------------------------------------------------- */
+    /* Attribution used to be a bare `lower.includes(alias)` on both sides, so
+       whichever alias happened to appear first won. "Prineville Reservoir is
+       fishing well for bass" contains "prineville", which is one of the
+       Crooked's aliases, so the Crooked - a tailwater twenty miles away -
+       inherited the reservoir's bass report and its +0.32.
+
+       A segment now belongs to whichever water names it most specifically,
+       and to no one when two waters tie. */
     function passageAboutWater(water, sourceText) {
-      const aliases = aliasesForWater(water).filter((alias) => alias.length > 3);
-      if (!aliases.length) return "";
-      const otherAliases = waters
-        .filter((item) => item.id !== water.id)
-        .flatMap((item) => aliasesForWater(item))
-        .filter((alias) => alias.length > 3 && !aliases.includes(alias));
+      if (!aliasesForWater(water).filter((alias) => alias.length > 3).length) return "";
+      const otherWaters = waters.filter((item) => item.id !== water.id);
 
       const segments = String(sourceText || "").split(/(?<=[.!?])\s+|\s{2,}|\n+/);
       const passage = [];
       let carry = 0;
       segments.forEach((segment) => {
         const lower = segment.toLowerCase();
-        const namesThisWater = aliases.some((alias) => lower.includes(alias));
-        const namesAnother = otherAliases.some((alias) => lower.includes(alias));
-        if (namesThisWater) {
+        const own = waterMentionStrength(lower, water);
+        let strongestOther = 0;
+        otherWaters.forEach((item) => {
+          const strength = waterMentionStrength(lower, item);
+          if (strength > strongestOther) strongestOther = strength;
+        });
+        if (own && own > strongestOther) {
           passage.push(segment);
           carry = 1;
           return;
         }
-        if (namesAnother) {
+        if (strongestOther) {
           carry = 0;
           return;
         }
@@ -5913,6 +6056,11 @@
         .map(([, fly]) => fly)
         .filter((fly) => flyAllowedForWater(fly, water));
       const cues = cueSignalsFromText(passage);
+      // A passage that names the water and says nothing about fishing it is
+      // not intel. It is not credited, not scored, and its source is not named
+      // on the card - "local signal from ODFW" over a road-opening notice is
+      // the same overclaim as inventing the report outright.
+      if (!hatches.length && !flies.length && !cues.length) return null;
       return {
         hatches: uniqueItems(hatches),
         flies: uniqueItems(flies),
@@ -6105,26 +6253,46 @@
           fetchUsgsReport(meta),
           fetchNwsReport(meta)
         ]);
-        const report = {
+        const usgs = usgsResult.status === "fulfilled" ? usgsResult.value : null;
+        const nws = nwsResult.status === "fulfilled" ? nwsResult.value : null;
+        const errors = [
+          usgsResult.status === "rejected" ? usgsResult.reason.message : null,
+          nwsResult.status === "rejected" ? nwsResult.reason.message : null
+        ].filter(Boolean);
+
+        /* Promise.allSettled never rejects, so a launch in which every single
+           request failed used to build `{ status: "ready", usgs: null,
+           nws: null }` and cache it. The app then told an angler about to lose
+           signal that his conditions were live and offline-ready, over a cache
+           that had just been written from nothing. */
+        if (!usgs && !nws) {
+          const message = errors[0] || "No live data returned for this water";
+          liveReports.byWater[water.id] = previous?.status === "ready"
+            ? { ...previous, refreshing: false, refreshError: message }
+            : { status: "error", meta, error: message };
+          if (render) renderScreens("today", "waters", "trip");
+          return false;
+        }
+
+        cacheReport(water.id, {
           status: "ready",
           meta,
           updatedAt: new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }),
-          usgs: usgsResult.status === "fulfilled" ? usgsResult.value : null,
-          nws: nwsResult.status === "fulfilled" ? nwsResult.value : null,
-          errors: [
-            usgsResult.status === "rejected" ? usgsResult.reason.message : null,
-            nwsResult.status === "rejected" ? nwsResult.reason.message : null
-          ].filter(Boolean)
-        };
-        cacheReport(water.id, report, mode);
+          usgs,
+          nws,
+          errors
+        }, mode);
       } catch (error) {
         liveReports.byWater[water.id] = previous?.status === "ready"
           ? { ...previous, refreshing: false, refreshError: error.message }
           : { status: "error", meta, error: error.message };
+        if (render) renderScreens("today", "waters", "trip");
+        return false;
       }
       if (render) {
         renderScreens("today", "waters", "trip");
       }
+      return true;
     }
 
     /* ---------------------------------------------------------------------
@@ -6160,7 +6328,13 @@
           const batchResults = await Promise.allSettled(batch.map((water) => refreshLiveReport(water.id, { mode, render: false })));
           results.push(...batchResults);
         }
-        if (mode === "daily-open") markDailyOpenSyncComplete();
+        /* A sync in which nothing was fetched is not a sync that happened.
+           This used to mark the day complete regardless, so an angler whose
+           first open of the day was out of signal got no further attempt for
+           the rest of that day - shouldRunDailyOpenSync() returned false on
+           every later visibilitychange and on the `online` event itself. */
+        const anySucceeded = results.some((result) => result.status === "fulfilled" && result.value === true);
+        if (mode === "daily-open" && anySucceeded) markDailyOpenSyncComplete();
       } finally {
         // Without this, one thrown quota error left bulkStatus set and killed
         // every refresh for the rest of the session.
@@ -7905,6 +8079,7 @@
        --------------------------------------------------------------------- */
 
     const LOG_STORAGE_KEY = "riseLogs";
+    const LOG_SAVED_AT_KEY = "riseLogsSavedAt";
     let logCache = null;
     let logRestoreNotice = "";
 
@@ -7944,51 +8119,101 @@
       }
     }
 
+    // The user's own journal, and nothing else. An empty journal is empty.
     function getLogs() {
       if (logCache) return logCache;
-      const stored = readLogsFromStorage();
-      logCache = stored === null ? sampleLogs.map(normalizeLogEntry) : stored;
+      logCache = readLogsFromStorage() || [];
       return logCache;
     }
 
-    function hasSavedLogs() {
-      return localStorage.getItem(LOG_STORAGE_KEY) !== null;
+    function readLogsSavedAt() {
+      try {
+        return localStorage.getItem(LOG_SAVED_AT_KEY) || "";
+      } catch {
+        return "";
+      }
     }
 
     // Returns false only when the log could not be persisted anywhere.
     function setLogs(logs) {
       logCache = logs;
+      const savedAt = new Date().toISOString();
       let localOk = false;
       try {
         localStorage.setItem(LOG_STORAGE_KEY, JSON.stringify(logs));
+        localStorage.setItem(LOG_SAVED_AT_KEY, savedAt);
         localOk = true;
       } catch (error) {
         localOk = false;
       }
       // Mirror to the app container. This is what survives a localStorage purge.
-      postStoreMessage({ action: "saveLog", body: JSON.stringify(logs) });
+      // The envelope carries the write time so a restore can tell which copy is
+      // newer instead of guessing from row counts.
+      postStoreMessage({ action: "saveLog", body: JSON.stringify({ version: 2, savedAt, logs }) });
       return localOk || hasNativeStoreBridge();
     }
 
-    // Called by the native layer at startup with whatever the container holds.
-    window.riseLogRestore = function(payload) {
+    // Accepts the v2 envelope and the bare array written by earlier builds.
+    function parseLogPayload(body) {
       try {
-        const parsed = JSON.parse(payload?.body || "[]");
-        if (!Array.isArray(parsed) || !parsed.length) return;
-        const current = readLogsFromStorage();
-        if (current && current.length >= parsed.length) return;
-        // localStorage was cleared or is behind the container copy. Restore it.
-        logCache = parsed.map(normalizeLogEntry).filter(Boolean);
-        try {
-          localStorage.setItem(LOG_STORAGE_KEY, JSON.stringify(logCache));
-        } catch {
-          // In-memory restore still gives the user their journal for this session.
+        const parsed = JSON.parse(body || "null");
+        if (Array.isArray(parsed)) return { savedAt: "", logs: parsed.map(normalizeLogEntry).filter(Boolean) };
+        if (parsed && Array.isArray(parsed.logs)) {
+          return { savedAt: String(parsed.savedAt || ""), logs: parsed.logs.map(normalizeLogEntry).filter(Boolean) };
         }
-        logRestoreNotice = `Restored ${logCache.length} saved ${logCache.length === 1 ? "catch" : "catches"} from this device's backup.`;
-        renderLog();
+        return null;
       } catch {
-        // A malformed backup must never take down startup.
+        return null;
       }
+    }
+
+    /* Called by the native layer at startup with whatever the container holds.
+
+       This used to replace the journal whenever the container copy had more
+       rows in it - the guard compared array lengths and nothing else.
+       A stale backup with two deleted catches in it therefore overwrote a live
+       journal containing one real one - deleting the real catch and
+       resurrecting both deleted ones - because three is more than one.
+
+       The container mirror exists to survive a localStorage purge. It restores
+       when localStorage has nothing, or when the container copy is provably
+       newer by write time. It never merges on count. */
+    window.riseLogRestore = function(payload) {
+      const restored = parseLogPayload(payload?.body);
+      if (!restored || !restored.logs.length) return;
+      const current = readLogsFromStorage();
+      if (current !== null) {
+        // Both timestamps are required. A journal written by a build that did
+        // not record one cannot be proved older than anything, and an
+        // unprovable claim must not cost the angler a real catch.
+        const localSavedAt = readLogsSavedAt();
+        const containerIsNewer = Boolean(restored.savedAt) && Boolean(localSavedAt) && restored.savedAt > localSavedAt;
+        if (!containerIsNewer) return;
+      }
+      // Hold on to what is being edited before the indexes move under it.
+      const editingLoggedAt = editingLogIndex !== null ? getLogs()[editingLogIndex]?.loggedAt : null;
+      logCache = restored.logs;
+      try {
+        localStorage.setItem(LOG_STORAGE_KEY, JSON.stringify(logCache));
+        localStorage.setItem(LOG_SAVED_AT_KEY, restored.savedAt || new Date().toISOString());
+      } catch {
+        // In-memory restore still gives the user their journal for this session.
+      }
+      // An open edit form pointed at index 2 would otherwise now be pointed at
+      // whatever entry landed at index 2, and Update would write one catch's
+      // edits onto another.
+      if (editingLogIndex !== null) {
+        const movedTo = editingLoggedAt ? logCache.findIndex((entry) => entry.loggedAt === editingLoggedAt) : -1;
+        if (movedTo === -1) {
+          editingLogIndex = null;
+          logFormOpen = false;
+          logSaveMessage = "The catch you were editing is not in the restored journal. Nothing was overwritten.";
+        } else {
+          editingLogIndex = movedTo;
+        }
+      }
+      logRestoreNotice = `Restored ${logCache.length} saved ${logCache.length === 1 ? "catch" : "catches"} from this device's backup.`;
+      renderLog();
     };
 
     function photoSourceFor(entry) {
@@ -8031,8 +8256,31 @@
       return [...years].sort();
     }
 
+    /* saveLogEntry has recorded flowSource and tempSource since build 9, and
+       every display site then threw them away. An entry logged on the Lower
+       Deschutes with no signal stores "4,160 cfs" - the app's own seasonal
+       reference value - and printed it on the card and in the CSV as if it
+       were the flow the fish was caught in.
+
+       The number and where it came from now travel together everywhere. */
+    function readingProvenanceWord(entry, key) {
+      const source = entry?.[`${key}Source`];
+      if (source === "measured") return "measured";
+      if (source === "reference") return "reference";
+      if (source === "unavailable") return "";
+      // Entries written before build 11 carry no source at all.
+      return "source unknown";
+    }
+
+    function loggedReadingLabel(entry, key) {
+      const value = String(entry?.[key] || "").trim();
+      if (!value || value === "No live gauge") return "";
+      const word = readingProvenanceWord(entry, key);
+      return word ? `${value} (${word})` : value;
+    }
+
     function logCsv() {
-      const columns = ["Date", "Time", "Water", "Fly", "Species", "Length", "Count", "Flow", "Water temp", "Notes"];
+      const columns = ["Date", "Time", "Water", "Fly", "Species", "Length", "Count", "Flow", "Flow source", "Water temp", "Water temp source", "Notes"];
       const rows = getLogs().map((entry) => [
         formatLogDate(entry),
         entry.time || "",
@@ -8042,7 +8290,9 @@
         entry.length || "",
         entry.count || "",
         entry.flow || "",
+        readingProvenanceWord(entry, "flow"),
         entry.temp || "",
+        readingProvenanceWord(entry, "temp"),
         entry.notes || ""
       ]);
       const escape = (value) => `"${String(value).replace(/"/g, '""')}"`;
@@ -8085,16 +8335,20 @@
 
     function renderLog() {
       const logs = getLogs();
-      const saved = hasSavedLogs();
-      const totalFish = saved ? logs.reduce((sum, entry) => sum + (Number(entry.count) || 1), 0) : 34;
-      const trips = saved ? new Set(logs.map((entry) => `${entry.date}-${entry.waterName}`)).size : 11;
+      const saved = Boolean(logs.length);
+      // Counted from the journal, always. These used to fall back to a
+      // hardcoded 34 fish and 11 trips on a device that had never logged one.
+      const totalFish = logs.reduce((sum, entry) => sum + (Number(entry.count) || 1), 0);
+      const trips = new Set(logs.map((entry) => `${entry.date}-${entry.waterName}`)).size;
       const years = logSeasonYears();
       const seasonLabel = years.length ? (years.length === 1 ? `${years[0]}` : `${years[0]}-${years[years.length - 1]}`) : `${new Date().getFullYear()}`;
       const flyCounts = logs.reduce((counts, entry) => {
         counts[entry.fly] = (counts[entry.fly] || 0) + 1;
         return counts;
       }, {});
-      const topFly = flyFamilyName(Object.entries(flyCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || "Caddis");
+      const topFlyEntry = Object.entries(flyCounts).sort((a, b) => b[1] - a[1])[0]?.[0];
+      // No catches means no top fly. It used to read "Caddis" on an empty journal.
+      const topFly = topFlyEntry ? flyFamilyName(topFlyEntry) : "-";
       const editingEntry = editingLogIndex !== null ? logs[editingLogIndex] : null;
       const selectedWater = editingEntry?.waterId ? (waters.find((water) => water.id === editingEntry.waterId) || getWater()) : getWater();
       const defaultFly = selectedWaterFly(selectedWater) || selectedWater.flies[0];
@@ -8167,7 +8421,10 @@
                 <div>
                   <strong>${esc(entry.fish)}${entry.length ? ` - ${esc(entry.length)}"` : ""}</strong>
                   <span>${esc(entry.waterName)} - ${esc(entry.fly)}</span>
-                  <span>${esc(formatLogDate(entry))} - ${esc(entry.time || "AM")} - ${esc(entry.temp)}</span>
+                  <span>${esc(formatLogDate(entry))} - ${esc(entry.time || "AM")}</span>
+                  ${[loggedReadingLabel(entry, "flow"), loggedReadingLabel(entry, "temp")].filter(Boolean).length
+                    ? `<span class="catch-conditions">${esc([loggedReadingLabel(entry, "flow"), loggedReadingLabel(entry, "temp")].filter(Boolean).join(" - "))}</span>`
+                    : ""}
                   ${entry.notes ? `<span>${esc(entry.notes)}</span>` : ""}
                   <div class="catch-actions">
                     <button class="mini-btn" data-edit-log="${index}">Edit</button>
@@ -8175,7 +8432,21 @@
                   </div>
                 </div>
               </div>
-            `).join("") : `<div class="catch-card"><div class="catch-photo">🐟</div><div><strong>No catches yet</strong><span>Tap New Entry to log your first fish.</span></div></div>`}
+            `).join("") : `
+              <div class="catch-card"><div class="catch-photo">🐟</div><div><strong>No catches yet</strong><span>Tap New Entry to log your first fish. Photos, conditions and notes stay on this device.</span></div></div>
+              <p class="subtle" data-example-logs-label>Examples of what an entry looks like. These are not your catches, they are not saved, and they are not counted above.</p>
+              ${exampleLogs.map((entry) => `
+                <div class="catch-card example-card" aria-hidden="true">
+                  <div class="catch-photo">🐟</div>
+                  <div>
+                    <strong>${esc(entry.fish)} - ${esc(entry.length)}"</strong>
+                    <span>${esc(entry.waterName)} - ${esc(entry.fly)}</span>
+                    <span>Example entry</span>
+                    <span>${esc(entry.notes)}</span>
+                  </div>
+                </div>
+              `).join("")}
+            `}
           </div>
             </div>
         </div>
@@ -8354,7 +8625,21 @@
       }
       all(".view").forEach((view) => view.classList.toggle("active", view.id === tab));
       all(".tab").forEach((button) => button.setAttribute("aria-selected", button.dataset.tab === tab ? "true" : "false"));
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      scrollAppToTop();
+    }
+
+    /* The app scrolls <main>, not the document: `main { overflow-y: auto }`
+       inside a fixed-height shell. window.scrollTo() therefore did nothing,
+       and switching tabs after scrolling to the bottom of Waters dropped the
+       angler partway down Bugs. This was already known - the screenshot
+       harness hit the same fact and was fixed for it - and the app was not. */
+    function scrollAppToTop() {
+      // Instant, not smooth. A tab bar should show the new screen already at
+      // its top; animating 28,000px of the Waters list on the way out is both
+      // slow and, on iOS, interruptible halfway.
+      const scroller = document.querySelector("main");
+      if (scroller) scroller.scrollTop = 0;
+      window.scrollTo(0, 0);
     }
 
     function readPhotoFile(file) {
@@ -8657,13 +8942,23 @@
       document.addEventListener("input", (event) => {
         const target = event.target;
         if (!(target instanceof Element) || !target.matches("[data-water-search]")) return;
+        // Captured before the re-render, because the element about to hold the
+        // caret does not exist yet. Restoring to value.length threw the caret
+        // to the end on every keystroke, so a typo in the middle of a search
+        // term could not be fixed.
+        const selectionStart = target.selectionStart;
+        const selectionEnd = target.selectionEnd;
         waterQuery = target.value;
         renderWaters();
         // renderWaters() replaced the field, so focus and caret have to be put back.
         const nextSearch = $("[data-water-search]");
         if (nextSearch) {
           nextSearch.focus();
-          nextSearch.setSelectionRange(nextSearch.value.length, nextSearch.value.length);
+          const end = nextSearch.value.length;
+          nextSearch.setSelectionRange(
+            Math.min(selectionStart ?? end, end),
+            Math.min(selectionEnd ?? end, end)
+          );
         }
       });
 

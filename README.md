@@ -53,7 +53,7 @@ node scripts/test-app-logic.mjs
 ```
 
 Real DOM, run in real Chromium against the real file — event binding, catch-log
-editing and deletion, injection, request volume:
+editing and deletion, injection, request volume, iPad layout, fresh install:
 
 ```bash
 node scripts/test-app-dom.mjs
@@ -62,7 +62,15 @@ node scripts/test-app-dom.mjs
 The stub DOM has no event dispatch, no bubbling and no HTML parser. A
 duplicated-handler bug that deleted several catches per tap, and an unescaped
 `innerHTML` bug that truncated fly names, both passed the stub suite and shipped.
-Anything about listeners, clicks or parsed markup belongs in the DOM suite.
+Anything about listeners, clicks, parsed markup, computed styles or viewport size
+belongs in the DOM suite.
+
+Every page opens in its own browser context. All `file://` pages share one
+storage origin, so tests used to inherit each other's journal and water cache —
+which made a fresh-install test impossible to write, which is why the
+fresh-install path was never tested and shipped inventing a fishing history.
+Start a test that cares about first-run state with `openApp`, never with a
+reused page.
 
 Chrome or Chromium is found automatically; override with `RISE_CHROME`. Snap
 Chromium is confined — it has a private `/tmp` and no access to dot-directories —
@@ -97,16 +105,30 @@ node scripts/create-app-store-screenshots.mjs
 
 The generator finds Chrome or Chromium and ImageMagick automatically on macOS and
 Linux; override with `RISE_CHROME` and `RISE_MAGICK`. A sandboxed browser (snap
-Chromium) cannot write outside `$HOME`, so point the working directory somewhere
-it can reach:
+Chromium) has a private `/tmp` and no access to dot-directories, so point the
+working directory at a plain directory inside `$HOME`. A working directory the
+browser cannot read fails as `overflow=missing`: the harness never loads, so it
+never reports its layout.
 
 ```bash
 RISE_SCREENSHOT_WORKDIR="$HOME/rise-screenshots" node scripts/create-app-store-screenshots.mjs
 ```
 
+A slow, snap-confined Chromium cold-starts on every capture because each one uses
+its own user data directory. Override the per-launch budget with
+`RISE_CHROME_TIMEOUT_MS` if a run times out.
+
 Captures are deterministic: the harness pins the clock to a fixed June evening,
 freezes animation, and stages the artwork beside the harness. Two runs produce
 byte-identical PNGs, so a changed screenshot always means a changed app.
+
+**The harness must never inject layout.** It used to paint an entire iPad layout
+on at capture time that existed nowhere in the app, so the iPad screenshots
+submitted to Apple showed a layout no device could render — and the bug the
+screenshots were supposed to reveal was the one thing they were hiding. The
+harness may pin the clock, freeze animation, set app state and seed storage. If a
+capture looks wrong, fix the app. A release check fails on any
+`html.screenshot-ipad` layout rule.
 
 If you cannot run the generator, the freshness check can be skipped — but the
 screenshots are then stale and must not be submitted:

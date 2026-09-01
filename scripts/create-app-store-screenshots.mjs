@@ -8,8 +8,12 @@ const generatorPath = fileURLToPath(import.meta.url);
 const root = resolve(dirname(generatorPath), "..");
 const sourceHtml = resolve(root, "the-rise-app.html");
 // Chrome writes the harness and raw frames here. Snap-packaged Chromium on
-// Linux runs with a private /tmp and cannot write outside $HOME, so the working
-// directory is overridable; the finished PNGs always land back in the repo.
+// Linux runs confined: it has a private /tmp, and its home interface does not
+// cover dot-directories, so it can read neither /tmp nor a checkout under a
+// hidden path. Point RISE_SCREENSHOT_WORKDIR at a plain directory inside $HOME
+// (see README); the finished PNGs always land back in the repo.
+// A workdir Chrome cannot read fails as `overflow=missing`, because the harness
+// never loads and so never reports its layout.
 const workRoot = process.env.RISE_SCREENSHOT_WORKDIR
   ? resolve(process.env.RISE_SCREENSHOT_WORKDIR)
   : resolve(root, "app-store-screenshots");
@@ -70,6 +74,12 @@ const baseChromeFlags = [
 ];
 const magick = resolveBinary(magickCandidates, "ImageMagick", "RISE_MAGICK");
 
+// A snap-confined Chromium cold-starts far slower than a Homebrew one, and each
+// capture uses its own user-data-dir, so every launch is a cold start. The old
+// 3s DOM-dump budget was a machine-specific assumption that failed here.
+// Override with RISE_CHROME_TIMEOUT_MS.
+const chromeTimeoutMs = Number(process.env.RISE_CHROME_TIMEOUT_MS) || 60000;
+
 const shots = [
   ["01-today-command-center", "today"],
   ["02-rating-breakdown", "today-score"],
@@ -118,9 +128,10 @@ const screenshotCss = `
     overflow: hidden !important;
     background: #f8f5ed !important;
   }
+  /* Height only. The bottom padding that clears the tab bar is the app's own
+     (88px phone, 104px tablet) and must not be restated here. */
   html.screenshot-mode main {
     height: 100vh !important;
-    padding-bottom: 90px !important;
     overflow-y: auto !important;
   }
   html.screenshot-mode .footer-tabs {
@@ -129,47 +140,15 @@ const screenshotCss = `
     right: 0 !important;
     bottom: 0 !important;
   }
-  html.screenshot-ipad main {
-    padding-bottom: 104px !important;
-  }
-  html.screenshot-ipad .today-screen,
-  html.screenshot-ipad .waters-screen,
-  html.screenshot-ipad .trip-screen,
-  html.screenshot-ipad .log-screen,
-  html.screenshot-ipad .pro-layout,
-  html.screenshot-ipad .bug-layout {
-    max-width: 100% !important;
-  }
-  html.screenshot-ipad .app-shell {
-    width: 100vw !important;
-    max-width: 100vw !important;
-  }
-  html.screenshot-ipad .waters-screen .top-water-card,
-  html.screenshot-ipad .waters-screen .ranked-water-card {
-    grid-template-columns: minmax(0, 1fr) 116px !important;
-  }
-  html.screenshot-ipad .waters-screen .water-fly-preview {
-    width: 116px !important;
-    max-width: 116px !important;
-  }
-  html.screenshot-ipad .command-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-  }
-  html.screenshot-ipad .condition-cards,
-  html.screenshot-ipad .trip-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-  }
-  html.screenshot-ipad .pack-box {
-    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
-  }
-  html.screenshot-ipad .bug-stage-strip,
-  html.screenshot-ipad .stage-grid,
-  html.screenshot-ipad .bench-stage-row {
-    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
-  }
-  html.screenshot-ipad .fly-library-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-  }
+  /* There is deliberately no html.screenshot-ipad layout here.
+
+     This harness used to inject an entire iPad layout at capture time -
+     full-bleed shell, three-up command grid, four-up pack box, two-column
+     water cards - none of which existed in the app. The screenshots submitted
+     to Apple showed a layout no device could render. That layout now lives in
+     the-rise-app.html behind @media (min-width: 700px), and the harness only
+     freezes animation and pins the clock. If a capture looks wrong, the app
+     is wrong. */
 </style>`;
 
 const screenshotClock = `
@@ -261,6 +240,19 @@ const screenshotJs = `
         if (typeof renderBugs === "function") renderBugs();
         setTab("bugs");
       } else if (shot === "log") {
+        /* The app no longer ships demo catches - a fresh install has an empty
+           journal, which is the truth but a poor store listing. The Catch
+           Journal shot is therefore captured over a seeded journal written to
+           real storage and rendered by the real code path, provenance labels
+           and all. Nothing here is styling: remove the seed and this is
+           exactly what the screen looks like with three catches in it. */
+        localStorage.setItem("riseLogs", JSON.stringify([
+          { loggedAt: "2026-06-21T09:40:00", date: "Jun 21, 2026", time: "9:40 AM", waterName: "Lower Deschutes", waterId: "lower-deschutes", fly: "Elk Hair Caddis #14", fish: "Redband Trout", length: "17", count: "1", notes: "Soft inside seam below the riffle.", flow: "4,090 cfs", flowSource: "measured", temp: "54 F", tempSource: "measured", photo: "" },
+          { loggedAt: "2026-06-18T18:50:00", date: "Jun 18, 2026", time: "6:50 PM", waterName: "Hosmer Lake", waterId: "hosmer", fly: "Callibaetis #14", fish: "Redband Trout", length: "19", count: "1", notes: "Cruising the channel edge.", flow: "Stillwater", flowSource: "reference", temp: "62 F", tempSource: "reference", photo: "" },
+          { loggedAt: "2026-06-14T07:30:00", date: "Jun 14, 2026", time: "7:30 AM", waterName: "Crooked River", waterId: "crooked", fly: "Zebra Midge #18", fish: "Redband Trout", length: "14", count: "1", notes: "Ate on the first overcast push.", flow: "235 cfs", flowSource: "measured", temp: "51 F", tempSource: "measured", photo: "" }
+        ]));
+        localStorage.setItem("riseLogsSavedAt", "2026-06-21T09:40:00.000Z");
+        logCache = null;
         logFormOpen = false;
         editingLogIndex = null;
         if (typeof renderLog === "function") renderLog();
@@ -277,7 +269,7 @@ const screenshotJs = `
         if (typeof renderToday === "function") renderToday();
         setTab("today");
       }
-      if (typeof bindDynamic === "function") bindDynamic();
+      // Nothing to re-bind: handlers are delegated once from the document.
       // Chrome captures shortly after first paint, so anything that must appear
       // in the frame has to happen synchronously here rather than on a timer.
       // The app scrolls <main>, not the window: main is height:100% with
@@ -362,7 +354,7 @@ function runChromeScreenshot(device, shotId, shotKey, viewport) {
       "--timeout=5000",
       `--screenshot=${rawPath}`,
       url
-    ], { stdio: "ignore", timeout: 10000 });
+    ], { stdio: "ignore", timeout: chromeTimeoutMs });
   } catch (error) {
     if (!existsSync(rawPath)) throw error;
   }
@@ -382,7 +374,7 @@ function runSubscriptionScreenshot(plan, viewport) {
       "--timeout=5000",
       `--screenshot=${rawPath}`,
       url
-    ], { stdio: "ignore", timeout: 10000 });
+    ], { stdio: "ignore", timeout: chromeTimeoutMs });
   } catch (error) {
     if (!existsSync(rawPath)) throw error;
   }
@@ -401,7 +393,7 @@ function verifySubscriptionLayout(plan) {
       "--force-device-scale-factor=1",
       "--dump-dom",
       url
-    ], { encoding: "utf8", timeout: 3000 });
+    ], { encoding: "utf8", timeout: chromeTimeoutMs });
   } catch (error) {
     html = String(error.stdout || "");
     if (!html.includes("data-screenshot-overflow=")) throw error;
