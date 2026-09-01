@@ -1252,14 +1252,107 @@ try {
     }
 
     // And the container is told which glyph colour that screen needs.
-    const chrome = await page.evaluate(() => {
+    await page.evaluate(() => {
+      window.__chrome = [];
+      window.webkit = { messageHandlers: { riseChrome: { postMessage: (message) => window.__chrome.push(message.statusBar) } } };
+    });
+    const perScreen = [];
+    for (const tab of ["today", "waters", "trip", "bugs", "log", "pro"]) {
+      await page.evaluate((id) => activateTab(id), tab);
+      // The screen fades in from translateY(8px); measure the layout it rests
+      // in, not the one it passes through.
+      await settle();
+      perScreen.push(`${tab}:${await page.evaluate(() => statusBarStyleNow())}`);
+    }
+    assert(perScreen.join(",") === "today:light,waters:light,trip:dark,bugs:dark,log:dark,pro:dark",
+      `the status bar follows the screen underneath it (${perScreen.join(",")})`);
+    // Repeats are dropped: on a phone this fires once per scrolled frame, and
+    // every message crosses into the container.
+    const sent = await page.evaluate(() => window.__chrome);
+    assert(sent.join(",") === "light,dark",
+      `and an unchanged colour is not re-sent (${sent.join(",") || "nothing"})`);
+    await page.close();
+  }
+
+  /* The bug the simulator found and no test could: the teal is the hero, not
+     the screen. Today was registered as a light-glyph screen outright, so
+     scrolling past the hero left a white clock on cream - and that is the
+     first frame of a fresh install, because the first-run panel sits below the
+     hero and the app scrolls down to it. */
+  {
+    const page = await openApp(browser, { url: insetAppUrl, viewport: { width: 390, height: 844 } });
+    const settle = () => page.evaluate(() =>
+      Promise.all(document.getAnimations().map((animation) => animation.finished.catch(() => {}))));
+    /* The assertion is not "Today is light" - that was the bug. It is that the
+       colour the container is told matches the colour actually painted in the
+       strip the glyphs sit in, at whatever scroll position the app is in. */
+    await page.evaluate((inset) => {
+      window.__strip = () => {
+        const seen = [];
+        for (let y = 1; y < inset; y += 6) {
+          let element = document.elementFromPoint(195, y);
+          while (element) {
+            const colour = getComputedStyle(element).backgroundColor;
+            if (colour && colour !== "rgba(0, 0, 0, 0)" && !/, 0\)$/.test(colour)) { seen.push(colour); break; }
+            element = element.parentElement;
+          }
+        }
+        // Dark enough to need white glyphs? Rec. 601 luma over every sample.
+        const luma = seen.map((colour) => {
+          const [r, g, b] = colour.match(/\d+(\.\d+)?/g).map(Number);
+          return (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+        });
+        return { colours: [...new Set(seen)], painted: luma.every((value) => value < 0.5) ? "dark" : "light" };
+      };
+    }, SAFE_AREA_TOP);
+
+    // A "dark" strip needs light glyphs and vice versa, so the two names are
+    // deliberately opposite: painted dark -> statusBar light.
+    const agrees = async (label, prepare) => {
+      await page.evaluate(prepare);
+      await settle();
+      const seen = await page.evaluate(() => {
+        const strip = window.__strip();
+        return { ...strip, style: statusBarStyleNow(), scrollTop: Math.round(document.querySelector("main").scrollTop) };
+      });
+      const wanted = seen.painted === "dark" ? "light" : "dark";
+      assert(seen.style === wanted,
+        `${label}: the strip is painted ${seen.colours.join(" | ")} and the glyphs are ${seen.style} (${seen.scrollTop}px down)`);
+      return seen;
+    };
+
+    await agrees("at the top of Today", () => { activateTab("today"); });
+    await agrees("scrolled past the hero", () => {
+      const scroller = document.querySelector("main");
+      scroller.scrollTop = document.querySelector("#today .today-hero").getBoundingClientRect().bottom + scroller.scrollTop;
+    });
+    await agrees("scrolled back to the top", () => { document.querySelector("main").scrollTop = 0; });
+    await agrees("at the bottom of Today", () => {
+      const scroller = document.querySelector("main");
+      scroller.scrollTop = scroller.scrollHeight;
+    });
+    // The launch the simulator showed: a fresh install scrolls itself down to
+    // the first-run panel before anyone has touched the screen.
+    await agrees("on the first-run panel a fresh install opens at", () => {
+      document.querySelector("main").scrollTop = 0;
+      scrollAppTo("#today .first-run");
+    });
+
+    // The scroll listener, not just the function: a finger scroll has to reach
+    // the container without anything else being called.
+    const live = await page.evaluate(() => new Promise((done) => {
       const sent = [];
       window.webkit = { messageHandlers: { riseChrome: { postMessage: (message) => sent.push(message.statusBar) } } };
-      ["today", "waters", "trip", "bugs", "log", "pro"].forEach((tab) => activateTab(tab));
-      return sent;
-    });
-    assert(chrome.join(",") === "light,light,dark,dark,dark,dark",
-      `the status bar follows the screen underneath it (${chrome.join(",")})`);
+      const scroller = document.querySelector("main");
+      scroller.scrollTop = 0;
+      requestAnimationFrame(() => {
+        scroller.scrollTop = scroller.scrollHeight;
+        // Coalesced to one check per frame, so wait two.
+        requestAnimationFrame(() => requestAnimationFrame(() => done(sent)));
+      });
+    }));
+    assert(live.includes("dark"),
+      `a scroll alone tells the container (${live.join(",") || "nothing"})`);
     await page.close();
   }
 

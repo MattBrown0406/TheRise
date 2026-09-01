@@ -3913,9 +3913,25 @@
     .icon-btn {
       min-width: 44px;
     }
+
+    /* env(safe-area-inset-top) cannot be read from script, and the status bar
+       glyphs sit inside exactly that strip. An element whose height *is* the
+       inset is the only way to ask the browser how tall it is, so the page can
+       tell whether the teal block still covers the clock. Zero-width, hidden,
+       never hit-tested - it exists to be measured. */
+    .safe-area-probe {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 0;
+      height: env(safe-area-inset-top);
+      visibility: hidden;
+      pointer-events: none;
+    }
   </style>
 </head>
 <body>
+  <span class="safe-area-probe" aria-hidden="true"></span>
   <div class="app-shell">
     <main>
       <section id="today" class="view active"></section>
@@ -8839,24 +8855,97 @@
       }
       all(".view").forEach((view) => view.classList.toggle("active", view.id === tab));
       all(".tab").forEach((button) => button.setAttribute("aria-selected", button.dataset.tab === tab ? "true" : "false"));
-      syncStatusBarChrome(tab);
+      // Scroll first: the glyph colour is read off what is under the strip,
+      // and this is the line that puts the hero back under it.
       scrollAppToTop();
+      syncStatusBarChrome();
     }
 
-    /* Today and Waters paint teal (#155a6b) all the way up under the status
-       bar; the other four screens are paper up there. The container cannot
-       know which is on top, so the page tells it which glyph colour to use.
-       Outside the iOS app there is no bridge and nothing to tell. */
-    const lightStatusBarScreens = new Set(["today", "waters"]);
+    /* The status bar glyphs are drawn by the container, over whatever the page
+       paints in the top inset. The container cannot see the page, so the page
+       has to tell it: white glyphs over the teal (#155a6b) blocks, dark ones
+       over paper. Outside the iOS app there is no bridge and nothing to tell.
 
-    function syncStatusBarChrome(tab) {
+       This was first written as a list of teal *screens*, and only running the
+       app showed why that is wrong: the teal is the hero, not the screen.
+       Scroll Today past the hero and a white clock sits on cream - which is
+       the first frame of a fresh install, because the setup panel is below the
+       hero and the app scrolls down to it.
+
+       Nor is the hero's own box the answer. The Today body is pulled up over
+       the hero's bottom padding, so the hero's geometric bottom is 60-odd
+       pixels below where the teal stops being visible. Asking the layout what
+       is *painted* in the strip is the only description that cannot drift:
+       hit-test it, walk up to the first opaque background, and read it. That
+       also means a new screen, or a redesign of an old one, needs no list
+       kept in sync with it. */
+    let lastStatusBarStyle = null;
+
+    function safeAreaInsetTop() {
+      const probe = document.querySelector(".safe-area-probe");
+      return probe ? probe.getBoundingClientRect().height : 0;
+    }
+
+    // Perceived brightness (Rec. 601) of whatever is painted at this height,
+    // 0 black to 1 white. 1 when nothing is: paper is the safer assumption,
+    // because dark glyphs on a dark bar are ugly and light glyphs on a light
+    // bar are unreadable.
+    function paintedBrightnessAt(y) {
+      let element = document.elementFromPoint(Math.round(window.innerWidth / 2), y);
+      while (element) {
+        const parts = (getComputedStyle(element).backgroundColor || "").match(/[\d.]+/g);
+        // Anything under half-opaque lets the layer beneath it decide.
+        if (parts && parts.length >= 3 && (parts.length < 4 || Number(parts[3]) >= 0.5)) {
+          return (0.299 * Number(parts[0]) + 0.587 * Number(parts[1]) + 0.114 * Number(parts[2])) / 255;
+        }
+        element = element.parentElement;
+      }
+      return 1;
+    }
+
+    function statusBarStyleNow() {
+      // A device with no notch reports a zero inset while its glyphs still
+      // occupy the top ~20px, so the strip is never treated as empty.
+      const strip = Math.max(safeAreaInsetTop(), 20);
+      /* Sampled at the middle and the bottom of the strip, never at the very
+         top: every screen fades in from translateY(8px), and a sample taken up
+         there flickers the glyphs dark for the length of the animation on the
+         way into Today. Both samples must be dark before white is asked for. */
+      return [strip / 2, strip - 2].every((y) => paintedBrightnessAt(y) < 0.5) ? "light" : "dark";
+    }
+
+    function syncStatusBarChrome() {
       const handler = window.webkit?.messageHandlers?.riseChrome;
       if (!handler) return;
+      const style = statusBarStyleNow();
+      if (style === lastStatusBarStyle) return;
+      lastStatusBarStyle = style;
       try {
-        handler.postMessage({ statusBar: lightStatusBarScreens.has(tab) ? "light" : "dark" });
+        handler.postMessage({ statusBar: style });
       } catch {
         // Chrome styling is cosmetic; a missing bridge must not break the tab.
       }
+    }
+
+    /* Scrolling is the event that changes what is under the clock, and on a
+       phone it fires far faster than the status bar can repaint. Coalesced to
+       one check per frame, passive so it never delays the scroll itself. */
+    function startStatusBarChromeWatcher() {
+      const scroller = document.querySelector("main");
+      if (!scroller) return;
+      let queued = false;
+      const check = () => {
+        if (queued) return;
+        queued = true;
+        requestAnimationFrame(() => {
+          queued = false;
+          syncStatusBarChrome();
+        });
+      };
+      scroller.addEventListener("scroll", check, { passive: true });
+      // Rotation and Split View change the inset and the hero's height with it.
+      window.addEventListener("resize", check);
+      window.addEventListener("orientationchange", check);
     }
 
     /* The app scrolls <main>, not the document: `main { overflow-y: auto }`
@@ -8887,6 +8976,10 @@
       // it left the target 1,371px down an 844px screen.
       const delta = target.getBoundingClientRect().top - scroller.getBoundingClientRect().top;
       scroller.scrollTop = Math.max(0, scroller.scrollTop + delta - 12);
+      // This is a programmatic scroll that moves the teal hero off the strip
+      // - the first-run panel on Today is exactly that - so the glyphs have to
+      // follow it here as well as on a finger scroll.
+      syncStatusBarChrome();
     }
 
     function readPhotoFile(file) {
@@ -9336,8 +9429,11 @@
     userLocation = readUserLocation();
     hydrateWaterCache();
     renderEverything();
-    // Today is the screen the app opens on, and it is teal to the top edge.
-    syncStatusBarChrome(activeScreenId());
+    // Today is the screen the app opens on, and its hero is teal to the top
+    // edge - but only until something scrolls it away, so the watcher goes on
+    // before the first-run scroll below rather than after it.
+    startStatusBarChromeWatcher();
+    syncStatusBarChrome();
     /* On a phone the Today hero is taller than the screen, so a panel below it
        is not on the screen anyone is looking at. An install with none of the
        three steps done therefore opens on the setup panel instead of on a hero

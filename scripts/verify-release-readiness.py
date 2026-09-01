@@ -125,7 +125,7 @@ def main() -> int:
     project = PROJECT.read_text(encoding="utf-8")
     build_numbers = re.findall(r"CURRENT_PROJECT_VERSION = ([^;]+);", project)
     versions = re.findall(r"MARKETING_VERSION = ([^;]+);", project)
-    require(bool(build_numbers) and set(build_numbers) == {"14"}, f"expected build 14, found {build_numbers}")
+    require(bool(build_numbers) and set(build_numbers) == {"15"}, f"expected build 15, found {build_numbers}")
     require(bool(versions) and set(versions) == {"1.0"}, f"expected version 1.0, found {versions}")
 
     review_doc = REVIEW_DOC.read_text(encoding="utf-8")
@@ -150,7 +150,7 @@ def main() -> int:
     require(len(notes.strip()) <= 4000, "App Review notes exceed the 4,000-character limit")
     require(PRIVACY_URL == privacy_metadata, "Privacy Policy metadata URL is incorrect")
     for token in (
-        "Version 1.0 build 14",
+        "Version 1.0 build 15",
         "The Rise Pro Monthly",
         "The Rise Pro Annual",
         "therise_pro_monthly",
@@ -690,6 +690,26 @@ def main() -> int:
         "calc(88px + env(safe-area-inset-bottom))" in web,
         "the scroller does not clear a tab bar that now carries the home-indicator inset",
     )
+    # The glyph colour is read off what is painted in the inset strip, not off
+    # a list of screens: the simulator showed a white clock on cream as soon as
+    # Today scrolled past its hero, and a list cannot survive a redesign. The
+    # DOM suite compares the reported colour against the painted one at five
+    # scroll positions; these guard the mechanism it measures.
+    for token in (
+        "safe-area-probe",
+        "height: env(safe-area-inset-top)",
+        "elementFromPoint",
+        "startStatusBarChromeWatcher",
+    ):
+        require(token in web, f"the status bar no longer follows what is painted under it: {token}")
+    require(
+        re.search(r'scroller\.addEventListener\("scroll", \w+, \{ passive: true \}\)', web) is not None,
+        "nothing watches the scroller, so the glyphs only change when the tab does",
+    )
+    require(
+        not re.search(r"lightStatusBarScreens|darkTopBlocks", web),
+        "the glyph colour is chosen from a list of screens again instead of being measured",
+    )
 
     # --- Touch targets --------------------------------------------------------
     # 44x44pt is Apple's minimum, and this app is used standing in a river with
@@ -814,7 +834,7 @@ def main() -> int:
     print("PASS: subscription disclosure, legal links, and localized-price bridge")
     if not args.skip_screenshots:
         print("PASS: regenerated Pro and IAP review screenshots")
-    print("PASS: version 1.0 build 14 and RevenueCat product identifiers")
+    print("PASS: version 1.0 build 15 and RevenueCat product identifiers")
     print("PASS: App Store metadata/IAP submission checklist")
     print("PASS: catch-log durability, export, and native container storage")
     print("PASS: subscription claims match shipped functionality")
