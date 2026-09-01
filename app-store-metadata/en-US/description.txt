@@ -10,9 +10,9 @@ Features include:
 • Artificial fly recommendations matched to bugs and conditions
 • Pack My Fly Box planning for dries, nymphs, streamers, and terrestrials
 • Saved waters and recently viewed waters
-• Catch log with fish, length, fly, water, notes, and photos
+• Catch log with fish, length, fly, water, notes, and photos, exportable as CSV
 • Offline-ready saved water data for low-service fishing days
-• Optional Pro tools for alerts, deeper condition reads, and advanced planning
+• Optional Pro tools: recorded flow history, the full rating breakdown, staged fishing plans, and the hatch ID assistant
 
 The Rise is designed to make local fly-fishing decisions easier, especially for anglers who are still learning how weather, water clarity, hatches, and fly selection fit together.
 

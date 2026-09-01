@@ -9,6 +9,7 @@ import json
 import plistlib
 import re
 import struct
+import subprocess
 import sys
 import urllib.request
 from pathlib import Path
@@ -29,6 +30,8 @@ SUBSCRIPTION_METADATA = ROOT / "app-store-metadata/subscriptions.json"
 METADATA_SYNC_SCRIPT = ROOT / "scripts/sync-app-store-metadata.rb"
 SCREENSHOT_SCRIPT = ROOT / "scripts/create-app-store-screenshots.mjs"
 SCREENSHOT_MANIFEST = ROOT / "app-store-screenshots/subscription-review-manifest.json"
+APP_LOGIC_TESTS = ROOT / "scripts/test-app-logic.mjs"
+STORE_SWIFT = ROOT / "ios/TheRise/TheRise/RiseStore.swift"
 
 PRIVACY_URL = "https://mattbrown0406.github.io/TheRise/privacy.html"
 EULA_URL = "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/"
@@ -58,6 +61,11 @@ def sha256(path: Path) -> str:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--online", action="store_true", help="also verify public legal URLs")
+    parser.add_argument(
+        "--skip-screenshots",
+        action="store_true",
+        help="skip App Store screenshot freshness checks (the generator only runs on macOS)",
+    )
     args = parser.parse_args()
 
     web_bytes = WEB.read_bytes()
@@ -198,12 +206,87 @@ def main() -> int:
         require(png_dimensions(path) == expected, f"unexpected screenshot dimensions: {path}")
     require(SCREENSHOT_MANIFEST.is_file(), "subscription screenshot freshness manifest is missing")
     manifest = json.loads(SCREENSHOT_MANIFEST.read_text(encoding="utf-8"))
-    require(manifest.get("sourceSha256") == sha256(WEB), "subscription screenshots are stale relative to the app HTML")
-    require(manifest.get("generatorSha256") == sha256(SCREENSHOT_SCRIPT), "subscription screenshots are stale relative to the generator")
-    output_hashes = manifest.get("outputs", {})
-    for path in expected_screenshots:
-        relative = path.relative_to(ROOT).as_posix()
-        require(output_hashes.get(relative) == sha256(path), f"stale or modified subscription screenshot: {relative}")
+    if args.skip_screenshots:
+        print("SKIP: screenshot freshness (rerun scripts/create-app-store-screenshots.mjs on macOS)")
+    else:
+        require(manifest.get("sourceSha256") == sha256(WEB), "subscription screenshots are stale relative to the app HTML")
+        require(manifest.get("generatorSha256") == sha256(SCREENSHOT_SCRIPT), "subscription screenshots are stale relative to the generator")
+        output_hashes = manifest.get("outputs", {})
+        for path in expected_screenshots:
+            relative = path.relative_to(ROOT).as_posix()
+            require(output_hashes.get(relative) == sha256(path), f"stale or modified subscription screenshot: {relative}")
+
+    # --- Catch-log durability -------------------------------------------------
+    # The journal is the only irreplaceable data in the app. It must not be
+    # capped, must not carry photo payloads in localStorage, and must be
+    # mirrored outside WebKit's evictable storage.
+    require(
+        not re.search(r"(nextLogs|logs)\s*=\s*[^;]*\.slice\(0, 8\)", web),
+        "the catch log is still truncated to eight entries",
+    )
+    require('postStoreMessage({ action: "saveLog"' in web, "the catch log is not mirrored to the app container")
+    require('action: "savePhoto"' in web, "catch photos are not written to the app container")
+    require("window.riseLogRestore" in web, "the catch log cannot be restored after a storage eviction")
+    require("loggedAt: now.toISOString()" in web, "catch-log entries do not record a full timestamp")
+    require("function exportLog()" in web, "the catch log cannot be exported")
+
+    store_swift = STORE_SWIFT.read_text(encoding="utf-8")
+    for token in ("applicationSupportDirectory", "isValidPhotoIdentifier", "WKURLSchemeHandler", "func saveLog", "func loadLog"):
+        require(token in store_swift, f"native catch-log storage is missing: {token}")
+    require("riseStore" in swift, "the native store bridge is not registered")
+    require("RisePhotoSchemeHandler.scheme" in swift, "the catch-photo scheme handler is not registered")
+    require("RiseStore.swift" in project, "RiseStore.swift is not in the Xcode target")
+
+    # --- Subscription honesty -------------------------------------------------
+    # Everything the paywall and the store listing claim has to exist in the app.
+    require("proAccessActive" in web, "Pro access is not referenced")
+    gate_count = len(re.findall(r"if \(!proAccessActive\)", web))
+    require(gate_count >= 4, f"Pro unlocks nothing: found {gate_count} gated surfaces, expected at least 4")
+    require(
+        not re.search(r"stocking alerts|hatch alerts", web, re.IGNORECASE),
+        "the app still advertises alerts it cannot send",
+    )
+    require(
+        not re.search(r"\balerts?\b", description, re.IGNORECASE),
+        "the App Store description still advertises alerts",
+    )
+    for product in products:
+        require(
+            not re.search(r"\balerts?\b", product["description"], re.IGNORECASE),
+            f"subscription description still advertises alerts: {product.get('productId')}",
+        )
+
+    # --- Data honesty ---------------------------------------------------------
+    require("demo cache" not in web, "fabricated cache timestamps are still shown as live data")
+    require("function valueProvenance(" in web, "displayed readings do not report their origin")
+    require("function waterDataNotice(" in web, "waters without a live feed are not labelled")
+
+    # --- Recommendation inputs ------------------------------------------------
+    require("function parseSeasonMonths(" in web, "hatch seasons are still decorative text")
+    require("hatchSeasonFit(" in web, "the score ignores what is in season")
+    require("flowScoreAdjustment(water)" in web, "the score still ignores flow")
+    require("function currentHour(" in web, "the score still ignores the time of day")
+
+    # --- Single source of truth for coordinates -------------------------------
+    live_sources_block = web[web.index("const liveSources = {"):web.index("const waterCoordinates = {")]
+    require(
+        "lat:" not in live_sources_block and "lon:" not in live_sources_block,
+        "liveSources holds a second copy of the coordinates it must read from waterCoordinates",
+    )
+
+    # --- Behaviour suite ------------------------------------------------------
+    require(APP_LOGIC_TESTS.is_file(), "app behaviour tests are missing")
+    result = subprocess.run(
+        ["node", str(APP_LOGIC_TESTS)],
+        capture_output=True,
+        text=True,
+        cwd=ROOT,
+    )
+    if result.returncode != 0:
+        sys.stdout.write(result.stdout)
+        sys.stderr.write(result.stderr)
+    require(result.returncode == 0, "app behaviour tests failed")
+    logic_summary = result.stdout.strip().splitlines()[-1] if result.stdout.strip() else "no output"
 
     if args.online:
         check_online(PRIVACY_URL)
@@ -213,9 +296,15 @@ def main() -> int:
     print("PASS: protected-resource usage descriptions")
     print("PASS: bounded catch-photo compression and storage failure handling")
     print("PASS: subscription disclosure, legal links, and localized-price bridge")
-    print("PASS: regenerated Pro and IAP review screenshots")
+    if not args.skip_screenshots:
+        print("PASS: regenerated Pro and IAP review screenshots")
     print("PASS: version 1.0 build 8 and RevenueCat product identifiers")
     print("PASS: App Store metadata/IAP submission checklist")
+    print("PASS: catch-log durability, export, and native container storage")
+    print("PASS: subscription claims match shipped functionality")
+    print("PASS: data provenance labelling and single-source coordinates")
+    print("PASS: season, time-of-day, and flow inputs wired into the score")
+    print(f"PASS: app behaviour tests ({logic_summary})")
     if args.online:
         print("PASS: public Privacy Policy and Apple Standard EULA URLs")
     return 0

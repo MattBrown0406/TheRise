@@ -15,7 +15,7 @@
       "displayName": "The Rise Pro Monthly",
       "locale": "en-US",
       "duration": "ONE_MONTH",
-      "description": "Monthly Pro alerts, insights, and planning.",
+      "description": "Flow history, rating breakdown, fly plans.",
       "reviewScreenshot": "app-store-screenshots/metadata/iphone-monthly-subscription-6.99.png",
       "reviewNote": "Open the app and tap Pro. Select Monthly in the Monthly / Annual toggle. The screen displays The Rise Pro Monthly, one-month duration, localized StoreKit price, renewal and cancellation terms, Restore Purchases, Privacy Policy, and Terms of Use before the Subscribe Monthly button."
     },
@@ -26,7 +26,7 @@
       "displayName": "The Rise Pro Annual",
       "locale": "en-US",
       "duration": "ONE_YEAR",
-      "description": "Annual Pro alerts, insights, and planning.",
+      "description": "Flow history, rating breakdown, fly plans.",
       "reviewScreenshot": "app-store-screenshots/metadata/iphone-annual-subscription-49.99.png",
       "reviewNote": "Open the app and tap Pro. Select Annual in the Monthly / Annual toggle. The screen displays The Rise Pro Annual, one-year duration, localized StoreKit price, renewal and cancellation terms, Restore Purchases, Privacy Policy, and Terms of Use before the Subscribe Annual button."
     }

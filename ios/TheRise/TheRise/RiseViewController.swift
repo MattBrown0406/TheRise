@@ -3,11 +3,15 @@ import WebKit
 import RevenueCat
 
 final class RiseViewController: UIViewController, WKNavigationDelegate, WKScriptMessageHandler {
+    private let photoSchemeHandler = RisePhotoSchemeHandler()
+
     private lazy var webView: WKWebView = {
         let configuration = WKWebViewConfiguration()
         configuration.defaultWebpagePreferences.allowsContentJavaScript = true
         configuration.userContentController.add(self, name: "riseSubscription")
         configuration.userContentController.add(self, name: "riseData")
+        configuration.userContentController.add(self, name: "riseStore")
+        configuration.setURLSchemeHandler(photoSchemeHandler, forURLScheme: RisePhotoSchemeHandler.scheme)
 
         let webView = WKWebView(frame: .zero, configuration: configuration)
         webView.navigationDelegate = self
@@ -21,6 +25,7 @@ final class RiseViewController: UIViewController, WKNavigationDelegate, WKScript
     deinit {
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "riseSubscription")
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "riseData")
+        webView.configuration.userContentController.removeScriptMessageHandler(forName: "riseStore")
     }
 
     override func viewDidLoad() {
@@ -50,6 +55,11 @@ final class RiseViewController: UIViewController, WKNavigationDelegate, WKScript
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
         if message.name == "riseData" {
             handleDataFetchMessage(message)
+            return
+        }
+
+        if message.name == "riseStore" {
+            handleStoreMessage(message)
             return
         }
 
@@ -183,6 +193,59 @@ final class RiseViewController: UIViewController, WKNavigationDelegate, WKScript
         }
     }
 
+    private func handleStoreMessage(_ message: WKScriptMessage) {
+        guard let payload = message.body as? [String: Any],
+              let action = payload["action"] as? String else {
+            return
+        }
+
+        switch action {
+        case "savePhoto":
+            guard let identifier = payload["id"] as? String, let body = payload["body"] as? String else { return }
+            RiseStore.savePhoto(identifier: identifier, dataURL: body)
+        case "deletePhoto":
+            guard let identifier = payload["id"] as? String else { return }
+            RiseStore.deletePhoto(identifier: identifier)
+        case "saveLog":
+            guard let body = payload["body"] as? String else { return }
+            RiseStore.saveLog(body)
+        case "exportLog":
+            guard let body = payload["body"] as? String else { return }
+            presentExport(csv: body)
+        default:
+            break
+        }
+    }
+
+    private func presentExport(csv: String) {
+        guard let url = RiseStore.exportURL(csv: csv) else { return }
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            let controller = UIActivityViewController(activityItems: [url], applicationActivities: nil)
+            controller.popoverPresentationController?.sourceView = self.view
+            controller.popoverPresentationController?.sourceRect = CGRect(
+                x: self.view.bounds.midX,
+                y: self.view.bounds.midY,
+                width: 0,
+                height: 0
+            )
+            controller.popoverPresentationController?.permittedArrowDirections = []
+            self.present(controller, animated: true)
+        }
+    }
+
+    /// Hands the container's copy of the journal back to the web layer, which
+    /// restores it if localStorage has been cleared or has fallen behind.
+    private func restoreLogIfAvailable() {
+        guard let json = RiseStore.loadLog() else { return }
+        let payload: [String: Any] = ["body": json]
+        guard let data = try? JSONSerialization.data(withJSONObject: payload),
+              let encoded = String(data: data, encoding: .utf8) else {
+            return
+        }
+        webView.evaluateJavaScript("window.riseLogRestore && window.riseLogRestore(\(encoded));")
+    }
+
     private func handleDataFetchMessage(_ message: WKScriptMessage) {
         guard let payload = message.body as? [String: Any],
               let requestId = payload["id"] as? String,
@@ -228,6 +291,10 @@ final class RiseViewController: UIViewController, WKNavigationDelegate, WKScript
         DispatchQueue.main.async { [weak self] in
             self?.webView.evaluateJavaScript("window.riseNativeFetchResult && window.riseNativeFetchResult(\(json));")
         }
+    }
+
+    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        restoreLogIfAvailable()
     }
 
     func webView(

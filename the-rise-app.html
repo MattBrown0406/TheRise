@@ -2295,6 +2295,88 @@
       gap: 8px;
     }
 
+    /* Data provenance markers: a reading always carries its own origin. */
+    .prov {
+      display: block;
+      margin-top: 2px;
+      font-size: 10px;
+      font-style: normal;
+      font-weight: 800;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+    }
+
+    .prov.measured {
+      color: #0b6685;
+    }
+
+    .prov.reference {
+      color: #8a7a5c;
+    }
+
+    .data-provenance-notice {
+      margin-bottom: 12px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(138, 122, 92, .38);
+      background: rgba(214, 196, 156, .22);
+      color: #5c4f38;
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 1.45;
+      overflow-wrap: anywhere;
+    }
+
+    .log-top-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .season-note {
+      margin-top: 6px;
+      font-size: 11px;
+      font-weight: 800;
+      color: #6b6152;
+    }
+
+    .pro-lock {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 14px;
+      border-radius: 14px;
+      border: 1px dashed rgba(139, 106, 43, .5);
+      background: rgba(214, 196, 156, .18);
+    }
+
+    .pro-lock strong {
+      font-size: 13px;
+      color: #6d5326;
+    }
+
+    .pro-lock span {
+      font-size: 12px;
+      color: #6b6152;
+      line-height: 1.45;
+    }
+
+    .flow-history {
+      display: flex;
+      align-items: flex-end;
+      gap: 3px;
+      height: 46px;
+      margin-top: 10px;
+    }
+
+    .flow-history i {
+      flex: 1 1 auto;
+      min-width: 2px;
+      border-radius: 2px 2px 0 0;
+      background: linear-gradient(180deg, #0b6685, rgba(11, 102, 133, .45));
+    }
+
     .source-links a {
       color: #0b6685;
       font-weight: 800;
@@ -3539,14 +3621,14 @@
 
   <script>
     const waterDefaults = {
-      River: { flow: "Live gauge", temp: "52 F", air: "66 F", wind: "7 mph W", source: "USGS + NOAA style demo cache 7:42 AM" },
-      Lake: { flow: "Stillwater", temp: "58 F", air: "67 F", wind: "8 mph W", source: "NOAA + ODFW style demo cache 7:38 AM" }
+      River: { flow: "Live gauge", temp: "52 F", air: "66 F", wind: "7 mph W", source: "Seasonal reference values" },
+      Lake: { flow: "Stillwater", temp: "58 F", air: "67 F", wind: "8 mph W", source: "Seasonal reference values" }
     };
 
     const waterSeed = [
-      ["lower-deschutes", "Lower Deschutes", "River", "Pelton Reregulating Dam to Maupin", 86, "4,160 cfs", "53 F", ["Caddis", "PMD", "Yellow Sally"], ["Elk Hair Caddis #14", "PMD Sparkle Dun #16", "Yellow Sally Nymph #14"], "Evening caddis is the cleanest surface window. Nymph riffles before shade hits the canyon walls.", "Lower Deschutes corridor has its own trout and steelhead rule table, boat-pass/access constraints, and seasonal closures by reach.", "Not stocked", "78 F", "12 mph W", "Lower Deschutes gauge + canyon forecast, demo cache 7:42 AM"],
-      ["middle-deschutes", "Middle Deschutes", "River", "Bend to Lake Billy Chinook", 71, "1,020 cfs", "56 F", ["Caddis", "PMD", "Stonefly"], ["X-Caddis #16", "PMD Cripple #16", "Pat's Rubber Legs #8"], "Pocket water and canyon access reward short drifts and fast line control.", "Middle Deschutes has reach-specific wild trout rules, access constraints, and closures that differ from the Lower river.", "Not stocked", "72 F", "9 mph NW", "Bend canyon forecast + Deschutes gauge, demo cache 7:40 AM"],
-      ["upper-deschutes", "Upper Deschutes", "River", "Wickiup Reservoir to Bend", 64, "680 cfs", "57 F", ["Caddis", "Damsel", "Callibaetis"], ["Damsel Nymph #12", "Elk Hair Caddis #16", "Callibaetis Emerger #16"], "Meadow water changes quickly with irrigation flows. Search undercut banks and soft bends.", "Upper Deschutes rules vary around Wickiup, Crane Prairie, Benham Falls, and Bend-area reaches; treat this as a separate ruleset.", "Not stocked", "66 F", "11 mph SW", "Upper basin forecast + Wickiup release, demo cache 7:37 AM"],
+      ["lower-deschutes", "Lower Deschutes", "River", "Pelton Reregulating Dam to Maupin", 86, "4,160 cfs", "53 F", ["Caddis", "PMD", "Yellow Sally"], ["Elk Hair Caddis #14", "PMD Sparkle Dun #16", "Yellow Sally Nymph #14"], "Evening caddis is the cleanest surface window. Nymph riffles before shade hits the canyon walls.", "Lower Deschutes corridor has its own trout and steelhead rule table, boat-pass/access constraints, and seasonal closures by reach.", "Not stocked", "78 F", "12 mph W", "Seasonal reference values"],
+      ["middle-deschutes", "Middle Deschutes", "River", "Bend to Lake Billy Chinook", 71, "1,020 cfs", "56 F", ["Caddis", "PMD", "Stonefly"], ["X-Caddis #16", "PMD Cripple #16", "Pat's Rubber Legs #8"], "Pocket water and canyon access reward short drifts and fast line control.", "Middle Deschutes has reach-specific wild trout rules, access constraints, and closures that differ from the Lower river.", "Not stocked", "72 F", "9 mph NW", "Seasonal reference values"],
+      ["upper-deschutes", "Upper Deschutes", "River", "Wickiup Reservoir to Bend", 64, "680 cfs", "57 F", ["Caddis", "Damsel", "Callibaetis"], ["Damsel Nymph #12", "Elk Hair Caddis #16", "Callibaetis Emerger #16"], "Meadow water changes quickly with irrigation flows. Search undercut banks and soft bends.", "Upper Deschutes rules vary around Wickiup, Crane Prairie, Benham Falls, and Bend-area reaches; treat this as a separate ruleset.", "Not stocked", "66 F", "11 mph SW", "Seasonal reference values"],
       ["metolius", "Metolius", "River", "Camp Sherman", 73, "1,470 cfs", "47 F", ["Green Drake", "BWO", "Caddis"], ["Green Drake Cripple #10", "BWO Emerger #18", "CDC Caddis #16"], "Watch soft edges and back seams. Cold, clear water rewards long leaders and small profile changes.", "Fly fishing only in key sections. Wild trout and bull trout protections apply.", "Not stocked"],
       ["crooked", "Crooked River", "River", "Below Bowman Dam", 79, "235 cfs", "55 F", ["BWO", "Midge", "PMD"], ["Zebra Midge #20", "BWO Comparadun #18", "Split Case PMD #16"], "Good flow for pocket water. Midges early, then small mayflies if clouds hold.", "Wild trout fishery below Bowman Dam. Barbless and special regulations may apply by section.", "Not stocked"],
       ["fall-river", "Fall River", "River", "Headwaters to hatchery", 68, "119 cfs", "49 F", ["PMD", "BWO", "Midge"], ["PMD Parachute #18", "RS2 #20", "Zebra Midge #20"], "Spring-creek clarity. Sight-fish slowly and change fly size before changing pattern.", "Fly fishing only in designated reaches. Respect hatchery boundaries and posted closures.", "Stocked by ODFW in season"],
@@ -3630,23 +3712,28 @@
       };
     });
 
+    // Live data sources. Coordinates deliberately live in waterCoordinates only, so the
+    // forecast, the distance-to-angler figure, and the map pin can never drift apart.
+    // A gauge sits wherever USGS installed it, which is usually not where anyone fishes;
+    // the forecast must come from the fishing coordinates, not the gauge.
     const liveSources = {
-      "lower-deschutes": { usgs: "14103000", lat: 45.61, lon: -120.91, reportKey: "Deschutes River" },
-      "middle-deschutes": { usgs: "14092500", lat: 44.56, lon: -121.28, reportKey: "Middle Deschutes" },
-      "upper-deschutes": { usgs: "14070500", lat: 43.92, lon: -121.43, reportKey: "Upper Deschutes" },
-      metolius: { usgs: "14091500", lat: 44.57, lon: -121.64, reportKey: "Metolius River" },
-      crooked: { usgs: "14080500", lat: 44.11, lon: -120.79, reportKey: "Crooked River" },
-      "fall-river": { usgs: "14057500", lat: 43.80, lon: -121.47, reportKey: "Fall River" },
-      "crane-prairie": { lat: 43.76, lon: -121.78, reportKey: "Crane Prairie Reservoir" },
-      "east-lake": { lat: 43.73, lon: -121.20, reportKey: "East Lake" },
-      paulina: { lat: 43.72, lon: -121.27, reportKey: "Paulina Lake" },
-      hosmer: { lat: 43.96, lon: -121.79, reportKey: "Hosmer Lake" },
-      davis: { lat: 43.58, lon: -121.82, reportKey: "Davis Lake" },
-      "lake-billy-chinook": { lat: 44.58, lon: -121.31, reportKey: "Lake Billy Chinook" },
-      "prineville-reservoir": { lat: 44.13, lon: -120.73, reportKey: "Prineville Reservoir" },
-      "ochoco-reservoir": { lat: 44.30, lon: -120.72, reportKey: "Ochoco Reservoir" }
+      "lower-deschutes": { usgs: "14103000", reportKey: "Deschutes River" },
+      "middle-deschutes": { usgs: "14092500", reportKey: "Middle Deschutes" },
+      "upper-deschutes": { usgs: "14070500", reportKey: "Upper Deschutes" },
+      metolius: { usgs: "14091500", reportKey: "Metolius River" },
+      crooked: { usgs: "14080500", reportKey: "Crooked River" },
+      "fall-river": { usgs: "14057500", reportKey: "Fall River" },
+      "crane-prairie": { reportKey: "Crane Prairie Reservoir" },
+      "east-lake": { reportKey: "East Lake" },
+      paulina: { reportKey: "Paulina Lake" },
+      hosmer: { reportKey: "Hosmer Lake" },
+      davis: { reportKey: "Davis Lake" },
+      "lake-billy-chinook": { reportKey: "Lake Billy Chinook" },
+      "prineville-reservoir": { reportKey: "Prineville Reservoir" },
+      "ochoco-reservoir": { reportKey: "Ochoco Reservoir" }
     };
 
+    // Single source of truth for every water's fishing location.
     const waterCoordinates = {
       "lower-deschutes": { lat: 45.21, lon: -121.05 },
       "middle-deschutes": { lat: 44.43, lon: -121.29 },
@@ -3763,6 +3850,8 @@
     const FLY_FEEDBACK_KEY = "riseFlyFeedback.v1";
     const BEGINNER_MODE_KEY = "riseBeginnerMode.v1";
     const SKILL_MODE_KEY = "riseSkillMode.v1";
+    const FLOW_HISTORY_KEY = "riseFlowHistory.v1";
+    const FLOW_HISTORY_MAX_SAMPLES = 60;
     const skillModes = ["Beginner", "Intermediate", "Expert"];
     const hatchTraitOptions = {
       size: [["", "Any size"], ["tiny", "Tiny #18-24"], ["small", "Small #14-18"], ["large", "Large #4-12"]],
@@ -4886,15 +4975,71 @@
       });
     }
 
+    // Flow text arrives as "4,160 cfs" from both the seed data and USGS. The generic
+    // numberFromText stops at the comma and would read that as 4.
+    function flowFromText(text) {
+      const match = String(text || "").replace(/,/g, "").match(/-?\d+(\.\d+)?/);
+      return match ? Number(match[0]) : null;
+    }
+
+    // Current flow measured against the reference flow recorded for this water.
+    // Deliberately relative: it says "this river is running high for itself", which
+    // the seed data supports, rather than inventing absolute fishable cfs bands.
+    function flowRatioFor(water) {
+      if (water.type === "Lake") return null;
+      const report = liveReports.byWater[water.id];
+      const live = flowFromText(report?.usgs?.flow);
+      const reference = flowFromText(water.flow);
+      if (live === null || reference === null || reference <= 0) return null;
+      return live / reference;
+    }
+
+    function flowScoreAdjustment(water) {
+      const ratio = flowRatioFor(water);
+      if (ratio === null) return 0;
+      if (ratio >= .75 && ratio <= 1.35) return .3;
+      if (ratio >= .5 && ratio < .75) return 0;
+      if (ratio > 1.35 && ratio <= 2) return -.35;
+      if (ratio < .5) return -.5;
+      return -.9;
+    }
+
+    function flowContextLabel(water) {
+      const ratio = flowRatioFor(water);
+      if (ratio === null) return "";
+      const percent = Math.round(ratio * 100);
+      if (ratio >= .75 && ratio <= 1.35) return `Flow near reference (${percent}%)`;
+      if (ratio > 2) return `Flow well above reference (${percent}%) - expect off-colour, hard wading`;
+      if (ratio > 1.35) return `Flow high for this water (${percent}%)`;
+      if (ratio < .5) return `Flow well below reference (${percent}%) - low, clear, spooky`;
+      return `Flow below reference (${percent}%)`;
+    }
+
+    // Fraction of this water's listed hatches that are actually in season now.
+    function seasonFitFor(water) {
+      const hatches = water.hatch || [];
+      if (!hatches.length) return .5;
+      const month = currentMonth();
+      const total = hatches.reduce((sum, hatch) => sum + hatchSeasonFit(hatch, month), 0);
+      return total / hatches.length;
+    }
+
     function fishScore(water) {
       let score = water.score / 10;
       const report = liveReports.byWater[water.id];
       const intel = localIntelForWater(water);
       score += intel.scoreBoost || 0;
+
+      // Season and time of day apply whether or not live data loaded. They come from
+      // the clock, which is always available, and they matter more than any gauge.
+      score += (seasonFitFor(water) - .5) * 1.4;
+      score += (timeOfDayFit(water) - .5) * .8;
+
       if (report?.status === "ready") {
         const waterTemp = numberFromText(report.usgs?.waterTemp || water.temp);
         const wind = numberFromText(report.nws?.wind || water.wind);
         const forecast = `${report.nws?.forecast || ""}`.toLowerCase();
+        score += flowScoreAdjustment(water);
         if (water.type === "Lake") {
           if (waterTemp !== null && waterTemp >= 52 && waterTemp <= 62) score += .35;
           if (waterTemp !== null && (waterTemp < 45 || waterTemp > 68)) score -= .45;
@@ -4916,20 +5061,26 @@
       const report = liveReports.byWater[water.id];
       const intel = localIntelForWater(water);
       if (report?.refreshing) return "Updating local cache";
-      if (report?.status === "ready" && intel.sources?.length) return "Cached live + local report score";
-      if (report?.status === "ready" && report.fromCache) return "Local cached live score";
-      if (report?.status === "ready") return "Live-adjusted prototype score";
+      if (report?.status === "ready" && intel.sources?.length) return "Live data + local report score";
+      if (report?.status === "ready" && report.fromCache) return "Cached live score";
+      if (report?.status === "ready") return "Live-adjusted score";
       if (report?.status === "loading") return "Checking live inputs";
-      return "Demo baseline score";
+      if (!hasLiveSource(water)) return "Seasonal reference score - no live feed";
+      return "Seasonal baseline score - not yet updated";
     }
 
+    // Nobody measures clarity for these waters and the app has no feed for it.
+    // It used to return invented inch readings with an invented cause ("rain
+    // upstream"). It now reports only what can be inferred from flow, and says so.
     function clarityFor(water) {
-      if (water.type === "Lake") return { inches: '36"', label: "clear", trend: "wind lanes" };
-      if (water.id === "lower-deschutes") return { inches: '18"', label: "slightly stained", trend: "rain upstream" };
-      if (water.id === "middle-deschutes") return { inches: '24"', label: "green-clear", trend: "canyon shade" };
-      if (water.id === "upper-deschutes") return { inches: '30"', label: "tea clear", trend: "meadow stain" };
-      if (water.id === "crooked") return { inches: '28"', label: "clear-green", trend: "dam release" };
-      return { inches: '24"', label: "fishable stain", trend: "stable" };
+      const ratio = flowRatioFor(water);
+      if (ratio === null) {
+        return { inches: "Not measured", label: "unmeasured", trend: "no clarity feed - check a local report", measured: false };
+      }
+      const percent = `${Math.round(ratio * 100)}% of reference flow`;
+      if (ratio > 1.6) return { inches: "Not measured", label: "likely off-colour", trend: `inferred from ${percent}`, measured: false };
+      if (ratio < .6) return { inches: "Not measured", label: "likely low and clear", trend: `inferred from ${percent}`, measured: false };
+      return { inches: "Not measured", label: "unmeasured", trend: `no clarity feed - flow at ${percent}`, measured: false };
     }
 
     const hatchSignalMap = [
@@ -5021,6 +5172,122 @@
       return true;
     }
 
+    /* ---------------------------------------------------------------------
+       Seasonality.
+
+       bugs[].season used to be decorative text. It is now parsed into real
+       months and gates what the app is willing to recommend, so a Green Drake
+       cannot be suggested in January.
+       --------------------------------------------------------------------- */
+
+    const MONTH_ABBREVIATIONS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+
+    function monthIndexFromAbbreviation(token) {
+      const key = String(token || "").trim().toLowerCase().slice(0, 3);
+      const index = MONTH_ABBREVIATIONS.indexOf(key);
+      return index === -1 ? null : index + 1;
+    }
+
+    // "Mar-May, Oct-Nov" -> [3,4,5,10,11]. "Year-round" -> every month.
+    // Returns null when the text cannot be parsed, which callers treat as "no opinion".
+    function parseSeasonMonths(season) {
+      const text = String(season || "").trim().toLowerCase();
+      if (!text) return null;
+      if (text.includes("year")) return [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+      const months = new Set();
+      text.split(",").forEach((rangeText) => {
+        const parts = rangeText.split("-").map((part) => monthIndexFromAbbreviation(part));
+        if (parts.length === 1 && parts[0]) {
+          months.add(parts[0]);
+          return;
+        }
+        const [start, end] = parts;
+        if (!start || !end) return;
+        let cursor = start;
+        for (let step = 0; step < 12; step += 1) {
+          months.add(cursor);
+          if (cursor === end) break;
+          cursor = cursor === 12 ? 1 : cursor + 1;
+        }
+      });
+      return months.size ? [...months].sort((a, b) => a - b) : null;
+    }
+
+    // Hatch labels on waters ("PMD", "Yellow Sally") are matched back to the bug
+    // entries that carry the season text.
+    const hatchSeasonIndex = (() => {
+      const index = {};
+      const register = (label, months) => {
+        const key = String(label || "").toLowerCase().replace(/[^a-z]/g, "");
+        if (!key || !months) return;
+        index[key] = months;
+      };
+      bugs.forEach((bug) => {
+        const months = parseSeasonMonths(bug.season);
+        if (!months) return;
+        register(bug.id, months);
+        register(bug.name, months);
+        // "Tan Caddis" also answers to "Caddis"; "Terrestrials & Hoppers" to "Terrestrial".
+        String(bug.name).split(/[\s&]+/).forEach((word) => {
+          if (word.length > 3) register(word, months);
+        });
+      });
+      register("terrestrial", parseSeasonMonths("Jul-Sep"));
+      register("dragonfly", parseSeasonMonths("Jun-Aug"));
+      register("streamer", parseSeasonMonths("Year-round"));
+      return index;
+    })();
+
+    function hatchSeasonMonths(hatch) {
+      const key = String(hatch || "").toLowerCase().replace(/[^a-z]/g, "");
+      if (!key) return null;
+      if (hatchSeasonIndex[key]) return hatchSeasonIndex[key];
+      const partial = Object.keys(hatchSeasonIndex).find((candidate) => key.includes(candidate));
+      return partial ? hatchSeasonIndex[partial] : null;
+    }
+
+    function currentMonth() {
+      return new Date().getMonth() + 1;
+    }
+
+    function currentHour() {
+      return new Date().getHours();
+    }
+
+    // 1 = in season, .5 = the month either side of the window, 0 = out of season.
+    // Unknown hatches score 1 so an unmapped name is never silently suppressed.
+    function hatchSeasonFit(hatch, month = currentMonth()) {
+      const months = hatchSeasonMonths(hatch);
+      if (!months) return 1;
+      if (months.includes(month)) return 1;
+      const previous = month === 1 ? 12 : month - 1;
+      const next = month === 12 ? 1 : month + 1;
+      return months.includes(previous) || months.includes(next) ? .5 : 0;
+    }
+
+    function hatchInSeason(hatch, month = currentMonth()) {
+      return hatchSeasonFit(hatch, month) > 0;
+    }
+
+    function seasonLabelFor(hatch) {
+      const months = hatchSeasonMonths(hatch);
+      if (!months) return "";
+      if (months.length === 12) return "Year-round";
+      const names = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      const ranges = [];
+      let start = months[0];
+      let previous = months[0];
+      months.slice(1).forEach((month) => {
+        if (month !== previous + 1) {
+          ranges.push([start, previous]);
+          start = month;
+        }
+        previous = month;
+      });
+      ranges.push([start, previous]);
+      return ranges.map(([from, to]) => (from === to ? names[from - 1] : `${names[from - 1]}-${names[to - 1]}`)).join(", ");
+    }
+
     function flyAllowedForWater(fly, water) {
       const text = String(fly || "").toLowerCase();
       if (water.type !== "Lake" && (text.includes("callibaetis") || text.includes("damsel"))) return false;
@@ -5029,8 +5296,22 @@
       return true;
     }
 
-    function waterAppropriateHatches(hatches, water) {
-      return uniqueItems(hatches.map((hatch) => normalizeHatchForWater(hatch, water)).filter((hatch) => hatchAllowedForWater(hatch, water)));
+    function waterAppropriateHatches(hatches, water, options = {}) {
+      const { month = currentMonth() } = options;
+      const allowed = uniqueItems(
+        hatches.map((hatch) => normalizeHatchForWater(hatch, water)).filter((hatch) => hatchAllowedForWater(hatch, water))
+      );
+      const inSeason = allowed.filter((hatch) => hatchInSeason(hatch, month));
+      if (inSeason.length) {
+        // Full-season hatches sort ahead of shoulder-season ones.
+        return inSeason.sort((a, b) => hatchSeasonFit(b, month) - hatchSeasonFit(a, month));
+      }
+      // Nothing on this water is in season. Fall back to the patterns that always
+      // work rather than showing an empty plan or an out-of-season hatch.
+      const yearRound = ["Midge", "Leech", "Baitfish"]
+        .map((hatch) => normalizeHatchForWater(hatch, water))
+        .filter((hatch) => hatchAllowedForWater(hatch, water));
+      return uniqueItems(yearRound);
     }
 
     function waterAppropriateFlies(flies, water) {
@@ -5073,20 +5354,63 @@
           if (forecast.includes("cloud") || forecast.includes("rain")) hatches.unshift("BWO");
         }
       }
+      // Month gating happens inside waterAppropriateHatches, so the conditional
+      // boosts above can never resurrect an out-of-season insect.
       return waterAppropriateHatches(hatches, water).slice(0, 4);
     }
 
-    function primeWindowFor(water) {
+    // Returns the window as [startHour, endHour] on a 24-hour clock so callers can
+    // compare it against the actual time instead of printing a fixed string.
+    function primeWindowHours(water) {
       const hatchText = predictedHatches(water).join(" ").toLowerCase();
       const report = liveReports.byWater[water.id];
       const wind = numberFromText(report?.nws?.wind || water.wind);
+      const month = currentMonth();
+      // Cold months push everything toward the warmest part of the day; midsummer
+      // pushes it to the edges, away from the afternoon heat.
+      const coldSeason = month <= 3 || month >= 11;
+      const highSummer = month >= 7 && month <= 8;
+
       if (water.type === "Lake") {
-        if (wind !== null && wind > 14) return "Prime window: first calm hour";
-        return hatchText.includes("damsel") ? "Prime window: 7-10 AM" : "Prime window: 8-11 AM";
+        if (wind !== null && wind > 14) return null;
+        if (coldSeason) return [11, 15];
+        if (hatchText.includes("damsel")) return [7, 10];
+        return [8, 11];
       }
-      if (hatchText.includes("caddis") && hatchText.includes("pmd")) return "Prime window: 8-11 AM";
-      if (hatchText.includes("bwo")) return "Prime window: 10 AM-1 PM";
-      return "Prime window: 6-9 PM";
+      if (coldSeason) return [11, 15];
+      if (highSummer) return [6, 10];
+      if (hatchText.includes("caddis") && hatchText.includes("pmd")) return [8, 11];
+      if (hatchText.includes("bwo")) return [10, 13];
+      return [18, 21];
+    }
+
+    function formatHour(hour) {
+      const normalized = ((hour % 24) + 24) % 24;
+      const suffix = normalized >= 12 ? "PM" : "AM";
+      const display = normalized % 12 === 0 ? 12 : normalized % 12;
+      return `${display} ${suffix}`;
+    }
+
+    function primeWindowFor(water) {
+      const window = primeWindowHours(water);
+      if (!window) return "Prime window: first calm hour";
+      const [start, end] = window;
+      const hour = currentHour();
+      const label = `${formatHour(start)}-${formatHour(end)}`;
+      if (hour >= start && hour < end) return `Prime window: now, until ${formatHour(end)}`;
+      if (hour < start) return `Prime window: ${label}`;
+      return `Prime window: ${label} - passed for today`;
+    }
+
+    // 1 inside the window, tapering to 0 four hours out. Used by the score.
+    function timeOfDayFit(water) {
+      const window = primeWindowHours(water);
+      if (!window) return .5;
+      const [start, end] = window;
+      const hour = currentHour();
+      if (hour >= start && hour < end) return 1;
+      const distance = hour < start ? start - hour : hour - end;
+      return Math.max(0, 1 - distance / 4);
     }
 
     function fishabilitySummary(water) {
@@ -5101,7 +5425,10 @@
       const clarity = clarityFor(water);
       const hatch = predictedHatches(water)[0] || "hatch";
       if (water.type === "Lake") return `${water.wind} wind + ${hatch.toLowerCase()} activity near weed edges`;
-      return `${clarity.label} water + ${hatch.toLowerCase()} hatch building`;
+      const flowNote = flowContextLabel(water);
+      return flowNote
+        ? `${flowNote.toLowerCase()} + ${hatch.toLowerCase()} hatch building`
+        : `${clarity.label} water + ${hatch.toLowerCase()} hatch building`;
     }
 
     function rankedWatersForCurrentMode(list = visibleWaters()) {
@@ -5118,10 +5445,24 @@
     }
 
     function liveMetaFor(water) {
-      if (liveSources[water.id]) return liveSources[water.id];
-      const fallback = water.type === "Lake" ? { lat: 44.05, lon: -121.32 } : { lat: 44.06, lon: -121.31 };
-      const coordinates = waterCoordinates[water.id] || fallback;
-      return { ...coordinates, reportKey: water.name };
+      const source = liveSources[water.id] || {};
+      const coordinates = waterCoordinates[water.id] || null;
+      return {
+        ...source,
+        lat: coordinates?.lat ?? null,
+        lon: coordinates?.lon ?? null,
+        reportKey: source.reportKey || water.name
+      };
+    }
+
+    // True only when this water has a real upstream feed behind it. Everything else
+    // shows seasonal reference values and must be labelled as such.
+    function hasLiveSource(water) {
+      return Boolean(liveSources[water.id]);
+    }
+
+    function hasGauge(water) {
+      return Boolean(liveSources[water.id]?.usgs);
     }
 
     function emptyWaterCache() {
@@ -5156,7 +5497,86 @@
       });
     }
 
+    /* ---------------------------------------------------------------------
+       Flow history.
+
+       The Pro screen advertised "flow history" and nothing recorded it. Every
+       successful gauge read is now kept (one sample per water per day, numbers
+       only) so the trend is real data this device actually observed.
+       --------------------------------------------------------------------- */
+
+    function readFlowHistory() {
+      const stored = readStoredObject(FLOW_HISTORY_KEY);
+      return stored && typeof stored === "object" ? stored : {};
+    }
+
+    function recordFlowSample(waterId, report) {
+      const flow = flowFromText(report?.usgs?.flow);
+      if (flow === null) return;
+      const history = readFlowHistory();
+      const samples = Array.isArray(history[waterId]) ? history[waterId] : [];
+      const day = pacificDateKey(new Date());
+      const existing = samples.findIndex((sample) => sample.d === day);
+      const sample = { d: day, f: flow };
+      if (existing === -1) {
+        samples.push(sample);
+      } else {
+        samples[existing] = sample;
+      }
+      history[waterId] = samples.slice(-FLOW_HISTORY_MAX_SAMPLES);
+      writeStoredObject(FLOW_HISTORY_KEY, history);
+    }
+
+    function flowHistoryFor(waterId) {
+      const samples = readFlowHistory()[waterId];
+      return Array.isArray(samples) ? samples : [];
+    }
+
+    function flowHistoryPanel(water) {
+      if (!hasGauge(water)) return "";
+      if (!proAccessActive) {
+        return `
+          <div class="panel">
+            <h2>Flow history</h2>
+            <div class="pro-lock">
+              <strong>The Rise Pro</strong>
+              <span>Flow history records this water's gauge every time you open the app and charts the trend, so you can see whether today's number is high or low for the conditions you have actually fished.</span>
+              <button class="ghost-btn" data-tab-jump="pro">See Pro</button>
+            </div>
+          </div>
+        `;
+      }
+      const samples = flowHistoryFor(water.id);
+      if (samples.length < 2) {
+        return `
+          <div class="panel">
+            <h2>Flow history</h2>
+            <p class="subtle">${samples.length ? "One reading recorded so far." : "No readings recorded yet."} Open this water on a few separate days and the trend builds here. Nothing is uploaded; the history stays on this device.</p>
+          </div>
+        `;
+      }
+      const values = samples.map((sample) => sample.f);
+      const max = Math.max(...values);
+      const min = Math.min(...values);
+      const span = max - min || 1;
+      const bars = samples.map((sample) => {
+        const height = Math.round(12 + ((sample.f - min) / span) * 88);
+        return `<i style="height:${height}%" title="${sample.d}: ${sample.f.toLocaleString()} cfs"></i>`;
+      }).join("");
+      const first = values[0];
+      const latest = values[values.length - 1];
+      const direction = latest > first * 1.05 ? "rising" : latest < first * .95 ? "dropping" : "steady";
+      return `
+        <div class="panel">
+          <h2>Flow history</h2>
+          <p class="subtle">${samples.length} readings recorded on this device - ${direction}. Low ${min.toLocaleString()} cfs, high ${max.toLocaleString()} cfs, latest ${latest.toLocaleString()} cfs.</p>
+          <div class="flow-history">${bars}</div>
+        </div>
+      `;
+    }
+
     function cacheReport(waterId, report, mode = "manual") {
+      recordFlowSample(waterId, report);
       const cache = liveReports.cache || readWaterCache();
       const cachedReport = {
         ...report,
@@ -5478,6 +5898,9 @@
     }
 
     async function fetchNwsReport(meta) {
+      if (typeof meta.lat !== "number" || typeof meta.lon !== "number") {
+        throw new Error("No mapped coordinates for this water");
+      }
       const pointUrl = `https://api.weather.gov/points/${meta.lat.toFixed(4)},${meta.lon.toFixed(4)}`;
       const pointJson = await fetchJsonWithTimeout(pointUrl, "NWS points");
       const forecastUrl = pointJson?.properties?.forecastHourly || pointJson?.properties?.forecast;
@@ -5502,10 +5925,7 @@
         : { status: "loading", meta };
       liveReports.lastRequested = water.id;
       if (render) {
-        renderToday();
-        renderWaters();
-        renderTrip();
-        bindDynamic();
+        renderScreens("today", "waters", "trip");
       }
       try {
         const [usgsResult, nwsResult] = await Promise.allSettled([
@@ -5530,20 +5950,14 @@
           : { status: "error", meta, error: error.message };
       }
       if (render) {
-        renderToday();
-        renderWaters();
-        renderTrip();
-        bindDynamic();
+        renderScreens("today", "waters", "trip");
       }
     }
 
     async function refreshAllWaterReports(mode = "manual") {
       if (liveReports.bulkStatus) return;
       liveReports.bulkStatus = mode;
-      renderToday();
-      renderWaters();
-      renderTrip();
-      bindDynamic();
+      renderScreens("today", "waters", "trip");
       await scrubLocalResources(mode);
       const results = [];
       for (let index = 0; index < waters.length; index += BULK_SYNC_CONCURRENCY) {
@@ -5562,15 +5976,61 @@
       return match ? Number(match[0]) : null;
     }
 
+    /* ---------------------------------------------------------------------
+       Data provenance.
+
+       Only 14 of the waters have any live feed and only 6 have a USGS gauge.
+       Every displayed reading now reports where it came from, so a seasonal
+       reference number can never be mistaken for a current measurement.
+       --------------------------------------------------------------------- */
+
+    // "measured" - fetched from USGS or NWS this session or from the local cache.
+    // "reference" - the seasonal value recorded in the app's own data.
+    // "unavailable" - no source exists and no honest value can be shown.
+    function valueProvenance(water, key) {
+      const report = liveReports.byWater[water.id];
+      const ready = report?.status === "ready";
+      if (key === "flow") {
+        if (water.type === "Lake") return "reference";
+        if (!hasGauge(water)) return "unavailable";
+        return ready && report.usgs?.flow ? "measured" : "reference";
+      }
+      if (key === "temp") {
+        if (!hasGauge(water)) return "reference";
+        return ready && report.usgs?.waterTemp ? "measured" : "reference";
+      }
+      if (key === "air" || key === "wind") {
+        if (!hasLiveSource(water)) return "reference";
+        return ready && report.nws?.[key] ? "measured" : "reference";
+      }
+      return "reference";
+    }
+
     function liveDisplayValue(water, key) {
       const report = liveReports.byWater[water.id];
-      if (key === "flow" && water.type !== "Lake" && !liveMetaFor(water).usgs) return "No live gauge";
+      if (key === "flow" && water.type !== "Lake" && !hasGauge(water)) return "No live gauge";
       if (report?.status !== "ready") return water[key];
       if (key === "flow") return report.usgs?.flow || water.flow;
       if (key === "temp") return report.usgs?.waterTemp || water.temp;
       if (key === "air") return report.nws?.air || water.air;
       if (key === "wind") return report.nws?.wind || water.wind;
       return water[key];
+    }
+
+    // Short suffix rendered next to a reading so the origin travels with the number.
+    function provenanceTag(water, key) {
+      const provenance = valueProvenance(water, key);
+      if (provenance === "measured") return `<em class="prov measured">measured</em>`;
+      if (provenance === "unavailable") return "";
+      return `<em class="prov reference">reference</em>`;
+    }
+
+    function waterDataNotice(water) {
+      if (hasGauge(water)) return "";
+      if (hasLiveSource(water)) {
+        return "Forecast is live for this water. Flow and water temperature are seasonal reference values - no gauge is mapped here.";
+      }
+      return "No live gauge or forecast feed is mapped to this water. Every reading below is a seasonal reference value, not a current measurement. Check conditions before you drive.";
     }
 
     function applyFlyFeedback(flies) {
@@ -5682,16 +6142,61 @@
       const windText = water.type === "Lake"
         ? wind !== null && wind >= 4 && wind <= 11 ? "Good chop without blowing out lanes" : "Wind is a bigger variable"
         : wind !== null && wind > 18 ? "Wind may hurt presentation" : "Wind is not a major limiter";
+      const month = currentMonth();
+      const inSeason = (water.hatch || []).filter((hatch) => hatchSeasonFit(hatch, month) === 1);
+      const seasonText = inSeason.length
+        ? `${inSeason.length} of ${water.hatch.length} listed hatches are in season now`
+        : "None of this water's listed hatches are in season this month";
+      const window = primeWindowHours(water);
+      const timeText = window
+        ? `Best window ${formatHour(window[0])}-${formatHour(window[1])}; it is ${formatHour(currentHour())} now`
+        : "Wind is deciding the window today";
       return [
+        ["Season", seasonLabelFor(inSeason[0] || water.hatch?.[0]) || "Year-round", seasonText],
+        ["Time of day", `${Math.round(timeOfDayFit(water) * 100)}% of window`, timeText],
         ["Water temp", liveDisplayValue(water, "temp"), tempText],
-        [water.type === "Lake" ? "Wind lanes" : "Flow", water.type === "Lake" ? liveDisplayValue(water, "wind") : liveDisplayValue(water, "flow"), water.type === "Lake" ? windText : "Flow is blended with temperature and clarity"],
-        ["Clarity", `${clarity.inches} ${clarity.label}`, clarity.trend],
+        [
+          water.type === "Lake" ? "Wind lanes" : "Flow",
+          water.type === "Lake" ? liveDisplayValue(water, "wind") : liveDisplayValue(water, "flow"),
+          water.type === "Lake" ? windText : (flowContextLabel(water) || (hasGauge(water) ? "No gauge reading fetched yet" : "No gauge mapped to this water"))
+        ],
+        ["Clarity", clarity.label, clarity.trend],
         ["Hatches", hatches || "No hatch signal", `${confidenceForWater(water)} from weather, cache, and reports`],
         ["Local intelligence", intel.sources?.length ? intel.sources.slice(0, 2).join(" + ") : "No local source hit yet", intel.cues?.length ? intel.cues.slice(0, 2).join(", ") : forecast || "Using baseline profile"]
       ];
     }
 
+    /* ---------------------------------------------------------------------
+       Pro gating.
+
+       proAccessActive previously only relabelled the Subscribe button. These are
+       the features the subscription actually buys, and the paywall now lists
+       only these. Nothing that used to be free before launch is charged for
+       twice: rankings, live readings, hatches, flies, bugs, knots and the catch
+       log all stay free.
+       --------------------------------------------------------------------- */
+
+    const PRO_FEATURES = [
+      ["Flow history", "Every gauge reading this device takes is recorded and charted, so you can see whether today is high or low against days you have actually fished."],
+      ["Rating breakdown", "The full numeric explanation behind a water's score: season fit, time of day, flow against reference, temperature, wind and forecast."],
+      ["Fish this plan", "A staged plan for the water: what to fish, where, and in what order for the current window."],
+      ["Hatch ID assistant", "Filter by size, colour, water type and behaviour to narrow what you are looking at, then jump straight to matching fly patterns."]
+    ];
+
+    function proLock(title, description) {
+      return `
+        <div class="pro-lock">
+          <strong>${title}</strong>
+          <span>${description}</span>
+          <button class="ghost-btn" data-tab-jump="pro">See Pro</button>
+        </div>
+      `;
+    }
+
     function scoreBreakdownPanel(water) {
+      if (!proAccessActive) {
+        return `<div class="score-breakdown-panel">${proLock("Rating breakdown - Pro", "See exactly how season, time of day, flow, temperature, wind and forecast combine into this water's rating.")}</div>`;
+      }
       return `
         <div class="score-breakdown-panel">
           <div class="score-breakdown-head">
@@ -5716,7 +6221,7 @@
       const intel = localIntelForWater(water);
       const reasons = [
         `${primeWindowFor(water).replace("Prime window: ", "")} lines up with ${hatches[0] || "expected feeding"}.`,
-        `${temp} water and ${clarity.label.toLowerCase()} clarity support a ${fishScore(water)}/10 rating.`,
+        `${temp} water${clarity.measured ? ` and ${clarity.label.toLowerCase()} clarity` : ""} supports a ${fishScore(water)}/10 rating${flowContextLabel(water) ? `. ${flowContextLabel(water)}` : ""}.`,
         `${confidenceForWater(water)}: ${intel.sources?.length ? `local signal from ${intel.sources.slice(0, 2).join(" + ")}` : "weather, baseline hatch timing, and saved water profile"}.`
       ];
       if (skillMode !== "Beginner") reasons.push(`${waterLogicLabel(water)}: ${waterLogicDescription(water)}`);
@@ -5766,6 +6271,9 @@
     }
 
     function fishPlanPanel(water, compact = false) {
+      if (!proAccessActive) {
+        return `<div class="fish-plan ${compact ? "compact" : ""}">${proLock("Fish this plan - Pro", "A staged plan for this water in the current window: what to fish, where to start, and what to change next.")}</div>`;
+      }
       return `
         <div class="fish-plan ${compact ? "compact" : ""}">
           <div class="panel-head">
@@ -5873,6 +6381,9 @@
     }
 
     function hatchIdAssistantPanel() {
+      if (!proAccessActive) {
+        return `<div class="hatch-assistant">${proLock("Hatch ID assistant - Pro", "Narrow what you are looking at by size, colour, water type and behaviour, then jump straight to the matching fly patterns.")}</div>`;
+      }
       const hasFilters = Object.values(hatchIdTraits).some(Boolean);
       const results = hatchIdResults();
       return `
@@ -6099,13 +6610,15 @@
       const flies = liveRecommendedFlies(water);
       const hatches = predictedHatches(water);
       const liveSource = liveReports.byWater[water.id]?.status === "ready" ? "USGS/NWS + local report cache" : water.source;
+      const notice = waterDataNotice(water);
       return `
         <div class="accordion-detail">
+          ${notice ? `<div class="data-provenance-notice">${notice}</div>` : ""}
           <div class="compact-detail-grid">
-            <div class="metric"><span>Flow</span><strong>${liveDisplayValue(water, "flow")}</strong></div>
-            <div class="metric"><span>Water</span><strong>${liveDisplayValue(water, "temp")}</strong></div>
-            <div class="metric"><span>Air</span><strong>${liveDisplayValue(water, "air")}</strong></div>
-            <div class="metric"><span>Wind</span><strong>${liveDisplayValue(water, "wind")}</strong></div>
+            <div class="metric"><span>Flow</span><strong>${liveDisplayValue(water, "flow")}</strong>${provenanceTag(water, "flow")}</div>
+            <div class="metric"><span>Water</span><strong>${liveDisplayValue(water, "temp")}</strong>${provenanceTag(water, "temp")}</div>
+            <div class="metric"><span>Air</span><strong>${liveDisplayValue(water, "air")}</strong>${provenanceTag(water, "air")}</div>
+            <div class="metric"><span>Wind</span><strong>${liveDisplayValue(water, "wind")}</strong>${provenanceTag(water, "wind")}</div>
             <div class="metric"><span>Distance</span><strong>${distanceLabel(water) || "Use location"}</strong></div>
             <div class="metric"><span>Confidence</span><strong>${confidenceForWater(water)}</strong></div>
           </div>
@@ -6114,6 +6627,7 @@
             ${personalMemoryCard(water, true)}
           </div>
           ${fishPlanPanel(water, true)}
+          ${flowHistoryPanel(water)}
           <div class="compact-note"><b>Read:</b> ${water.read}</div>
           <div class="compact-lines">
             <div class="line-row"><span>Regulations</span><b>${water.regs}</b></div>
@@ -6338,9 +6852,9 @@
                 <small>steady</small>
               </div>
               <div class="condition-card">
-                <strong>${clarity.inches}</strong>
+                <strong>${clarity.measured ? clarity.inches : clarity.label}</strong>
                 <span>Clarity</span>
-                <small>▼ ${clarity.trend}</small>
+                <small>${clarity.trend}</small>
               </div>
             </div>
 
@@ -7178,21 +7692,184 @@
       `;
     }
 
-    function getLogs() {
+    /* ---------------------------------------------------------------------
+       Catch log storage.
+
+       Previously: every entry, photo included, was a base64 data URL inside a
+       single localStorage key on a file:// origin, and the save path capped the
+       journal at eight entries and silently dropped the ninth.
+
+       Now: photos are written to the app container by the native layer and the
+       entry keeps only an identifier, so the JSON stays small; the log is
+       uncapped; and the whole log is mirrored to a file in Application Support
+       so a localStorage eviction cannot take the journal with it.
+       --------------------------------------------------------------------- */
+
+    const LOG_STORAGE_KEY = "riseLogs";
+    let logCache = null;
+    let logRestoreNotice = "";
+
+    function hasNativeStoreBridge() {
+      return Boolean(window.webkit?.messageHandlers?.riseStore);
+    }
+
+    function postStoreMessage(payload) {
+      if (!hasNativeStoreBridge()) return;
       try {
-        const saved = localStorage.getItem("riseLogs");
-        return saved ? JSON.parse(saved) : sampleLogs;
-      } catch (error) {
-        return sampleLogs;
+        window.webkit.messageHandlers.riseStore.postMessage(payload);
+      } catch {
+        // The native store is a durability mirror; localStorage still holds the log.
       }
     }
 
-    function setLogs(logs) {
+    function normalizeLogEntry(entry) {
+      if (!entry || typeof entry !== "object") return null;
+      const normalized = { ...entry };
+      // Entries written before dates carried a year are kept and marked, rather
+      // than discarded or silently attributed to the current year.
+      if (!normalized.loggedAt) {
+        normalized.loggedAt = "";
+        normalized.dateApproximate = true;
+      }
+      return normalized;
+    }
+
+    function readLogsFromStorage() {
       try {
-        localStorage.setItem("riseLogs", JSON.stringify(logs));
-        return true;
+        const saved = localStorage.getItem(LOG_STORAGE_KEY);
+        if (saved === null) return null;
+        const parsed = JSON.parse(saved);
+        return Array.isArray(parsed) ? parsed.map(normalizeLogEntry).filter(Boolean) : null;
       } catch (error) {
-        return false;
+        return null;
+      }
+    }
+
+    function getLogs() {
+      if (logCache) return logCache;
+      const stored = readLogsFromStorage();
+      logCache = stored === null ? sampleLogs.map(normalizeLogEntry) : stored;
+      return logCache;
+    }
+
+    function hasSavedLogs() {
+      return localStorage.getItem(LOG_STORAGE_KEY) !== null;
+    }
+
+    // Returns false only when the log could not be persisted anywhere.
+    function setLogs(logs) {
+      logCache = logs;
+      let localOk = false;
+      try {
+        localStorage.setItem(LOG_STORAGE_KEY, JSON.stringify(logs));
+        localOk = true;
+      } catch (error) {
+        localOk = false;
+      }
+      // Mirror to the app container. This is what survives a localStorage purge.
+      postStoreMessage({ action: "saveLog", body: JSON.stringify(logs) });
+      return localOk || hasNativeStoreBridge();
+    }
+
+    // Called by the native layer at startup with whatever the container holds.
+    window.riseLogRestore = function(payload) {
+      try {
+        const parsed = JSON.parse(payload?.body || "[]");
+        if (!Array.isArray(parsed) || !parsed.length) return;
+        const current = readLogsFromStorage();
+        if (current && current.length >= parsed.length) return;
+        // localStorage was cleared or is behind the container copy. Restore it.
+        logCache = parsed.map(normalizeLogEntry).filter(Boolean);
+        try {
+          localStorage.setItem(LOG_STORAGE_KEY, JSON.stringify(logCache));
+        } catch {
+          // In-memory restore still gives the user their journal for this session.
+        }
+        logRestoreNotice = `Restored ${logCache.length} saved ${logCache.length === 1 ? "catch" : "catches"} from this device's backup.`;
+        renderLog();
+        bindDynamic();
+      } catch {
+        // A malformed backup must never take down startup.
+      }
+    };
+
+    function photoSourceFor(entry) {
+      if (entry?.photoId && hasNativeStoreBridge()) return `risephoto://photo/${entry.photoId}`;
+      return entry?.photo || "";
+    }
+
+    function newPhotoId() {
+      return `catch-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    }
+
+    // Writes the photo into the app container and returns the id to store on the
+    // entry. Falls back to the inline data URL when running outside the app.
+    function storePhoto(dataUrl) {
+      if (!dataUrl) return { photoId: "", photo: "" };
+      if (!hasNativeStoreBridge()) return { photoId: "", photo: dataUrl };
+      const photoId = newPhotoId();
+      postStoreMessage({ action: "savePhoto", id: photoId, body: dataUrl });
+      return { photoId, photo: "" };
+    }
+
+    function deleteStoredPhoto(entry) {
+      if (entry?.photoId) postStoreMessage({ action: "deletePhoto", id: entry.photoId });
+    }
+
+    function formatLogDate(entry) {
+      if (!entry?.loggedAt) return `${entry?.date || ""}${entry?.dateApproximate ? " (year unknown)" : ""}`;
+      const parsed = new Date(entry.loggedAt);
+      if (Number.isNaN(parsed.getTime())) return entry.date || "";
+      return parsed.toLocaleDateString([], { year: "numeric", month: "short", day: "numeric" });
+    }
+
+    function logSeasonYears() {
+      const years = new Set();
+      getLogs().forEach((entry) => {
+        if (!entry.loggedAt) return;
+        const parsed = new Date(entry.loggedAt);
+        if (!Number.isNaN(parsed.getTime())) years.add(parsed.getFullYear());
+      });
+      return [...years].sort();
+    }
+
+    function logCsv() {
+      const columns = ["Date", "Time", "Water", "Fly", "Species", "Length", "Count", "Flow", "Water temp", "Notes"];
+      const rows = getLogs().map((entry) => [
+        formatLogDate(entry),
+        entry.time || "",
+        entry.waterName || "",
+        entry.fly || "",
+        entry.fish || "",
+        entry.length || "",
+        entry.count || "",
+        entry.flow || "",
+        entry.temp || "",
+        entry.notes || ""
+      ]);
+      const escape = (value) => `"${String(value).replace(/"/g, '""')}"`;
+      return [columns, ...rows].map((row) => row.map(escape).join(",")).join("\r\n");
+    }
+
+    function exportLog() {
+      const csv = logCsv();
+      if (hasNativeStoreBridge()) {
+        postStoreMessage({ action: "exportLog", body: csv });
+        return "Export sheet opened.";
+      }
+      try {
+        const blob = new Blob([csv], { type: "text/csv" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `the-rise-catch-log-${pacificDateKey()}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        return "Catch log downloaded as CSV.";
+      } catch (error) {
+        return "Export failed on this device.";
       }
     }
 
@@ -7210,9 +7887,11 @@
 
     function renderLog() {
       const logs = getLogs();
-      const hasSavedLogs = localStorage.getItem("riseLogs") !== null;
-      const totalFish = hasSavedLogs ? logs.reduce((sum, entry) => sum + (Number(entry.count) || 1), 0) : 34;
-      const trips = hasSavedLogs ? new Set(logs.map((entry) => `${entry.date}-${entry.waterName}`)).size : 11;
+      const saved = hasSavedLogs();
+      const totalFish = saved ? logs.reduce((sum, entry) => sum + (Number(entry.count) || 1), 0) : 34;
+      const trips = saved ? new Set(logs.map((entry) => `${entry.date}-${entry.waterName}`)).size : 11;
+      const years = logSeasonYears();
+      const seasonLabel = years.length ? (years.length === 1 ? `${years[0]}` : `${years[0]}-${years[years.length - 1]}`) : `${new Date().getFullYear()}`;
       const flyCounts = logs.reduce((counts, entry) => {
         counts[entry.fly] = (counts[entry.fly] || 0) + 1;
         return counts;
@@ -7225,12 +7904,17 @@
         <div class="log-screen">
           <div class="log-top">
             <div>
-              <p class="eyebrow">Your Log - 2026</p>
+              <p class="eyebrow">Your Log - ${seasonLabel}</p>
               <h1>Catch Journal</h1>
-              <p class="subtle">Photos, fish, flies, length, and conditions saved locally on this device.</p>
+              <p class="subtle">Photos, fish, flies, length, and conditions saved on this device. ${saved ? `${logs.length} ${logs.length === 1 ? "entry" : "entries"} kept - nothing is ever dropped.` : "Nothing is uploaded."}</p>
             </div>
-            <button class="primary-btn" data-new-log>${icon.plus}${logFormOpen ? "Close Entry" : "New Entry"}</button>
+            <div class="log-top-actions">
+              <button class="primary-btn" data-new-log>${icon.plus}${logFormOpen ? "Close Entry" : "New Entry"}</button>
+              ${saved && logs.length ? `<button class="ghost-btn" data-export-log>Export CSV</button>` : ""}
+            </div>
           </div>
+          ${logRestoreNotice ? `<div class="data-provenance-notice">${logRestoreNotice}</div>` : ""}
+          ${!logFormOpen && logSaveMessage ? `<div class="data-provenance-notice" role="status">${logSaveMessage}</div>` : ""}
 
           <div class="log-summary">
             <div class="log-stat"><strong>${totalFish}</strong><span>Fish</span></div>
@@ -7270,10 +7954,10 @@
                   <input name="time" value="${editingEntry?.time || new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}" autocomplete="off">
                 </label>
                 <label class="span-2">Notes
-                  <textarea name="notes">${editingEntry?.notes || "Took in the inside seam after switching size."}</textarea>
+                  <textarea name="notes" placeholder="What changed when it worked?">${editingEntry?.notes || ""}</textarea>
                 </label>
               </div>
-              ${editingEntry?.photo ? `<input type="hidden" name="existingPhoto" value="${editingEntry.photo}">` : ""}
+              ${editingEntry?.photo && !editingEntry?.photoId ? `<input type="hidden" name="existingPhoto" value="${editingEntry.photo}">` : ""}
               <button class="primary-btn" type="submit">${icon.save}${editingEntry ? "Update Catch" : "Save Catch"}</button>
             </form>
           ` : ""}
@@ -7281,11 +7965,11 @@
           <div class="log-entry-list">
             ${logs.length ? logs.map((entry, index) => `
               <div class="catch-card">
-                <div class="catch-photo">${entry.photo ? `<img src="${entry.photo}" alt="${entry.fish} catch photo">` : "🐟"}</div>
+                <div class="catch-photo">${photoSourceFor(entry) ? `<img src="${photoSourceFor(entry)}" alt="${entry.fish} catch photo" loading="lazy">` : "🐟"}</div>
                 <div>
                   <strong>${entry.fish}${entry.length ? ` - ${entry.length}"` : ""}</strong>
                   <span>${entry.waterName} - ${entry.fly}</span>
-                  <span>${entry.date} - ${entry.time || "AM"} - ${entry.temp}</span>
+                  <span>${formatLogDate(entry)} - ${entry.time || "AM"} - ${entry.temp}</span>
                   ${entry.notes ? `<span>${entry.notes}</span>` : ""}
                   <div class="catch-actions">
                     <button class="mini-btn" data-edit-log="${index}">Edit</button>
@@ -7311,8 +7995,8 @@
         <div class="topbar">
           <div>
             <p class="eyebrow">Pro</p>
-            <h1>Alerts and deeper reads</h1>
-            <p class="subtle">Hatch timing, stocking alerts, flow history, and bug-to-fly matching.</p>
+            <h1>Deeper reads</h1>
+            <p class="subtle">Flow history, the full rating breakdown, staged fishing plans, and the hatch ID assistant.</p>
           </div>
           <div class="toolbar">
             <span class="subtle">Monthly</span>
@@ -7340,21 +8024,16 @@
             </div>
           </div>
           <div class="panel">
-            <h2>Unlocked</h2>
+            <h2>${proAccessActive ? "Unlocked" : "What Pro unlocks"}</h2>
             <div class="water-list">
-              ${[
-                ["Stocking alerts", "Saved stillwaters notify when ODFW updates move from scheduled to completed."],
-                ["Hatch alerts", "Condition windows flag likely BWO, PMD, caddis, and chironomid events."],
-                ["Prime windows", "Daily scores explain when weather, clarity, and hatches line up."],
-                ["Bug to fly match", "Side-by-side hatch photos and local fly patterns."],
-                ["Flow history", "Trend lines compare today's read against recent fishable windows."]
-              ].map((item) => `
+              ${PRO_FEATURES.map((item) => `
                 <div class="water-card">
-                  <div class="item-top"><strong>${item[0]}</strong><span class="chip">Pro</span></div>
+                  <div class="item-top"><strong>${item[0]}</strong><span class="chip">${proAccessActive ? "Active" : "Pro"}</span></div>
                   <div class="subtle">${item[1]}</div>
                 </div>
               `).join("")}
             </div>
+            <p class="subtle" style="margin-top:12px">Every feature above works on this device with no account. The Rise does not send notifications; water rankings, live gauge and forecast readings, hatches, fly picks, the bug library, knots, and your catch log are free and stay free.</p>
           </div>
         </div>
       `;
@@ -7377,23 +8056,80 @@
     }
 
     window.riseSubscriptionResult = function(result) {
+      const previousAccess = proAccessActive;
       proAccessActive = Boolean(result?.active);
       subscriptionLoading = false;
       if (result?.prices?.monthly) subscriptionPrices.monthly = result.prices.monthly;
       if (result?.prices?.annual) subscriptionPrices.annual = result.prices.annual;
       subscriptionMessage = result?.message || (proAccessActive ? "The Rise Pro is active." : "The Rise Pro is not active yet.");
+      // Pro now gates panels on the Today, Waters, Trip and Bugs screens, so an
+      // access change has to repaint more than the Pro tab.
+      if (previousAccess !== proAccessActive) {
+        renderAll();
+        return;
+      }
       renderPro();
       bindDynamic();
     };
 
+    /* ---------------------------------------------------------------------
+       Rendering.
+
+       renderAll used to rebuild the innerHTML of all seven screens on every
+       interaction, including the six the user could not see. Screens are now
+       rendered on demand: the visible one immediately, the rest marked dirty
+       and rebuilt when they are opened.
+       --------------------------------------------------------------------- */
+
+    const screenRenderers = {
+      today: renderToday,
+      waters: renderWaters,
+      trip: renderTrip,
+      bugs: renderBugs,
+      log: renderLog,
+      knots: renderKnots,
+      pro: renderPro
+    };
+
+    const dirtyScreens = new Set();
+
+    function activeScreenId() {
+      return document.querySelector(".view.active")?.id || "today";
+    }
+
+    function renderScreen(id) {
+      const renderer = screenRenderers[id];
+      if (!renderer) return;
+      renderer();
+      dirtyScreens.delete(id);
+    }
+
+    // Renders the visible screen now and defers the rest until they are shown.
     function renderAll() {
-      renderToday();
-      renderWaters();
-      renderTrip();
-      renderBugs();
-      renderLog();
-      renderKnots();
-      renderPro();
+      const active = activeScreenId();
+      Object.keys(screenRenderers).forEach((id) => {
+        if (id !== active) dirtyScreens.add(id);
+      });
+      renderScreen(active);
+      bindDynamic();
+    }
+
+    // Marks the named screens stale and repaints only the one on screen.
+    function renderScreens(...ids) {
+      const active = activeScreenId();
+      ids.forEach((id) => {
+        if (id === active) {
+          renderScreen(id);
+        } else {
+          dirtyScreens.add(id);
+        }
+      });
+      bindDynamic();
+    }
+
+    // Used at startup, where every screen must exist before the first paint.
+    function renderEverything() {
+      Object.keys(screenRenderers).forEach(renderScreen);
       bindDynamic();
     }
 
@@ -7419,6 +8155,11 @@
     }
 
     function activateTab(tab) {
+      // Rebuild the screen before revealing it if it went stale while hidden.
+      if (dirtyScreens.has(tab)) {
+        renderScreen(tab);
+        bindDynamic();
+      }
       all(".view").forEach((view) => view.classList.toggle("active", view.id === tab));
       all(".tab").forEach((button) => button.setAttribute("aria-selected", button.dataset.tab === tab ? "true" : "false"));
       window.scrollTo({ top: 0, behavior: "smooth" });
@@ -7501,19 +8242,14 @@
         button.addEventListener("click", (event) => {
           event.stopPropagation();
           toggleSavedWater(button.dataset.saveWater);
-          renderToday();
-          renderWaters();
-          bindDynamic();
+          renderScreens("today", "waters");
         });
       });
       all("[data-fly-feedback]").forEach((button) => {
         button.addEventListener("click", (event) => {
           event.stopPropagation();
           setFlyFeedback(button.dataset.flyFeedback, button.dataset.feedbackValue);
-          renderToday();
-          renderWaters();
-          renderBugs();
-          bindDynamic();
+          renderScreens("today", "waters", "bugs");
         });
       });
       all("[data-beginner-mode]").forEach((button) => {
@@ -7602,9 +8338,7 @@
             requestUserLocation();
             return;
           }
-          renderToday();
-          renderWaters();
-          bindDynamic();
+          renderScreens("today", "waters");
         });
       });
       all("[data-water-filter]").forEach((button) => {
@@ -7762,10 +8496,20 @@
           $("#logForm")?.scrollIntoView({ behavior: "smooth", block: "start" });
         });
       });
+      const exportButton = $("[data-export-log]");
+      if (exportButton) {
+        exportButton.addEventListener("click", () => {
+          logSaveMessage = exportLog();
+          renderLog();
+          bindDynamic();
+        });
+      }
       all("[data-delete-log]").forEach((button) => {
         button.addEventListener("click", () => {
           const index = Number(button.dataset.deleteLog);
-          const nextLogs = getLogs().filter((_, itemIndex) => itemIndex !== index);
+          const logs = getLogs();
+          deleteStoredPhoto(logs[index]);
+          const nextLogs = logs.filter((_, itemIndex) => itemIndex !== index);
           setLogs(nextLogs);
           if (editingLogIndex === index) {
             editingLogIndex = null;
@@ -7781,9 +8525,24 @@
           event.preventDefault();
           const form = new FormData(logForm);
           const water = waters.find((item) => item.id === form.get("water")) || getWater();
-          const photo = await readPhotoFile(form.get("photo")) || form.get("existingPhoto") || "";
+          const existingEntry = editingLogIndex !== null ? getLogs()[editingLogIndex] : null;
+          const capturedPhoto = await readPhotoFile(form.get("photo"));
+          // A new photo replaces the old one; the old file is removed from the container.
+          let photoFields;
+          if (capturedPhoto) {
+            if (existingEntry) deleteStoredPhoto(existingEntry);
+            photoFields = storePhoto(capturedPhoto);
+          } else {
+            photoFields = {
+              photoId: existingEntry?.photoId || "",
+              photo: form.get("existingPhoto") || existingEntry?.photo || ""
+            };
+          }
+          const now = new Date();
           const entry = {
-            date: new Date().toLocaleDateString([], { month: "short", day: "numeric" }),
+            // Full timestamp, so entries can be sorted and compared across seasons.
+            loggedAt: now.toISOString(),
+            date: now.toLocaleDateString([], { year: "numeric", month: "short", day: "numeric" }),
             time: form.get("time"),
             waterName: water.name,
             waterId: water.id,
@@ -7792,20 +8551,30 @@
             length: form.get("length"),
             count: form.get("count"),
             notes: form.get("notes"),
-            flow: water.flow,
+            // Record what was actually on screen, not the seed value.
+            flow: liveDisplayValue(water, "flow"),
+            flowSource: valueProvenance(water, "flow"),
             temp: liveDisplayValue(water, "temp"),
-            photo
+            tempSource: valueProvenance(water, "temp"),
+            ...photoFields
           };
           const logs = getLogs();
           let nextLogs;
           if (editingLogIndex !== null) {
-            logs[editingLogIndex] = { ...logs[editingLogIndex], ...entry, date: logs[editingLogIndex].date || entry.date };
-            nextLogs = logs.slice(0, 8);
+            // Editing keeps the original timestamp; only a new catch gets today's.
+            logs[editingLogIndex] = {
+              ...logs[editingLogIndex],
+              ...entry,
+              loggedAt: logs[editingLogIndex].loggedAt || entry.loggedAt,
+              date: logs[editingLogIndex].date || entry.date
+            };
+            nextLogs = [...logs];
           } else {
-            nextLogs = [entry, ...logs].slice(0, 8);
+            // No cap. The journal is the user's own record and is never truncated.
+            nextLogs = [entry, ...logs];
           }
           if (!setLogs(nextLogs)) {
-            logSaveMessage = "This catch could not be saved. Try a smaller photo or remove older photo entries, then try again.";
+            logSaveMessage = "This catch could not be saved to this device. Free up storage and try again.";
             renderLog();
             bindDynamic();
             return;
@@ -7874,7 +8643,7 @@
 
     userLocation = readUserLocation();
     hydrateWaterCache();
-    renderAll();
+    renderEverything();
     syncSubscriptionStatus();
     runInitialDataSync();
     startDailyOpenSyncWatcher();

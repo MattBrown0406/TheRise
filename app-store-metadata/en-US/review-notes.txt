@@ -22,6 +22,15 @@ https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
 
 The App Store description includes the same Standard EULA link. Both subscription products include completed en-US localization, pricing and availability, product-specific App Review screenshots, and review notes.
 
+WHAT THE SUBSCRIPTION UNLOCKS
+The Rise Pro unlocks four features inside the app. Each is visible in a locked state before purchase and becomes usable immediately after:
+1. Flow history - Waters > select a gauged river (Lower Deschutes, Middle Deschutes, Upper Deschutes, Metolius, Crooked River, Fall River) > Flow history. Charts the USGS gauge readings this device has recorded.
+2. Rating breakdown - Today > Why this rating. The full numeric explanation behind a water's 1-10 score.
+3. Fish this plan - Waters > select any water > Fish This Plan. A staged plan for the current window.
+4. Hatch ID assistant - Bugs > Hatch ID Assistant. Filters by size, colour, water type and behaviour.
+
+The app sends no notifications and requires no account. Water rankings, live USGS and NWS readings, hatches, fly recommendations, the bug library, knots, and the catch log are free.
+
 PHOTO PICKER
 To verify the catch-photo flow:
 1. Tap Log.
