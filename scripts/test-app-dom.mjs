@@ -1431,20 +1431,26 @@ try {
       firstRunScrollPending = true;
       scrollAppTo("#today .first-run");
       const top = () => Math.round(document.querySelector("#today .first-run").getBoundingClientRect().top);
-      // The drift a shorter hero causes, without depending on a live sync.
+      // The drift a shorter hero causes, without depending on a live sync. A
+      // launch renders Today more than once, so both have to be corrected.
       scroller.scrollTop += 40;
       const drifted = top();
       renderScreen("today");
       const corrected = top();
-      // And once corrected it must not keep fighting: the angler scrolls next.
       scroller.scrollTop += 40;
       renderScreen("today");
-      return { drifted, corrected, afterSecondRender: top() };
+      const stillCorrected = top();
+      // Until a finger arrives, at which point the position is the angler's.
+      window.dispatchEvent(new Event("touchstart"));
+      scroller.scrollTop += 40;
+      renderScreen("today");
+      return { drifted, corrected, stillCorrected, afterTouch: top() };
     });
-    assert(settled.drifted < SAFE_AREA_TOP && settled.corrected >= SAFE_AREA_TOP,
-      `and the panel is put back below the notch after it (${settled.drifted}px, then ${settled.corrected}px, inset ${SAFE_AREA_TOP}px)`);
-    assert(settled.afterSecondRender < settled.corrected,
-      `but only once, so it never fights a scroll (${settled.afterSecondRender}px after the next render)`);
+    assert(settled.drifted < SAFE_AREA_TOP && settled.corrected >= SAFE_AREA_TOP && settled.stillCorrected >= SAFE_AREA_TOP,
+      `and the panel is held below the notch through the renders a launch does ` +
+      `(${settled.drifted}px, then ${settled.corrected}px and ${settled.stillCorrected}px, inset ${SAFE_AREA_TOP}px)`);
+    assert(settled.afterTouch < settled.corrected,
+      `and released the moment the screen is touched (${settled.afterTouch}px)`);
     await page.close();
   }
 

@@ -8806,18 +8806,18 @@
          again. One dark clock on teal for the rest of the launch. */
       if (id === activeScreenId()) syncStatusBarChrome();
       /* The same re-render moves the setup panel the app scrolled to, because
-         the hero above it changes height when the readings land. On the
-         simulator that lifted the panel's top corner back under the notch.
-         The scroll is re-applied once, to the settled layout, and never after
-         the angler has touched the screen. */
+         the hero above it changes height as the readings land. On the
+         simulator that lifted the panel's top corner back under the notch,
+         and a single correction was not enough - a launch renders Today more
+         than once. The position is held until the angler touches the screen,
+         which is the point at which where they are looking stops being ours
+         to decide. */
       if (id === "today" && firstRunScrollPending && document.querySelector("#today .first-run")) {
-        firstRunScrollPending = false;
         scrollAppTo("#today .first-run");
       }
     }
 
-    /* Set for the launch of a fresh install, cleared by the first sync-driven
-       re-render of Today - or by the first touch, whichever comes first. */
+    /* Set for the launch of a fresh install, cleared by the first touch. */
     let firstRunScrollPending = false;
 
     // Renders the visible screen now and defers the rest until they are shown.
@@ -9487,12 +9487,10 @@
        launch. */
     if (!onboardingDismissed && onboardingSteps().every(([, done]) => !done)) {
       firstRunScrollPending = true;
-      // A finger on the screen outranks the pending correction above.
-      document.querySelector("main")?.addEventListener(
-        "touchstart",
-        () => { firstRunScrollPending = false; },
-        { passive: true, once: true }
-      );
+      // A finger on the screen outranks the correction above, from then on.
+      for (const event of ["touchstart", "pointerdown", "wheel", "keydown"]) {
+        window.addEventListener(event, () => { firstRunScrollPending = false; }, { passive: true, once: true });
+      }
       scrollAppTo("#today .first-run");
     }
     syncSubscriptionStatus();
