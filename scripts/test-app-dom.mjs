@@ -1402,6 +1402,49 @@ try {
     }));
     assert(live.includes("dark"),
       `a scroll alone tells the container (${live.join(",") || "nothing"})`);
+
+    /* And a re-render alone, with no scroll at all. At boot the app measures a
+       Today built from reference values; the first sync then replaces that
+       screen under the status bar, and on the simulator nothing looked again -
+       one dark clock on teal for the rest of the launch. */
+    const rerendered = await page.evaluate(() => {
+      const sent = [];
+      window.webkit = { messageHandlers: { riseChrome: { postMessage: (message) => sent.push(message.statusBar) } } };
+      activateTab("today");
+      const scroller = document.querySelector("main");
+      scroller.scrollTop = scroller.scrollHeight;
+      // Pretend the last answer was the one the boot layout produced.
+      lastStatusBarStyle = "light";
+      sent.length = 0;
+      renderScreen("today");
+      return { sent, atTop: (scroller.scrollTop = 0, lastStatusBarStyle) };
+    });
+    assert(rerendered.sent.includes("dark"),
+      `a re-render of the visible screen tells the container too (${rerendered.sent.join(",") || "nothing"})`);
+
+    /* That re-render also moves the panel the app scrolled to, because the
+       hero above it changes height when the readings land. On the simulator
+       the panel's top corner drifted back under the notch. */
+    const settled = await page.evaluate(() => {
+      const scroller = document.querySelector("main");
+      scroller.scrollTop = 0;
+      firstRunScrollPending = true;
+      scrollAppTo("#today .first-run");
+      const top = () => Math.round(document.querySelector("#today .first-run").getBoundingClientRect().top);
+      // The drift a shorter hero causes, without depending on a live sync.
+      scroller.scrollTop += 40;
+      const drifted = top();
+      renderScreen("today");
+      const corrected = top();
+      // And once corrected it must not keep fighting: the angler scrolls next.
+      scroller.scrollTop += 40;
+      renderScreen("today");
+      return { drifted, corrected, afterSecondRender: top() };
+    });
+    assert(settled.drifted < SAFE_AREA_TOP && settled.corrected >= SAFE_AREA_TOP,
+      `and the panel is put back below the notch after it (${settled.drifted}px, then ${settled.corrected}px, inset ${SAFE_AREA_TOP}px)`);
+    assert(settled.afterSecondRender < settled.corrected,
+      `but only once, so it never fights a scroll (${settled.afterSecondRender}px after the next render)`);
     await page.close();
   }
 
