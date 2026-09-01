@@ -320,9 +320,10 @@
       content: "";
       position: absolute;
       inset: 0;
-      background:
-        linear-gradient(180deg, rgba(16, 84, 102, .9), rgba(16, 84, 102, .82)),
-        url("the-rise-river.png") center/cover;
+      /* the-rise-river.png has never existed in this repository and is
+         excluded by .gitignore, so every launch fired a 404 for it and the
+         hero rendered as the gradient alone. The gradient is the design. */
+      background: linear-gradient(180deg, rgba(16, 84, 102, .9), rgba(16, 84, 102, .82));
       opacity: .96;
     }
 
@@ -431,6 +432,27 @@
       border: 0;
       padding: 0;
       color: inherit;
+      background: transparent;
+      display: grid;
+      justify-items: center;
+      gap: 6px;
+      flex: 0 0 auto;
+    }
+
+    /* The rating breakdown is one of the four things the subscription unlocks,
+       and the only way to open it was to guess that the score circle was a
+       button - there was no visible label anywhere. The review notes sent the
+       reviewer to "Today > Why this rating" and no such words were on screen. */
+    .score-button em {
+      display: block;
+      font-size: 10px;
+      font-style: normal;
+      font-weight: 900;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+      opacity: .85;
+      text-decoration: underline;
+      text-underline-offset: 2px;
     }
 
     .score-button:focus-visible {
@@ -664,6 +686,11 @@
     .skill-mode-selector.compact {
       display: inline-flex;
       align-items: center;
+      /* Display Zoom on an iPhone SE or mini renders at 320pt. Without these
+         the label and the three buttons were one unbreakable 305px run, which
+         blew the Waters header out past the right edge of the screen. */
+      flex-wrap: wrap;
+      max-width: 100%;
       gap: 8px;
       margin: 0;
       padding: 6px;
@@ -688,6 +715,7 @@
 
     .skill-mode-selector.compact div {
       display: inline-flex;
+      flex-wrap: wrap;
     }
 
     .skill-mode-selector button {
@@ -1201,9 +1229,7 @@
     .river-art {
       position: absolute;
       inset: 0;
-      background:
-        linear-gradient(110deg, rgba(18, 30, 23, .92), rgba(18, 30, 23, .52) 48%, rgba(18, 30, 23, .2)),
-        url("the-rise-river.png") center/cover;
+      background: linear-gradient(110deg, rgba(18, 30, 23, .92), rgba(18, 30, 23, .52) 48%, rgba(18, 30, 23, .2));
     }
 
     .hero-copy,
@@ -1321,7 +1347,17 @@
       display: flex;
       align-items: flex-start;
       justify-content: space-between;
+      flex-wrap: wrap;
       gap: 12px;
+    }
+
+    .waters-header-row > div:first-child {
+      flex: 1 1 170px;
+      min-width: 0;
+    }
+
+    .waters-header h1 {
+      overflow-wrap: anywhere;
     }
 
     .waters-score-badge {
@@ -1916,14 +1952,25 @@
       padding: 18px;
       display: flex;
       justify-content: space-between;
+      /* At 320pt - an iPhone SE or mini with Display Zoom on - the water name
+         and the score badge together were 337px wide inside a 320px screen,
+         and the right-hand 35px of the Trip screen, including the All Waters
+         button, was simply cut off. The badge now drops below the name. */
+      flex-wrap: wrap;
       gap: 16px;
       align-items: flex-start;
       box-shadow: 0 8px 18px rgba(30, 43, 34, .05);
     }
 
+    .trip-hero > div:first-child {
+      flex: 1 1 180px;
+      min-width: 0;
+    }
+
     .trip-hero h1 {
       font-size: 30px;
       margin-bottom: 4px;
+      overflow-wrap: anywhere;
     }
 
     .trip-score {
@@ -2098,6 +2145,15 @@
     .log-entry-list {
       display: grid;
       gap: 20px;
+    }
+
+    /* The journal is the one place the app renders text the angler typed. A
+       pasted ODFW report link in a note is a single unbreakable 100-character
+       word, and it pushed the whole Log screen 26px wider than the phone. */
+    .catch-card,
+    .catch-card * {
+      overflow-wrap: anywhere;
+      min-width: 0;
     }
 
     .catch-card {
@@ -5274,12 +5330,62 @@
       return partial ? hatchSeasonIndex[partial] : null;
     }
 
+    /* ---------------------------------------------------------------------
+       Central Oregon time, not phone time.
+
+       Season and time-of-day were read off the device clock. Every water in
+       this app is in Central Oregon, so the same river at the same instant
+       scored 9.2 on a phone in Bend and 8.4 on a phone in Tokyo, and the
+       prime-window line disagreed about whether the morning had passed. The
+       Deschutes is a destination fishery: the people most likely to be
+       planning a trip are the people whose phone is in the wrong time zone.
+
+       Everything the app says about when now is - the score, the window, the
+       date a catch is filed under - is measured on the water's clock.
+       --------------------------------------------------------------------- */
+    const APP_TIME_ZONE = "America/Los_Angeles";
+
+    function zonedParts(date = new Date()) {
+      const parts = new Intl.DateTimeFormat("en-US", {
+        timeZone: APP_TIME_ZONE,
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        hourCycle: "h23"
+      }).formatToParts(date).reduce((memo, part) => {
+        memo[part.type] = part.value;
+        return memo;
+      }, {});
+      return {
+        year: Number(parts.year),
+        month: Number(parts.month),
+        day: Number(parts.day),
+        hour: Number(parts.hour),
+        yearText: parts.year,
+        monthText: parts.month,
+        dayText: parts.day
+      };
+    }
+
+    function zonedDateLabel(date = new Date()) {
+      return date.toLocaleDateString([], {
+        timeZone: APP_TIME_ZONE, year: "numeric", month: "short", day: "numeric"
+      });
+    }
+
+    function zonedTimeLabel(date = new Date()) {
+      return date.toLocaleTimeString([], {
+        timeZone: APP_TIME_ZONE, hour: "numeric", minute: "2-digit"
+      });
+    }
+
     function currentMonth() {
-      return new Date().getMonth() + 1;
+      return zonedParts().month;
     }
 
     function currentHour() {
-      return new Date().getHours();
+      return zonedParts().hour;
     }
 
     // 1 = in season, .5 = the month either side of the window, 0 = out of season.
@@ -5618,16 +5724,31 @@
       if (flow === null) return;
       const history = readFlowHistory();
       const samples = Array.isArray(history[waterId]) ? history[waterId] : [];
-      const day = pacificDateKey(new Date());
-      const existing = samples.findIndex((sample) => sample.d === day);
-      const sample = { d: day, f: flow };
-      if (existing === -1) {
-        samples.push(sample);
+      const now = new Date();
+      const day = pacificDateKey(now);
+      const last = samples[samples.length - 1];
+      // One point per day was the whole record, so a subscriber who opened the
+      // app on one day had a single sample and no trend at all. A gauge that
+      // moves within the day is real data this device observed, so a changed
+      // reading is kept as its own point; an unchanged one just updates the
+      // day's value rather than stacking a flat run of identical bars.
+      const sample = { d: day, t: now.toISOString(), f: flow };
+      if (last && last.d === day && last.f === flow) {
+        samples[samples.length - 1] = sample;
       } else {
-        samples[existing] = sample;
+        samples.push(sample);
       }
       history[waterId] = samples.slice(-FLOW_HISTORY_MAX_SAMPLES);
       writeStoredObject(FLOW_HISTORY_KEY, history);
+    }
+
+    // Samples written before build 13 carry only a day key.
+    function flowSampleLabel(sample) {
+      if (sample.t) {
+        const when = new Date(sample.t);
+        if (!Number.isNaN(when.getTime())) return `${zonedDateLabel(when)}, ${zonedTimeLabel(when)}`;
+      }
+      return String(sample.d || "");
     }
 
     function flowHistoryFor(waterId) {
@@ -5650,11 +5771,24 @@
         `;
       }
       const samples = flowHistoryFor(water.id);
-      if (samples.length < 2) {
+      if (!samples.length) {
         return `
           <div class="panel">
             <h2>Flow history</h2>
-            <p class="subtle">${samples.length ? "One reading recorded so far." : "No readings recorded yet."} Open this water on a few separate days and the trend builds here. Nothing is uploaded; the history stays on this device.</p>
+            <p class="subtle">No gauge reading has been recorded on this device yet. Tap Update on this water with a signal and the first reading is kept here. Nothing is uploaded; the history stays on this device.</p>
+          </div>
+        `;
+      }
+      // A single reading used to render as a sentence saying the feature had
+      // nothing to show - which is what a reviewer sees on the day they
+      // subscribe. One real reading is shown as one real reading.
+      if (samples.length === 1) {
+        const only = samples[0];
+        return `
+          <div class="panel">
+            <h2>Flow history</h2>
+            <p class="subtle">1 reading recorded on this device: <b>${only.f.toLocaleString()} cfs</b> on ${esc(flowSampleLabel(only))}. Each further reading is added here and the trend charts from the second one.</p>
+            <div class="flow-history"><i style="height:100%" title="${attr(`${flowSampleLabel(only)}: ${only.f.toLocaleString()} cfs`)}"></i></div>
           </div>
         `;
       }
@@ -5664,7 +5798,7 @@
       const span = max - min || 1;
       const bars = samples.map((sample) => {
         const height = Math.round(12 + ((sample.f - min) / span) * 88);
-        return `<i style="height:${height}%" title="${sample.d}: ${sample.f.toLocaleString()} cfs"></i>`;
+        return `<i style="height:${height}%" title="${attr(`${flowSampleLabel(sample)}: ${sample.f.toLocaleString()} cfs`)}"></i>`;
       }).join("");
       const first = values[0];
       const latest = values[values.length - 1];
@@ -5697,16 +5831,8 @@
     }
 
     function pacificDateKey(date = new Date()) {
-      const parts = new Intl.DateTimeFormat("en-US", {
-        timeZone: "America/Los_Angeles",
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit"
-      }).formatToParts(date).reduce((memo, part) => {
-        memo[part.type] = part.value;
-        return memo;
-      }, {});
-      return `${parts.year}-${parts.month}-${parts.day}`;
+      const parts = zonedParts(date);
+      return `${parts.yearText}-${parts.monthText}-${parts.dayText}`;
     }
 
     // "Jul 18, 5:05 PM" gave no year and no sense of age, so a reading from a
@@ -5717,8 +5843,9 @@
       const date = new Date(value);
       if (Number.isNaN(date.getTime())) return "Never saved";
       const hours = hoursSince(value);
-      const sameYear = date.getFullYear() === new Date().getFullYear();
+      const sameYear = zonedParts(date).year === zonedParts().year;
       const stamp = date.toLocaleString([], {
+        timeZone: APP_TIME_ZONE,
         ...(sameYear ? {} : { year: "numeric" }),
         month: "short",
         day: "numeric",
@@ -6368,7 +6495,7 @@
         cacheReport(water.id, {
           status: "ready",
           meta,
-          updatedAt: new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }),
+          updatedAt: zonedTimeLabel(),
           usgs,
           nws,
           errors
@@ -7257,7 +7384,7 @@
             <div class="condition-line">${liveTemp} water - ${liveWind} - clarity ${clarity.label}</div>
             ${dataStatusStrip("today")}
             <div class="fishability-card">
-              <button class="score-ring score-button" data-score-breakdown aria-expanded="${scoreBreakdownOpen}" style="--score-deg:${scoreDeg}deg" aria-label="Show why this rating is ${score}"><strong>${score}</strong></button>
+              <button class="score-button" data-score-breakdown aria-expanded="${scoreBreakdownOpen}" aria-label="${scoreBreakdownOpen ? "Hide" : "Show"} why this rating is ${score}"><span class="score-ring" style="--score-deg:${scoreDeg}deg"><strong>${score}</strong></span><em>Why this rating?</em></button>
               <div class="fishability-copy">
                 <strong>${fishabilitySummary(best)}</strong>
                 <span>${fishabilityReason(best)}</span>
@@ -7873,7 +8000,7 @@
       if (!entry?.loggedAt) return `${entry?.date || ""}${entry?.dateApproximate ? " (year unknown)" : ""}`;
       const parsed = new Date(entry.loggedAt);
       if (Number.isNaN(parsed.getTime())) return entry.date || "";
-      return parsed.toLocaleDateString([], { year: "numeric", month: "short", day: "numeric" });
+      return zonedDateLabel(parsed);
     }
 
     function logSeasonYears() {
@@ -7972,7 +8099,7 @@
       const totalFish = logs.reduce((sum, entry) => sum + (Number(entry.count) || 1), 0);
       const trips = new Set(logs.map((entry) => `${entry.date}-${entry.waterName}`)).size;
       const years = logSeasonYears();
-      const seasonLabel = years.length ? (years.length === 1 ? `${years[0]}` : `${years[0]}-${years[years.length - 1]}`) : `${new Date().getFullYear()}`;
+      const seasonLabel = years.length ? (years.length === 1 ? `${years[0]}` : `${years[0]}-${years[years.length - 1]}`) : `${zonedParts().year}`;
       const flyCounts = logs.reduce((counts, entry) => {
         counts[entry.fly] = (counts[entry.fly] || 0) + 1;
         return counts;
@@ -8025,7 +8152,7 @@
                   <select name="fish">${nativeFish.map((fish) => `<option value="${attr(fish)}" ${fish === (editingEntry?.fish || "Redband Trout") ? "selected" : ""}>${esc(fish)}</option>`).join("")}</select>
                 </label>
                 <label>Length
-                  <input name="length" type="number" min="0" step="0.25" value="${attr(editingEntry?.length || "17")}">
+                  <input name="length" type="number" min="0" step="0.25" inputmode="decimal" placeholder="Optional" value="${attr(editingEntry?.length || "")}">
                 </label>
                 <label>Count
                   <input name="count" type="number" min="1" value="${attr(editingEntry?.count || "1")}">
@@ -8034,7 +8161,7 @@
                   <input name="fly" value="${attr(editingEntry?.fly || defaultFly)}" autocomplete="off">
                 </label>
                 <label>Time
-                  <input name="time" value="${attr(editingEntry?.time || new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }))}" autocomplete="off">
+                  <input name="time" value="${attr(editingEntry?.time || zonedTimeLabel())}" autocomplete="off">
                 </label>
                 <label class="span-2">Notes
                   <textarea name="notes" placeholder="What changed when it worked?">${esc(editingEntry?.notes || "")}</textarea>
@@ -8146,7 +8273,7 @@
     function postSubscriptionMessage(payload) {
       if (!hasSubscriptionBridge()) {
         subscriptionLoading = false;
-        subscriptionMessage = "Purchases run in the iOS app. This browser mockup is showing the same screen without App Store checkout.";
+        subscriptionMessage = "Purchases and prices come from the App Store and are available in the iOS app.";
         renderPro();
         return false;
       }
@@ -8612,7 +8739,7 @@
       const entry = {
         // Full timestamp, so entries can be sorted and compared across seasons.
         loggedAt: now.toISOString(),
-        date: now.toLocaleDateString([], { year: "numeric", month: "short", day: "numeric" }),
+        date: zonedDateLabel(now),
         time: form.get("time"),
         waterName: water.name,
         waterId: water.id,

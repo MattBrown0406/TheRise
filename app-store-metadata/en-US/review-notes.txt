@@ -1,4 +1,4 @@
-Version 1.0 build 12 addresses the August 12, 2026 review feedback for submission 80533227-abed-4218-b443-1cdef4bc50c7, and adds the functionality the subscription unlocks.
+Version 1.0 build 13 addresses the August 12, 2026 review feedback for submission 80533227-abed-4218-b443-1cdef4bc50c7, and adds the functionality the subscription unlocks.
 
 AUTO-RENEWABLE SUBSCRIPTIONS
 To locate the subscriptions:
@@ -24,9 +24,9 @@ The App Store description includes the same Standard EULA link. Both subscriptio
 
 WHAT THE SUBSCRIPTION UNLOCKS
 The Rise Pro unlocks four features inside the app. Each is visible in a locked state before purchase and becomes usable immediately after:
-1. Flow history - Waters > select a gauged river (Lower Deschutes, Middle Deschutes, Upper Deschutes, Metolius, Crooked River, Fall River) > Flow history. Charts the USGS gauge readings this device has recorded.
-2. Rating breakdown - Today > Why this rating. The full numeric explanation behind a water's 1-10 score.
-3. Fish this plan - Waters > select any water > Fish This Plan. A staged plan for the current window.
+1. Flow history - Waters > tap a gauged river (Lower Deschutes, Middle Deschutes, Upper Deschutes, Metolius, Crooked River, Fall River) to expand it > Flow history. Shows the USGS gauge readings this device has recorded. This panel holds only real readings taken on this device, so on a first launch it shows the one reading just fetched; tapping Update again after the gauge moves adds the next point and the trend charts from two readings onward. Nothing is uploaded and no history is pre-loaded.
+2. Rating breakdown - Today > tap the rating circle, which is labelled "Why this rating?". The full numeric explanation behind a water's 1-10 score: season, time of day, water temperature, flow, clarity and local report signal.
+3. Fish this plan - Waters > tap any water to expand it > Fish This Plan. A staged plan for the current window. Also on the Today and Trip screens.
 4. Hatch ID assistant - Bugs > Hatch ID Assistant. Filters by size, colour, water type and behaviour.
 
 The app sends no notifications and requires no account. Water rankings, live USGS and NWS readings, hatches, fly recommendations, the bug library, and the catch log are free.
@@ -37,6 +37,8 @@ To verify the catch-photo flow:
 2. Tap New Entry.
 3. Tap Choose File in the Photo field.
 4. Choose Camera or Photo Library and grant the requested permission.
-5. Select a photo, complete the required catch fields, and save the entry.
+5. Select a photo and tap Save Entry. Water, species, fly and time are pre-filled from the current conditions; length, count and notes are optional.
 
-Build 10 includes NSCameraUsageDescription, NSPhotoLibraryUsageDescription, and NSLocationWhenInUseUsageDescription.
+This build includes NSCameraUsageDescription, NSPhotoLibraryUsageDescription, and NSLocationWhenInUseUsageDescription.
+
+All rankings, readings and hatch timing are calculated on America/Los_Angeles time, because every water in the app is in Central Oregon. A device in another time zone sees the same rating for the same water at the same moment.

@@ -125,7 +125,7 @@ def main() -> int:
     project = PROJECT.read_text(encoding="utf-8")
     build_numbers = re.findall(r"CURRENT_PROJECT_VERSION = ([^;]+);", project)
     versions = re.findall(r"MARKETING_VERSION = ([^;]+);", project)
-    require(bool(build_numbers) and set(build_numbers) == {"12"}, f"expected build 12, found {build_numbers}")
+    require(bool(build_numbers) and set(build_numbers) == {"13"}, f"expected build 13, found {build_numbers}")
     require(bool(versions) and set(versions) == {"1.0"}, f"expected version 1.0, found {versions}")
 
     review_doc = REVIEW_DOC.read_text(encoding="utf-8")
@@ -150,7 +150,7 @@ def main() -> int:
     require(len(notes.strip()) <= 4000, "App Review notes exceed the 4,000-character limit")
     require(PRIVACY_URL == privacy_metadata, "Privacy Policy metadata URL is incorrect")
     for token in (
-        "Version 1.0 build 12",
+        "Version 1.0 build 13",
         "The Rise Pro Monthly",
         "The Rise Pro Annual",
         "therise_pro_monthly",
@@ -560,6 +560,78 @@ def main() -> int:
         "an edit is written into the live cache array again instead of a new one",
     )
 
+    # --- Round six ------------------------------------------------------------
+    # Season and time of day were read off the device clock, so the same
+    # Central Oregon river at the same instant scored 9.2 on a phone in Bend and
+    # 8.4 on a phone in Tokyo. Every water in the app is in one time zone and
+    # everything the app says about "now" is measured on it.
+    require(
+        'const APP_TIME_ZONE = "America/Los_Angeles";' in web,
+        "the app no longer pins its clock to the water's time zone",
+    )
+    for helper in ("zonedParts(", "zonedDateLabel(", "zonedTimeLabel("):
+        require(helper in web, f"missing the water's-clock helper {helper}")
+    require(
+        "return zonedParts().month;" in web and "return zonedParts().hour;" in web,
+        "season or time-of-day scoring reads the device clock again",
+    )
+    require(
+        "new Date().getHours()" not in web and "new Date().getMonth()" not in web,
+        "the device clock is being read for something the water's clock decides",
+    )
+
+    # A screen that renders past the right edge of the phone. 320pt is a real
+    # supported width: an iPhone SE or mini with Display Zoom turned on.
+    require(
+        ".trip-hero > div:first-child" in web and "flex: 1 1 180px" in web,
+        "the Trip hero cannot shrink to a 320pt screen again",
+    )
+    require(
+        ".catch-card,\n    .catch-card * {" in web,
+        "journal text can push the Log screen wider than the phone again",
+    )
+
+    # The rating breakdown is one of four advertised subscription unlocks and
+    # the only affordance was an unlabelled score circle, while the review notes
+    # sent the reviewer looking for the words "Why this rating".
+    require(
+        "<em>Why this rating?</em>" in web,
+        "the rating breakdown has no visible label again",
+    )
+    require(
+        "tap the rating circle" in notes,
+        "the review notes point the reviewer at a control that is not labelled that way",
+    )
+
+    # Flow history held one point per day, so a subscriber on their first day -
+    # which includes App Review - saw a panel that said it had nothing to show.
+    require(
+        "1 reading recorded on this device" in web,
+        "a recorded gauge reading is reported as nothing to show again",
+    )
+    require(
+        "One reading recorded so far." not in web,
+        "the empty-sounding single-reading copy is back",
+    )
+
+    # A shipping build must not describe itself as a mockup, and must not ask
+    # the device for a file that has never existed.
+    for word in ("mockup", "prototype", "demo only"):
+        require(word not in web.lower(), f"a shipping build calls itself a {word}")
+    referenced = set(re.findall(r'url\("([^"?:]+\.png)"\)', web))
+    require(
+        "the-rise-river.png" not in referenced,
+        "the app references an image that is not in the repository and is gitignored",
+    )
+    for asset in sorted(referenced):
+        require((ROOT / asset).is_file(), f"the app references a missing asset: {asset}")
+
+    # A pre-filled length recorded a 17-inch fish nobody measured.
+    require(
+        'attr(editingEntry?.length || "")' in web,
+        "the catch form pre-fills a length the angler never measured",
+    )
+
     # --- Behaviour suite ------------------------------------------------------
     require(APP_LOGIC_TESTS.is_file(), "app behaviour tests are missing")
     result = subprocess.run(
@@ -610,7 +682,7 @@ def main() -> int:
     print("PASS: subscription disclosure, legal links, and localized-price bridge")
     if not args.skip_screenshots:
         print("PASS: regenerated Pro and IAP review screenshots")
-    print("PASS: version 1.0 build 12 and RevenueCat product identifiers")
+    print("PASS: version 1.0 build 13 and RevenueCat product identifiers")
     print("PASS: App Store metadata/IAP submission checklist")
     print("PASS: catch-log durability, export, and native container storage")
     print("PASS: subscription claims match shipped functionality")
@@ -631,6 +703,8 @@ def main() -> int:
     print("PASS: an edit keeps the conditions, one tap writes one catch, photos outlive a failed write")
     print("PASS: negation and forecast text are read correctly, search input escaped and stable")
     print("PASS: the Pro card fits every price state, search keeps the selection, a failed write changes nothing")
+    print("PASS: Oregon time drives the score, nothing clips at 320pt, and every referenced asset exists")
+    print("PASS: the rating breakdown is labelled, flow history shows real readings, no mockup language")
     print(f"PASS: app behaviour tests ({logic_summary})")
     print(f"PASS: real-DOM tests ({dom_summary})")
     print(f"PASS: native storage tests ({store_summary})")

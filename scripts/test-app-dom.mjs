@@ -12,7 +12,7 @@
  * Chrome is resolved at run time; override with RISE_CHROME.
  */
 
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { copyFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { createRequire } from "node:module";
 import { homedir } from "node:os";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -34,6 +34,12 @@ const workRoot = process.env.RISE_DOM_TEST_WORKDIR
 mkdirSync(workRoot, { recursive: true });
 const stagedApp = resolve(workRoot, "the-rise-app.html");
 copyFileSync(resolve(root, "the-rise-app.html"), stagedApp);
+// The bug and fly artwork sits beside the HTML in the bundle, so it is staged
+// beside the HTML here too. Without it the 404 check below cannot tell a
+// genuinely missing asset from one the harness simply did not copy.
+for (const plates of ["bug-plates", "fly-plates"]) {
+  cpSync(resolve(root, plates), resolve(workRoot, plates), { recursive: true });
+}
 const appUrl = pathToFileURL(stagedApp).href;
 
 let puppeteer;
@@ -898,7 +904,7 @@ try {
       await new Promise((done) => requestAnimationFrame(done));
       const target = waters.find((water) => water.id === "lower-deschutes") || waters[1];
       const card = document.querySelector(`.waters-main-list [data-water="${target.id}"]`)
-        || (() => { setActiveWater(target.id); return null; })();
+        || (() => { saveActiveWater(target.id); return null; })();
       if (card) card.click();
       const chosen = activeWater;
       const field = document.querySelector("[data-water-search]");
@@ -980,6 +986,160 @@ try {
     });
     assert(result.cached === 0, `a new catch that could not be written is not in the journal (${result.cached})`);
     assert(!result.screenText.includes("UNSAVEABLE"), "and it is not listed on screen either");
+    await page.close();
+  }
+
+  /* ---------------------------------------------------------------- */
+  group("A water in Oregon is scored on Oregon time (#1 round six)");
+
+  {
+    const readings = {};
+    for (const zone of ["America/Los_Angeles", "Asia/Tokyo", "Europe/London"]) {
+      const page = await openApp(browser);
+      await page.emulateTimezone(zone);
+      await page.reload({ waitUntil: "load" });
+      await page.evaluate(() => new Promise((done) => requestAnimationFrame(done)));
+      readings[zone] = await page.evaluate(() => {
+        const water = waters.find((item) => item.id === "lower-deschutes");
+        return {
+          hour: currentHour(),
+          month: currentMonth(),
+          score: fishScore(water),
+          window: primeWindowFor(water),
+          formTime: zonedTimeLabel(),
+          formDate: zonedDateLabel()
+        };
+      });
+      await page.close();
+    }
+    const zones = Object.keys(readings);
+    const pacific = readings["America/Los_Angeles"];
+    for (const zone of zones.slice(1)) {
+      assert(readings[zone].hour === pacific.hour,
+        `${zone}: the hour used for scoring is Oregon's (${readings[zone].hour} vs ${pacific.hour})`);
+      assert(readings[zone].score === pacific.score,
+        `${zone}: the same river at the same instant scores the same (${readings[zone].score} vs ${pacific.score})`);
+      assert(readings[zone].window === pacific.window,
+        `${zone}: and the prime-window line agrees (${readings[zone].window})`);
+      assert(readings[zone].formDate === pacific.formDate,
+        `${zone}: a catch is filed under the same date (${readings[zone].formDate})`);
+    }
+  }
+
+  /* ---------------------------------------------------------------- */
+  group("Nothing is clipped at 320pt - Display Zoom on an SE or mini (#4 round six)");
+
+  {
+    const page = await openApp(browser, { viewport: { width: 320, height: 568 } });
+    const widths = await page.evaluate(async () => {
+      const res = {};
+      for (const id of ["today", "waters", "trip", "bugs", "log", "pro"]) {
+        activateTab(id);
+        await new Promise((done) => setTimeout(done, 80));
+        const screen = document.querySelector(`#${id}`);
+        res[id] = screen.scrollWidth - screen.clientWidth;
+      }
+      return res;
+    });
+    for (const [id, overflow] of Object.entries(widths)) {
+      assert(overflow <= 0, `${id} fits a 320pt screen (${overflow}px over)`);
+    }
+    await page.close();
+  }
+
+  /* ---------------------------------------------------------------- */
+  group("A pasted link in a catch note does not widen the journal (#5 round six)");
+
+  {
+    const page = await openApp(browser);
+    await seedLogs(page, [sampleEntry({
+      notes: "Great morning. Report here: https://www.myodfw.com/central-zone-recreation-report/crooked-river-below-bowman-dam-fishing-report-2026",
+      fly: "Parachute Adams / Purple Haze Cripple Emerger #18-#22"
+    })]);
+    const result = await page.evaluate(async () => {
+      activateTab("log");
+      await new Promise((done) => setTimeout(done, 80));
+      const screen = document.querySelector("#log");
+      return {
+        overflow: screen.scrollWidth - screen.clientWidth,
+        documentOverflow: document.documentElement.scrollWidth - window.innerWidth,
+        showsLink: /myodfw\.com/.test(screen.textContent)
+      };
+    });
+    assert(result.overflow <= 0, `the Log screen still fits the phone (${result.overflow}px over)`);
+    assert(result.documentOverflow <= 0, `and nothing runs off the right edge (${result.documentOverflow}px)`);
+    assert(result.showsLink, "the note is shown in full rather than truncated");
+    await page.close();
+  }
+
+  /* ---------------------------------------------------------------- */
+  group("The rating breakdown says what it is before you tap it (#2 round six)");
+
+  {
+    const page = await openApp(browser);
+    const result = await page.evaluate(async () => {
+      proAccessActive = true;
+      renderAll();
+      activateTab("today");
+      await new Promise((done) => setTimeout(done, 120));
+      const button = document.querySelector("#today [data-score-breakdown]");
+      const box = button.getBoundingClientRect();
+      const before = document.querySelector("#today").textContent;
+      button.click();
+      await new Promise((done) => setTimeout(done, 150));
+      return {
+        labelVisible: /Why this rating/i.test(before),
+        tapTarget: `${Math.round(box.width)}x${Math.round(box.height)}`,
+        bigEnough: box.width >= 44 && box.height >= 44,
+        opens: /Season/.test(document.querySelector("#today").textContent)
+          && /Time of day/.test(document.querySelector("#today").textContent)
+      };
+    });
+    assert(result.labelVisible, "the control is labelled 'Why this rating?' before it is tapped");
+    assert(result.bigEnough, `and it is a real tap target (${result.tapTarget})`);
+    assert(result.opens, "tapping it opens the season and time-of-day breakdown");
+    await page.close();
+  }
+
+  /* ---------------------------------------------------------------- */
+  group("A first reading is shown as a reading, and nothing 404s (#3, #6 round six)");
+
+  {
+    const page = await openApp(browser);
+    const failed = [];
+    page.on("requestfailed", (request) => failed.push(request.url()));
+    await page.reload({ waitUntil: "load" });
+    await page.evaluate(async () => {
+      for (const id of ["today", "waters", "trip", "bugs", "log", "pro"]) {
+        activateTab(id);
+        await new Promise((done) => setTimeout(done, 80));
+      }
+    });
+    const brokenAssets = failed.filter((url) => !url.startsWith("https://") && !url.startsWith("http://"));
+    assert(!brokenAssets.length,
+      `every asset the app references exists (${brokenAssets.map((url) => url.split("/").pop()).join(", ") || "none missing"})`);
+
+    const history = await page.evaluate(async () => {
+      proAccessActive = true;
+      recordFlowSample("crooked", { usgs: { flow: "235 cfs" } });
+      const one = flowHistoryPanel(waters.find((water) => water.id === "crooked"));
+      recordFlowSample("crooked", { usgs: { flow: "260 cfs" } });
+      const two = flowHistoryPanel(waters.find((water) => water.id === "crooked"));
+      return {
+        oneSample: one.replace(/\s+/g, " "),
+        twoSamples: two.replace(/\s+/g, " "),
+        oneBars: (one.match(/<i /g) || []).length,
+        twoBars: (two.match(/<i /g) || []).length,
+        stored: flowHistoryFor("crooked").length
+      };
+    });
+    assert(!/No readings recorded yet|One reading recorded so far\./.test(history.oneSample),
+      "a recorded reading is not reported as nothing to show");
+    assert(/235 cfs/.test(history.oneSample) && history.oneBars === 1,
+      `the first reading is shown with its value (${history.oneSample.slice(0, 110)})`);
+    assert(history.stored === 2, `a changed reading is kept as its own point (${history.stored})`);
+    assert(history.twoBars === 2 && /rising/.test(history.twoSamples),
+      `and two readings chart as a trend (${history.twoBars} bars)`);
     await page.close();
   }
 
