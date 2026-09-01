@@ -21,6 +21,21 @@ final class RiseScriptMessageProxy: NSObject, WKScriptMessageHandler {
 final class RiseViewController: UIViewController, WKNavigationDelegate, WKScriptMessageHandler {
     private let photoSchemeHandler = RisePhotoSchemeHandler()
 
+    /// The teal the Today hero, the Waters header and LaunchScreen.storyboard
+    /// all paint (#155A6B). The window sits behind a web view that paints its
+    /// own background, so this is only ever seen for the frame before the page
+    /// draws - which is exactly why it has to match the launch screen.
+    private static let shellTeal = UIColor(red: 0.086, green: 0.353, blue: 0.420, alpha: 1)
+
+    /// Set from the web layer whenever the visible screen changes. Today and
+    /// Waters put teal under the status bar and need light glyphs; the other
+    /// four screens are paper and need dark ones.
+    private var statusBarStyle: UIStatusBarStyle = .lightContent
+
+    override var preferredStatusBarStyle: UIStatusBarStyle {
+        statusBarStyle
+    }
+
     private lazy var webView: WKWebView = {
         let configuration = WKWebViewConfiguration()
         configuration.defaultWebpagePreferences.allowsContentJavaScript = true
@@ -28,14 +43,19 @@ final class RiseViewController: UIViewController, WKNavigationDelegate, WKScript
         configuration.userContentController.add(messageProxy, name: "riseSubscription")
         configuration.userContentController.add(messageProxy, name: "riseData")
         configuration.userContentController.add(messageProxy, name: "riseStore")
+        configuration.userContentController.add(messageProxy, name: "riseChrome")
         configuration.setURLSchemeHandler(photoSchemeHandler, forURLScheme: RisePhotoSchemeHandler.scheme)
 
         let webView = WKWebView(frame: .zero, configuration: configuration)
         webView.navigationDelegate = self
         webView.allowsBackForwardNavigationGestures = false
         webView.isOpaque = false
-        webView.backgroundColor = UIColor(red: 0.969, green: 0.957, blue: 0.925, alpha: 1)
-        webView.scrollView.backgroundColor = webView.backgroundColor
+        webView.backgroundColor = Self.shellTeal
+        webView.scrollView.backgroundColor = Self.shellTeal
+        // The web view now spans the whole window, so WebKit must not add its
+        // own safe-area content inset on top of the padding the page already
+        // derives from env(safe-area-inset-*).
+        webView.scrollView.contentInsetAdjustmentBehavior = .never
         return webView
     }()
 
@@ -43,19 +63,25 @@ final class RiseViewController: UIViewController, WKNavigationDelegate, WKScript
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "riseSubscription")
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "riseData")
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "riseStore")
+        webView.configuration.userContentController.removeScriptMessageHandler(forName: "riseChrome")
     }
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        view.backgroundColor = webView.backgroundColor
+        view.backgroundColor = Self.shellTeal
         view.addSubview(webView)
         webView.translatesAutoresizingMaskIntoConstraints = false
-        let safeArea = view.safeAreaLayoutGuide
+        // Pinned to the view, not the safe area. Pinning to safeAreaLayoutGuide
+        // left a ~59pt band of the view's own background above a teal header on
+        // every notched iPhone, and the launch screen is teal, so the app
+        // opened teal -> band -> teal. The page handles the insets itself: the
+        // viewport is viewport-fit=cover and every screen's top block and the
+        // tab bar pad with env(safe-area-inset-*).
         NSLayoutConstraint.activate([
-            webView.leadingAnchor.constraint(equalTo: safeArea.leadingAnchor),
-            webView.trailingAnchor.constraint(equalTo: safeArea.trailingAnchor),
-            webView.topAnchor.constraint(equalTo: safeArea.topAnchor),
-            webView.bottomAnchor.constraint(equalTo: safeArea.bottomAnchor)
+            webView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            webView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            webView.topAnchor.constraint(equalTo: view.topAnchor),
+            webView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
         loadRiseApp()
     }
@@ -77,6 +103,11 @@ final class RiseViewController: UIViewController, WKNavigationDelegate, WKScript
 
         if message.name == "riseStore" {
             handleStoreMessage(message)
+            return
+        }
+
+        if message.name == "riseChrome" {
+            handleChromeMessage(message)
             return
         }
 
@@ -231,6 +262,32 @@ final class RiseViewController: UIViewController, WKNavigationDelegate, WKScript
             presentExport(csv: body)
         default:
             break
+        }
+    }
+
+    /// The page tells the container which glyph colour the status bar needs for
+    /// the screen now on top. An unrecognised or missing value leaves the
+    /// current style alone rather than guessing.
+    private func handleChromeMessage(_ message: WKScriptMessage) {
+        guard let payload = message.body as? [String: Any],
+              let requested = payload["statusBar"] as? String else {
+            return
+        }
+
+        let style: UIStatusBarStyle
+        switch requested {
+        case "light":
+            style = .lightContent
+        case "dark":
+            style = .darkContent
+        default:
+            return
+        }
+
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self, self.statusBarStyle != style else { return }
+            self.statusBarStyle = style
+            self.setNeedsStatusBarAppearanceUpdate()
         }
     }
 

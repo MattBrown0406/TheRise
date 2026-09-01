@@ -60,6 +60,11 @@ function makeElement(id = "") {
     removeChild() {},
     scrollIntoView() {},
     click() {},
+    scrollTop: 0,
+    // Nothing here has a layout, so every box is at the origin. Enough for the
+    // scroll helpers to run; where a scroll position actually matters it is
+    // measured in real Chromium by scripts/test-app-dom.mjs.
+    getBoundingClientRect() { return { top: 0, left: 0, right: 0, bottom: 0, width: 0, height: 0 }; },
     querySelector() { return null; },
     querySelectorAll() { return []; },
     getContext() { return null; }

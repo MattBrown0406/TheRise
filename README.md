@@ -146,6 +146,55 @@ listener attached per render accumulates on the six screens that were not
 replaced — that is how one Delete tap came to erase several catches. The release
 checks fail if per-render binding returns.
 
+## The page owns the whole window
+
+The web view is pinned to the view controller's `view`, not to
+`safeAreaLayoutGuide`, with `contentInsetAdjustmentBehavior = .never` and
+`viewport-fit=cover` on the viewport. Every screen's top block and the tab bar
+pad themselves with `env(safe-area-inset-*)`, and the scroller's bottom padding
+grows with the home-indicator inset. Pinning the web view to the safe area
+instead left a ~59pt band of the window's own background above a teal header on
+every notched iPhone, and the launch screen is teal, so the app opened teal,
+band, teal. The release checks fail if the constraints go back to the safe area.
+
+Today and Waters are teal to the top edge and need light status-bar glyphs; the
+other four screens are paper and need dark ones. `activateTab` tells the
+container which, over the `riseChrome` bridge. Add a screen and give it a status
+bar style there.
+
+## Touch targets
+
+Apple's minimum is 44x44pt and this app is used standing in a river with cold
+wet hands. The shared minimum lives in one block at the end of the stylesheet:
+each control's own rule still owns its colour, border and radius, and only the
+tappable size is set there, with `min-height` and centring so a control that is
+already big enough is untouched. The DOM suite measures every button, link,
+select, input and summary on all six screens at 320, 390, 430 and 768pt, with
+Pro on so the gated controls are measured too, and fails on anything under 44pt.
+A control whose visual size must stay small extends its hit area with an
+absolutely positioned `::after`, as `.toggle` does.
+
+## Landing on what changed
+
+The Today hero is taller than a phone screen, so switching to Today is not the
+same as showing something appended to the body below it: the post-purchase
+welcome panel sat 1,371px down an 844px screen and the buyer saw the screen they
+were already looking at. Anything that has to be seen after an action calls
+`scrollAppTo(selector)`, which measures the target against `<main>` — the
+scroller — rather than reading `offsetTop`, because the screens and several of
+their panels establish their own containing blocks. The DOM suite asserts on
+viewport position, not on the element existing.
+
+## The journal pages, it does not truncate
+
+`LOG_PAGE_SIZE` cards are in the DOM at a time and **Show more** adds a page.
+Nothing is ever dropped: the counts, the entry indices used by Edit and Delete,
+and the CSV export all run over the whole journal — a card's index is still its
+index in `getLogs()`, and it must stay that way or Delete removes a stranger.
+Catch photos are read off the main thread in `RisePhotoSchemeHandler`, which
+tracks its live tasks so a cancelled load is dropped instead of calling back
+into a task WebKit has finished with.
+
 ## Escaping
 
 `esc()` escapes text between tags, `attr()` escapes a value inside a quoted

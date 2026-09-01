@@ -125,7 +125,7 @@ def main() -> int:
     project = PROJECT.read_text(encoding="utf-8")
     build_numbers = re.findall(r"CURRENT_PROJECT_VERSION = ([^;]+);", project)
     versions = re.findall(r"MARKETING_VERSION = ([^;]+);", project)
-    require(bool(build_numbers) and set(build_numbers) == {"13"}, f"expected build 13, found {build_numbers}")
+    require(bool(build_numbers) and set(build_numbers) == {"14"}, f"expected build 14, found {build_numbers}")
     require(bool(versions) and set(versions) == {"1.0"}, f"expected version 1.0, found {versions}")
 
     review_doc = REVIEW_DOC.read_text(encoding="utf-8")
@@ -150,7 +150,7 @@ def main() -> int:
     require(len(notes.strip()) <= 4000, "App Review notes exceed the 4,000-character limit")
     require(PRIVACY_URL == privacy_metadata, "Privacy Policy metadata URL is incorrect")
     for token in (
-        "Version 1.0 build 13",
+        "Version 1.0 build 14",
         "The Rise Pro Monthly",
         "The Rise Pro Annual",
         "therise_pro_monthly",
@@ -648,6 +648,122 @@ def main() -> int:
         "the privacy manifest is not in the Resources build phase, so it will not ship",
     )
 
+    # --- The app owns the whole window ---------------------------------------
+    # The web view used to be pinned to the safe area with the window's cream
+    # background behind it, which put a ~59pt cream band above a teal header on
+    # every notched iPhone - and the launch screen is teal, so the app opened
+    # teal, band, teal. The page now paints edge to edge and insets itself.
+    viewport = re.search(r'<meta name="viewport"[^>]*>', web)
+    require(
+        bool(viewport) and "viewport-fit=cover" in viewport.group(0),
+        "the viewport does not opt into the full screen, so the page cannot paint under the notch",
+    )
+    # The comment above those constraints names safeAreaLayoutGuide to say why
+    # it is not used, so this looks for the constraint rather than the word.
+    swift_code = "\n".join(
+        line for line in swift.splitlines() if not line.lstrip().startswith("//")
+    )
+    require(
+        "safeArea" not in swift_code,
+        "the web view is pinned to the safe area again, which reopens the band under the notch",
+    )
+    for token in (
+        "webView.topAnchor.constraint(equalTo: view.topAnchor)",
+        "webView.bottomAnchor.constraint(equalTo: view.bottomAnchor)",
+        "contentInsetAdjustmentBehavior = .never",
+        "preferredStatusBarStyle",
+        "riseChrome",
+    ):
+        require(token in swift, f"the full-window container is incomplete: {token}")
+    require(
+        swift.count('removeScriptMessageHandler(forName: "riseChrome")') == 1,
+        "the riseChrome handler is registered without being removed, so the controller leaks",
+    )
+    # Every screen has to inset its own top block now, and the scroller has to
+    # clear a tab bar that grew by the home-indicator inset.
+    inset_top_rules = len(re.findall(r"env\(safe-area-inset-top\)", web))
+    require(
+        inset_top_rules >= 5,
+        f"only {inset_top_rules} top blocks pad for the notch; every screen needs to",
+    )
+    require(
+        "calc(88px + env(safe-area-inset-bottom))" in web,
+        "the scroller does not clear a tab bar that now carries the home-indicator inset",
+    )
+
+    # --- Touch targets --------------------------------------------------------
+    # 44x44pt is Apple's minimum, and this app is used standing in a river with
+    # cold wet hands. The DOM suite measures every control on every screen at
+    # four widths; these guard the shared rules it measures.
+    for token in (
+        ".skill-mode-selector button",
+        ".save-water",
+        ".hide-water",
+        ".segmented button",
+    ):
+        require(token in web, f"a control that was undersized is gone: {token}")
+    require(
+        len(re.findall(r"min-height: 44px", web)) >= 4,
+        "the shared 44pt minimum has been removed from the control rules",
+    )
+
+    # --- A purchase has to look like it bought something ----------------------
+    # The app was rejected once under 2.1(b) because a completed purchase left
+    # the buyer on the paywall with a disabled button. Only a purchase or a
+    # restore opens the welcome panel; the startup status query must not.
+    for token in ("subscriptionActionPending", "proWelcomePanel", "data-dismiss-pro-welcome"):
+        require(token in web, f"the post-purchase landing is incomplete: {token}")
+    require(
+        'subscriptionActionPending = "purchase"' in web and 'subscriptionActionPending = "restore"' in web,
+        "purchase and restore no longer mark themselves as the action in flight",
+    )
+    require(
+        re.search(r'action: "status" \}\);', web) and "// A status query is not a purchase" in web,
+        "the startup status query can arm the welcome panel for a returning subscriber",
+    )
+
+    # The Today hero is taller than a phone screen, so landing on the right tab
+    # is not the same as landing on something the buyer can see. Both panels
+    # scroll themselves onto the screen.
+    require(
+        'scrollAppTo("#today .pro-welcome")' in web,
+        "the welcome panel is rendered below a full-screen hero and never scrolled to",
+    )
+    require(
+        "getBoundingClientRect().top - scroller.getBoundingClientRect().top" in web,
+        "scrollAppTo is back on offsetTop, which is a distance to the wrong box",
+    )
+
+    # --- A fresh install is told what to set up -------------------------------
+    for token in ("firstRunPanel", "ONBOARDING_KEY", "data-dismiss-onboarding", "data-use-location"):
+        require(token in web, f"the first-run panel is incomplete: {token}")
+    require(
+        'scrollAppTo("#today .first-run")' in web,
+        "a fresh install opens on a hero of seasonal reference data, not on the setup panel",
+    )
+
+    # --- A long journal renders a page at a time ------------------------------
+    # Nothing is ever dropped: the counts, the indices and the CSV still run
+    # over the whole journal, only the DOM is paged.
+    require("LOG_PAGE_SIZE" in web and "logVisibleCount" in web, "the journal is not paged")
+    require(
+        "logs.slice(0, logVisibleCount).map" in web,
+        "the journal list no longer pages, so a season of catches renders at once",
+    )
+    require(
+        "data-show-more-log" in web,
+        "a paged journal has no way to show the rest of the entries",
+    )
+    # And the photos behind those cards are read off the main thread.
+    require(
+        "readQueue.async" in scheme_swift and "DispatchQueue.main.async" in scheme_swift,
+        "catch photos are read on the main thread again, which stutters journal scrolling",
+    )
+    require(
+        "liveTasks" in scheme_swift,
+        "an async scheme handler must track live tasks or WebKit traps on a cancelled load",
+    )
+
     # --- Behaviour suite ------------------------------------------------------
     require(APP_LOGIC_TESTS.is_file(), "app behaviour tests are missing")
     result = subprocess.run(
@@ -698,7 +814,7 @@ def main() -> int:
     print("PASS: subscription disclosure, legal links, and localized-price bridge")
     if not args.skip_screenshots:
         print("PASS: regenerated Pro and IAP review screenshots")
-    print("PASS: version 1.0 build 13 and RevenueCat product identifiers")
+    print("PASS: version 1.0 build 14 and RevenueCat product identifiers")
     print("PASS: App Store metadata/IAP submission checklist")
     print("PASS: catch-log durability, export, and native container storage")
     print("PASS: subscription claims match shipped functionality")
@@ -722,6 +838,10 @@ def main() -> int:
     print("PASS: Oregon time drives the score, nothing clips at 320pt, and every referenced asset exists")
     print("PASS: the rating breakdown is labelled, flow history shows real readings, no mockup language")
     print("PASS: privacy manifest present, declared, and in the Resources build phase")
+    print("PASS: the app paints the whole window and insets itself under the notch")
+    print("PASS: every control carries the 44pt minimum touch target")
+    print("PASS: a purchase lands the buyer on what it unlocked, a relaunch does not")
+    print("PASS: a fresh install is told what to set up, and a long journal pages")
     print(f"PASS: app behaviour tests ({logic_summary})")
     print(f"PASS: real-DOM tests ({dom_summary})")
     print(f"PASS: native storage tests ({store_summary})")

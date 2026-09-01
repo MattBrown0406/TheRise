@@ -197,6 +197,16 @@ const screenshotJs = `
     if (proShots.includes(shot)) {
       try { proAccessActive = true; } catch (error) { /* older builds */ }
     }
+    /* The Today screen opens with the three-step setup panel until a device has
+       readings, a location and a catch in it. That is the right thing for a new
+       install and for App Review, and the wrong thing for a store listing, where
+       it would cover the screen a shot exists to show. Dismissing it is a stored
+       preference set through the app's own key - state, not styling. Remove this
+       and the captures are of a device that has never been set up. */
+    try {
+      localStorage.setItem("riseOnboarding.v1", "true");
+      onboardingDismissed = true;
+    } catch (error) { /* older builds */ }
     const setTab = (tab) => {
       if (typeof activateTab === "function") activateTab(tab);
     };

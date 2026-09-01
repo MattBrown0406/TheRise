@@ -2,7 +2,12 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- viewport-fit=cover lets the app paint under the notch and the home
+       indicator. Without it the container had to inset the web view itself,
+       which put a band of the window's background above the teal header on
+       every notched iPhone. Every screen's top block and the tab bar pad
+       themselves with env(safe-area-inset-*) instead. -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>The Rise - Central Oregon Fly Fishing</title>
   <style>
     :root {
@@ -1326,7 +1331,7 @@
     }
 
     .waters-header {
-      padding: 16px;
+      padding: calc(16px + env(safe-area-inset-top)) 16px 16px;
       background: #155a6b;
       color: white;
       display: grid;
@@ -1942,7 +1947,7 @@
     .trip-screen {
       display: grid;
       gap: 14px;
-      padding: 18px;
+      padding: calc(18px + env(safe-area-inset-top)) 18px 18px;
     }
 
     .trip-hero {
@@ -2280,6 +2285,11 @@
       justify-content: space-between;
       gap: 12px;
       align-items: flex-start;
+      /* The star, Hide and the type chip are 44pt-tall targets now, and at
+         320pt - an SE or mini with Display Zoom - that row no longer fits
+         beside the water name. It drops to its own line instead of pushing
+         the card past the right edge. No effect where there is room. */
+      flex-wrap: wrap;
     }
 
     .water-top strong,
@@ -3336,7 +3346,10 @@
       overflow-y: auto;
       overflow-x: hidden;
       -webkit-overflow-scrolling: touch;
-      padding: 0 0 88px;
+      /* The tab bar grew by the home-indicator inset when the web view took
+         over the full window, so the scroller's bottom clearance has to grow
+         with it or the last card sits under the tabs. */
+      padding: 0 0 calc(88px + env(safe-area-inset-bottom));
       min-width: 0;
       scrollbar-width: none;
     }
@@ -3379,7 +3392,7 @@
     }
 
     .topbar {
-      padding: 18px 16px 0;
+      padding: calc(18px + env(safe-area-inset-top)) 16px 0;
       align-items: flex-start;
       flex-direction: column;
     }
@@ -3394,7 +3407,7 @@
 
     .today-hero {
       min-height: 430px;
-      padding: 34px 20px 84px;
+      padding: calc(34px + env(safe-area-inset-top)) 20px 84px;
     }
 
     .prime-title {
@@ -3553,7 +3566,7 @@
 
     .log-screen {
       gap: 18px;
-      padding: 18px;
+      padding: calc(18px + env(safe-area-inset-top)) 18px 18px;
     }
 
     .log-top {
@@ -3644,6 +3657,261 @@
         padding-left: 28px;
         padding-right: 28px;
       }
+    }
+
+    .log-more {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .log-more .subtle {
+      margin: 0;
+      font-size: 12px;
+      flex: 1 1 200px;
+      min-width: 0;
+    }
+
+    /* The first thing a new install and an App Review tester see under the
+       hero. Steps that are already satisfied stay visible and check
+       themselves off, so the panel reads as state rather than as a tour. */
+    .first-run {
+      border: 1px solid rgba(21, 90, 107, .28);
+      border-radius: 10px;
+      background: linear-gradient(180deg, #eef6f8, #fffdf7);
+      padding: 16px;
+      display: grid;
+      gap: 12px;
+      box-shadow: var(--shadow);
+    }
+
+    .first-run-head {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .first-run-head > div {
+      flex: 1 1 200px;
+      min-width: 0;
+    }
+
+    .first-run-head h3 {
+      margin: 0 0 6px;
+    }
+
+    .first-run-head .subtle {
+      margin: 0;
+      font-size: 12px;
+    }
+
+    .first-run-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .first-run-step {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      padding: 12px;
+    }
+
+    .first-run-step > div {
+      display: grid;
+      gap: 3px;
+      flex: 1 1 180px;
+      min-width: 0;
+    }
+
+    .first-run-step span {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .first-run-mark {
+      flex: 0 0 auto;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      border: 1px solid var(--line);
+      display: grid;
+      place-items: center;
+      font-size: 12px;
+      font-weight: 900;
+      color: var(--pine);
+    }
+
+    .first-run-step.done {
+      background: #f2f8f4;
+      border-color: rgba(47, 91, 69, .28);
+    }
+
+    .first-run-step.done .first-run-mark {
+      background: var(--pine);
+      border-color: var(--pine);
+      color: white;
+    }
+
+    /* The panel a new subscriber lands on. Deliberately loud - it is the only
+       thing on screen that says the purchase did something - and removable in
+       one tap. */
+    .pro-welcome {
+      border: 1px solid rgba(47, 91, 69, .3);
+      border-radius: 10px;
+      background: linear-gradient(180deg, #f2f8f4, #fffdf7);
+      padding: 16px;
+      display: grid;
+      gap: 12px;
+      box-shadow: var(--shadow);
+    }
+
+    .pro-welcome-head {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .pro-welcome-head h3 {
+      margin: 0;
+    }
+
+    .pro-welcome-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .pro-welcome-item {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      padding: 12px;
+    }
+
+    .pro-welcome-item > div {
+      display: grid;
+      gap: 3px;
+      min-width: 0;
+      flex: 1 1 180px;
+    }
+
+    .pro-welcome-item span {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    /* Touch targets.
+
+       Apple's minimum is 44x44pt, and this app is used standing in a river
+       with cold, wet hands. A sweep at 390pt found controls as small as 25px
+       tall - the skill-mode segments, the fly-feedback buttons, the save-water
+       star at 38x38 - across all six screens.
+
+       This block sits last on purpose. Each control's own rule above still
+       owns its colour, border and radius; only the tappable size is set here,
+       in one place, so the next person can see the whole target inventory
+       without reading eighteen component rules. Sizing uses min-height with
+       centring rather than extra padding so a control that is already tall
+       enough is left exactly as it was. */
+    .skill-mode-selector button,
+    .mini-action,
+    .ghost-btn,
+    .fly-badge,
+    .fly-feedback button,
+    .compact-fly-row .fly-feedback button,
+    .hide-water,
+    .primary-btn,
+    .fly-trigger-chip,
+    .subscription-legal-links a {
+      min-height: 44px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* An inline-grid of two stacked lines, so it centres its rows instead of
+       its inline content. */
+    .water-fly-badge {
+      min-height: 44px;
+      align-content: center;
+    }
+
+    /* Icon-only, so it needs the horizontal minimum as well. */
+    .save-water {
+      width: 44px;
+      height: 44px;
+    }
+
+    /* The static chips in the same row stay their own size; centring keeps
+       them aligned with the taller tappable ones. */
+    .chips {
+      align-items: center;
+    }
+
+    .fly-trigger-chip {
+      padding: 0 14px;
+    }
+
+    /* A switch has a canonical 54x30 look that should not be inflated, so the
+       hit area is extended past the visual track instead. The pseudo-element
+       is part of the button for hit testing, so the whole 44pt band responds. */
+    .toggle {
+      position: relative;
+    }
+
+    .toggle:after {
+      content: "";
+      position: absolute;
+      top: -7px;
+      bottom: -7px;
+      left: 0;
+      right: 0;
+    }
+
+    input,
+    select {
+      min-height: 44px;
+    }
+
+    /* The Waters header pins its own toolbar to 34px and the shared control
+       rule stops at 38px. Both are more specific than the block above, so the
+       minimum is restated at their specificity rather than raised with
+       !important. */
+    .waters-toolbar .ghost-btn,
+    .waters-toolbar .segmented button,
+    .waters-toolbar input,
+    .waters-toolbar select,
+    .segmented button,
+    .icon-btn,
+    .toolbar input,
+    .toolbar select,
+    .trait-grid select {
+      min-height: 44px;
+    }
+
+    /* "All" and "Best" are short enough that padding alone left them 38px
+       wide, so the segments carry the horizontal minimum too. */
+    .segmented button,
+    .skill-mode-selector button,
+    .icon-btn {
+      min-width: 44px;
     }
   </style>
 </head>
@@ -3904,6 +4172,7 @@
     const FLY_FEEDBACK_KEY = "riseFlyFeedback.v1";
     const BEGINNER_MODE_KEY = "riseBeginnerMode.v1";
     const SKILL_MODE_KEY = "riseSkillMode.v1";
+    const ONBOARDING_KEY = "riseOnboarding.v1";
     const FLOW_HISTORY_KEY = "riseFlowHistory.v1";
     const FLOW_HISTORY_MAX_SAMPLES = 60;
     const skillModes = ["Beginner", "Intermediate", "Expert"];
@@ -4108,10 +4377,23 @@
     let activeBug = bugs[0].id;
     let billing = "annual";
     let proAccessActive = false;
+    let proWelcomeOpen = false;
+    let onboardingDismissed = readStoredBoolean(ONBOARDING_KEY);
+    // "purchase" or "restore" while one of those is in flight. The startup
+    // status query leaves it null, which is how the welcome panel tells a
+    // fresh purchase from simply relaunching as an existing subscriber.
+    let subscriptionActionPending = null;
     let subscriptionLoading = true;
     let subscriptionMessage = "Loading localized subscription prices from the App Store...";
     let subscriptionPrices = { monthly: null, annual: null };
     let logFormOpen = false;
+    /* The journal is never truncated - it is the angler's own record - but it
+       does not all have to be in the DOM at once. 500 catches took 300-440ms
+       to render on a desktop and two to three times that on a phone, every
+       time the screen repainted. Cards are added a page at a time; the counts,
+       the CSV export and the entry indices still run over the whole journal. */
+    const LOG_PAGE_SIZE = 40;
+    let logVisibleCount = LOG_PAGE_SIZE;
     let logSaveMessage = "";
     let editingLogIndex = null;
     let activeBugStage = null;
@@ -5002,13 +5284,15 @@
     }
 
     function requestUserLocation() {
+      // The first-run panel lives on Today and offers this button, so Today
+      // has to see the result as well as Waters.
       if (!navigator.geolocation) {
         locationStatus = "error";
-        renderWaters();
+        renderScreens("waters", "today");
         return;
       }
       locationStatus = "loading";
-      renderWaters();
+      renderScreens("waters", "today");
       navigator.geolocation.getCurrentPosition((position) => {
         saveUserLocation({
           lat: position.coords.latitude,
@@ -5018,10 +5302,11 @@
         });
         waterSortMode = "Near";
         locationStatus = "ready";
-        renderWaters();
+        maybeCompleteOnboarding();
+        renderScreens("waters", "today");
       }, () => {
         locationStatus = "error";
-        renderWaters();
+        renderScreens("waters", "today");
       }, {
         enableHighAccuracy: true,
         timeout: 10000,
@@ -6557,6 +6842,7 @@
         // Without this, one thrown quota error left bulkStatus set and killed
         // every refresh for the rest of the session.
         liveReports.bulkStatus = "";
+        maybeCompleteOnboarding();
         renderAll();
       }
       return results;
@@ -6780,6 +7066,147 @@
       ["Fish this plan", "A staged plan for the water: what to fish, where, and in what order for the current window."],
       ["Hatch ID assistant", "Filter by size, colour, water type and behaviour to narrow what you are looking at, then jump straight to matching fly patterns."]
     ];
+
+    /* ---------------------------------------------------------------------
+       First run.
+
+       A fresh install lands on Today with no saved location, no cached
+       readings and an empty journal - which is to say, with none of the three
+       things the whole app is built on. Everything on screen was seasonal
+       reference data, and nothing told a new angler (or an App Review tester,
+       who sees exactly this) that a sync had never run.
+
+       Three steps, each with the button that performs it and a done state it
+       checks for itself, so the panel is a record of what is actually set up
+       rather than a tour that claims to be finished.
+       --------------------------------------------------------------------- */
+
+    function onboardingSteps() {
+      return [
+        [
+          "readings",
+          Boolean(cachedWaterCount()),
+          "Get today's readings",
+          "Pull live gauge and forecast data for the waters you use, and save it so the app still works when you lose signal in the canyon.",
+          `<button class="ghost-btn" data-refresh-all>${liveReports.bulkStatus ? "Updating..." : "Get readings"}</button>`
+        ],
+        [
+          "location",
+          Boolean(userLocation),
+          "Rank waters by distance",
+          `Sort all ${waters.length} Central Oregon waters by how far they are from where you are standing. The location stays on this device.`,
+          `<button class="ghost-btn" data-use-location>${locationStatus === "loading" ? "Locating..." : "Use Location"}</button>`
+        ],
+        [
+          "log",
+          getLogs().length > 0,
+          "Log your first catch",
+          "Fish, fly, length, photo and the conditions it was caught in - saved on this device, and never uploaded.",
+          `<button class="ghost-btn" data-tab-jump="log">Open the journal</button>`
+        ]
+      ];
+    }
+
+    function onboardingComplete() {
+      return onboardingSteps().every(([, done]) => done);
+    }
+
+    /* Called after the two steps that can complete on their own, so a finished
+       setup stops showing the panel permanently rather than reappearing the
+       next time the cache expires. */
+    function maybeCompleteOnboarding() {
+      if (onboardingDismissed || !onboardingComplete()) return;
+      dismissOnboarding();
+    }
+
+    function dismissOnboarding() {
+      onboardingDismissed = true;
+      try {
+        localStorage.setItem(ONBOARDING_KEY, "true");
+      } catch {
+        // Saved on this device only; the panel simply reappears next launch.
+      }
+    }
+
+    function firstRunPanel() {
+      if (onboardingDismissed || onboardingComplete()) return "";
+      const steps = onboardingSteps();
+      const doneCount = steps.filter(([, done]) => done).length;
+      return `
+        <div class="first-run" role="region" aria-label="Set up The Rise">
+          <div class="first-run-head">
+            <div>
+              <p class="eyebrow">Set up - ${doneCount} of ${steps.length} done</p>
+              <h3>Three things and you are fishing</h3>
+              <p class="subtle">Every water gets a 0-10 fishability rating built from season, time of day, flow, water temperature, wind and the forecast. It is only as good as the data underneath it, so start here.</p>
+            </div>
+            <button class="ghost-btn" data-dismiss-onboarding>Skip</button>
+          </div>
+          <div class="first-run-list">
+            ${steps.map(([key, done, title, body, action]) => `
+              <div class="first-run-step ${done ? "done" : ""}" data-step="${key}">
+                <span class="first-run-mark" aria-hidden="true">${done ? "✓" : ""}</span>
+                <div>
+                  <strong>${title}</strong>
+                  <span>${body}</span>
+                </div>
+                ${done ? `<span class="chip">Done</span>` : action}
+              </div>
+            `).join("")}
+          </div>
+        </div>
+      `;
+    }
+
+    /* Where each unlocked feature actually lives, so the buyer can be taken to
+       it rather than left on the paywall reading that it is now "Active". */
+    const PRO_FEATURE_DESTINATIONS = {
+      "Flow history": [`data-tab-jump="waters"`, "Open a water"],
+      // Already on this screen and already expanded, so this scrolls to it
+      // rather than switching tabs - activateTab would scroll back to the top
+      // and take the breakdown off screen.
+      "Rating breakdown": [`data-show-breakdown`, "Show me"],
+      "Fish this plan": [`data-tab-jump="trip"`, "Open Trip Mode"],
+      "Hatch ID assistant": [`data-tab-jump="bugs"`, "Open Bugs"]
+    };
+
+    /* Shown once, immediately after the purchase or restore that turned Pro
+       on - never on a later launch, because the startup status check flips the
+       same flag and the buyer has already seen this.
+
+       Before this, a successful purchase left the angler on the Pro tab with a
+       disabled "Pro active" button and four cards whose chips had changed from
+       "Pro" to "Active". Three of the four features are panels on other
+       screens that simply replaced a lock, so there was nothing on screen that
+       looked like the thing they had just paid for. The app was already
+       rejected once under 2.1(b) over exactly that impression. */
+    function proWelcomePanel() {
+      return `
+        <div class="pro-welcome" role="status">
+          <div class="pro-welcome-head">
+            <div>
+              <p class="eyebrow">The Rise Pro</p>
+              <h3>Four things just unlocked</h3>
+            </div>
+            <button class="ghost-btn" data-dismiss-pro-welcome>Got it</button>
+          </div>
+          <div class="pro-welcome-list">
+            ${PRO_FEATURES.map(([title, description]) => {
+              const [attribute, label] = PRO_FEATURE_DESTINATIONS[title] || [`data-tab-jump="pro"`, "Open Pro"];
+              return `
+                <div class="pro-welcome-item">
+                  <div>
+                    <strong>${esc(title)}</strong>
+                    <span>${esc(description)}</span>
+                  </div>
+                  <button class="ghost-btn" ${attribute}>${esc(label)}</button>
+                </div>
+              `;
+            }).join("")}
+          </div>
+        </div>
+      `;
+    }
 
     function proLock(title, description) {
       return `
@@ -7396,6 +7823,8 @@
           </section>
 
           <section class="today-body">
+            ${firstRunPanel()}
+            ${proWelcomeOpen ? proWelcomePanel() : ""}
             <div class="insight-grid">
               ${whyThisWaterCard(topPick)}
               ${personalMemoryCard(topPick)}
@@ -8173,7 +8602,7 @@
           ` : ""}
 
           <div class="log-entry-list">
-            ${logs.length ? logs.map((entry, index) => `
+            ${logs.length ? logs.slice(0, logVisibleCount).map((entry, index) => `
               <div class="catch-card">
                 <div class="catch-photo">${photoSourceFor(entry) ? `<img src="${attr(photoSourceFor(entry))}" alt="${attr(entry.fish)} catch photo" loading="lazy">` : "🐟"}</div>
                 <div>
@@ -8206,6 +8635,12 @@
               `).join("")}
             `}
           </div>
+          ${logs.length > logVisibleCount ? `
+            <div class="log-more">
+              <p class="subtle">Showing ${logVisibleCount} of ${logs.length} entries. Every one is saved; Export CSV includes them all.</p>
+              <button class="ghost-btn" data-show-more-log>Show ${Math.min(LOG_PAGE_SIZE, logs.length - logVisibleCount)} more</button>
+            </div>
+          ` : ""}
             </div>
         </div>
       `;
@@ -8273,6 +8708,8 @@
     function postSubscriptionMessage(payload) {
       if (!hasSubscriptionBridge()) {
         subscriptionLoading = false;
+        // Nothing will reply, so the action is over before it started.
+        subscriptionActionPending = null;
         subscriptionMessage = "Purchases and prices come from the App Store and are available in the iOS app.";
         renderPro();
         return false;
@@ -8283,6 +8720,10 @@
 
     window.riseSubscriptionResult = function(result) {
       const previousAccess = proAccessActive;
+      const pendingAction = subscriptionActionPending;
+      // Every reply ends whatever action was in flight, including a cancel and
+      // an error, so a failed purchase cannot arm the welcome panel later.
+      subscriptionActionPending = null;
       proAccessActive = Boolean(result?.active);
       subscriptionLoading = false;
       if (result?.prices?.monthly) subscriptionPrices.monthly = result.prices.monthly;
@@ -8291,6 +8732,22 @@
       // Pro now gates panels on the Today, Waters, Trip and Bugs screens, so an
       // access change has to repaint more than the Pro tab.
       if (previousAccess !== proAccessActive) {
+        // A purchase or restore that just turned Pro on lands the buyer on the
+        // rating breakdown - the one unlock that is a visible change rather
+        // than a panel appearing on another screen - with the other three
+        // listed above it. A relaunch as an existing subscriber does not, and
+        // neither does losing access.
+        if (proAccessActive && (pendingAction === "purchase" || pendingAction === "restore")) {
+          proWelcomeOpen = true;
+          scoreBreakdownOpen = true;
+          renderAll();
+          activateTab("today");
+          // activateTab puts Today at its top, which on a phone is the hero and
+          // nothing else. The panel is what the purchase has to be seen to have
+          // done, so the screen opens on it.
+          scrollAppTo("#today .pro-welcome");
+          return;
+        }
         renderAll();
         return;
       }
@@ -8382,7 +8839,24 @@
       }
       all(".view").forEach((view) => view.classList.toggle("active", view.id === tab));
       all(".tab").forEach((button) => button.setAttribute("aria-selected", button.dataset.tab === tab ? "true" : "false"));
+      syncStatusBarChrome(tab);
       scrollAppToTop();
+    }
+
+    /* Today and Waters paint teal (#155a6b) all the way up under the status
+       bar; the other four screens are paper up there. The container cannot
+       know which is on top, so the page tells it which glyph colour to use.
+       Outside the iOS app there is no bridge and nothing to tell. */
+    const lightStatusBarScreens = new Set(["today", "waters"]);
+
+    function syncStatusBarChrome(tab) {
+      const handler = window.webkit?.messageHandlers?.riseChrome;
+      if (!handler) return;
+      try {
+        handler.postMessage({ statusBar: lightStatusBarScreens.has(tab) ? "light" : "dark" });
+      } catch {
+        // Chrome styling is cosmetic; a missing bridge must not break the tab.
+      }
     }
 
     /* The app scrolls <main>, not the document: `main { overflow-y: auto }`
@@ -8397,6 +8871,22 @@
       const scroller = document.querySelector("main");
       if (scroller) scroller.scrollTop = 0;
       window.scrollTo(0, 0);
+    }
+
+    /* Same scroller, a specific panel. Landing a buyer on the tab that holds
+       what they bought is not enough on a phone: the Today hero is taller than
+       a 390x844 screen, so a panel appended to the body below it sits 1,400px
+       down and the buyer sees the screen they were already looking at. */
+    function scrollAppTo(selector) {
+      const target = document.querySelector(selector);
+      const scroller = document.querySelector("main");
+      if (!target || !scroller) return;
+      // Measured against the scroller rather than read off offsetTop: the
+      // screens and several of their panels establish their own containing
+      // blocks, so offsetTop is a distance to some intermediate box and using
+      // it left the target 1,371px down an 844px screen.
+      const delta = target.getBoundingClientRect().top - scroller.getBoundingClientRect().top;
+      scroller.scrollTop = Math.max(0, scroller.scrollTop + delta - 12);
     }
 
     function readPhotoFile(file) {
@@ -8593,15 +9083,36 @@
       }],
       ["[data-subscribe-plan]", (element) => {
         subscriptionLoading = true;
+        subscriptionActionPending = "purchase";
         subscriptionMessage = `Starting ${element.dataset.subscribePlan === "annual" ? "annual" : "monthly"} checkout...`;
         renderPro();
         postSubscriptionMessage({ action: "purchase", plan: element.dataset.subscribePlan });
       }],
       ["[data-restore-purchases]", () => {
         subscriptionLoading = true;
+        subscriptionActionPending = "restore";
         subscriptionMessage = "Checking past purchases...";
         renderPro();
         postSubscriptionMessage({ action: "restore" });
+      }],
+      ["[data-dismiss-pro-welcome]", () => {
+        proWelcomeOpen = false;
+        renderToday();
+      }],
+      ["[data-dismiss-onboarding]", () => {
+        dismissOnboarding();
+        renderToday();
+      }],
+      ["[data-show-more-log]", () => {
+        logVisibleCount += LOG_PAGE_SIZE;
+        renderLog();
+      }],
+      ["[data-show-breakdown]", () => {
+        if (!scoreBreakdownOpen) {
+          scoreBreakdownOpen = true;
+          renderToday();
+        }
+        scrollAppTo("#today .score-breakdown-panel");
       }],
       ["[data-refresh-subscription]", () => syncSubscriptionStatus()],
       ["[data-water]", (element, event) => {
@@ -8798,6 +9309,7 @@
       logSaveMessage = "";
       logFormOpen = false;
       editingLogIndex = null;
+      maybeCompleteOnboarding();
       renderLog();
     }
 
@@ -8810,6 +9322,9 @@
       }
       subscriptionPrices = { monthly: null, annual: null };
       subscriptionLoading = true;
+      // A status query is not a purchase, so its reply must not open the
+      // welcome panel for a subscriber who has simply relaunched the app.
+      subscriptionActionPending = null;
       subscriptionMessage = "Loading localized subscription prices from the App Store...";
       renderPro();
       postSubscriptionMessage({ action: "status" });
@@ -8821,6 +9336,18 @@
     userLocation = readUserLocation();
     hydrateWaterCache();
     renderEverything();
+    // Today is the screen the app opens on, and it is teal to the top edge.
+    syncStatusBarChrome(activeScreenId());
+    /* On a phone the Today hero is taller than the screen, so a panel below it
+       is not on the screen anyone is looking at. An install with none of the
+       three steps done therefore opens on the setup panel instead of on a hero
+       built entirely from seasonal reference data - which is also the first
+       thing an App Review tester sees. As soon as any one step is done the app
+       opens at the top again, so this is not a scroll position to fight every
+       launch. */
+    if (!onboardingDismissed && onboardingSteps().every(([, done]) => !done)) {
+      scrollAppTo("#today .first-run");
+    }
     syncSubscriptionStatus();
     runInitialDataSync();
     startDailyOpenSyncWatcher();

@@ -12,7 +12,7 @@
  * Chrome is resolved at run time; override with RISE_CHROME.
  */
 
-import { copyFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { copyFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { homedir } from "node:os";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -41,6 +41,22 @@ for (const plates of ["bug-plates", "fly-plates"]) {
   cpSync(resolve(root, plates), resolve(workRoot, plates), { recursive: true });
 }
 const appUrl = pathToFileURL(stagedApp).href;
+
+/* A second copy with the CSS environment variables replaced by the insets a
+   notched iPhone actually reports. env(safe-area-inset-*) cannot be emulated
+   over the DevTools protocol, so substituting the device's own numbers is the
+   only way to prove the padding lands on the right boxes rather than merely
+   appearing somewhere in the stylesheet. */
+const SAFE_AREA_TOP = 59;
+const SAFE_AREA_BOTTOM = 34;
+const insetApp = resolve(workRoot, "the-rise-app-insets.html");
+writeFileSync(
+  insetApp,
+  readFileSync(resolve(root, "the-rise-app.html"), "utf8")
+    .replaceAll("env(safe-area-inset-top)", `${SAFE_AREA_TOP}px`)
+    .replaceAll("env(safe-area-inset-bottom)", `${SAFE_AREA_BOTTOM}px`)
+);
+const insetAppUrl = pathToFileURL(insetApp).href;
 
 let puppeteer;
 try {
@@ -145,19 +161,20 @@ const instrumentation = `
    to write - which is exactly why the fresh-install path was never tested. */
 const openContexts = [];
 
-async function openApp(browser, { fetchPlan, viewport } = {}) {
+async function openApp(browser, { fetchPlan, viewport, url, before } = {}) {
   const context = await browser.createBrowserContext();
   openContexts.push(context);
   const page = await context.newPage();
   await page.setViewport(viewport || { width: 430, height: 932 });
   await page.evaluateOnNewDocument(instrumentation);
+  if (before) await page.evaluateOnNewDocument(before);
   if (fetchPlan) {
     await page.evaluateOnNewDocument((plan) => {
       window.addEventListener("DOMContentLoaded", () => {});
       Object.defineProperty(window, "__pendingFetchPlan", { value: plan, writable: true });
     }, fetchPlan);
   }
-  await page.goto(appUrl, { waitUntil: "load" });
+  await page.goto(url || appUrl, { waitUntil: "load" });
   if (fetchPlan) await page.evaluate(() => { window.__fetchPlan = window.__pendingFetchPlan; });
   await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => done())));
   return page;
@@ -170,6 +187,14 @@ async function seedLogs(page, entries) {
   }, entries);
   await page.reload({ waitUntil: "load" });
   await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => done())));
+}
+
+function sampleEntryFor(index) {
+  return sampleEntry({
+    loggedAt: new Date(Date.UTC(2026, 5, 1, 12, 0, index)).toISOString(),
+    fly: `Seed Fly #${index}`,
+    notes: `entry ${index}`
+  });
 }
 
 function sampleEntry(overrides = {}) {
@@ -1140,6 +1165,352 @@ try {
     assert(history.stored === 2, `a changed reading is kept as its own point (${history.stored})`);
     assert(history.twoBars === 2 && /rising/.test(history.twoSamples),
       `and two readings chart as a trend (${history.twoBars} bars)`);
+    await page.close();
+  }
+
+  /* ---------------------------------------------------------------- */
+  group("The app paints under the notch instead of leaving a band (#2 build 14)");
+
+  {
+    const source = readFileSync(resolve(root, "the-rise-app.html"), "utf8");
+    const viewport = source.match(/<meta name="viewport"[^>]*>/)[0];
+    assert(/viewport-fit=cover/.test(viewport),
+      `the viewport opts into the full screen (${viewport.slice(0, 76)}...)`);
+
+    const page = await openApp(browser, {
+      url: insetAppUrl,
+      viewport: { width: 390, height: 844 },
+      // A device that has been set up, so Today opens at its top. A fresh
+      // install deliberately opens scrolled to the setup panel, which is
+      // tested below; what is under test here is where the top edge lands.
+      before: () => localStorage.setItem("riseOnboarding.v1", "true")
+    });
+    // .view.active fades in from translateY(8px). Measuring mid-animation puts
+    // every top edge a fraction of a pixel low, which is not what is under
+    // test here.
+    const settle = () => page.evaluate(() =>
+      Promise.all(document.getAnimations().map((animation) => animation.finished.catch(() => {}))));
+    await settle();
+    const today = await page.evaluate(() => {
+      const hero = document.querySelector("#today .today-hero");
+      const rect = hero.getBoundingClientRect();
+      const title = document.querySelector("#today .prime-title").getBoundingClientRect();
+      return {
+        heroTop: Math.round(rect.top),
+        heroColour: getComputedStyle(hero).backgroundColor,
+        titleTop: Math.round(title.top),
+        bodyColour: getComputedStyle(document.body).backgroundColor
+      };
+    });
+    assert(today.heroTop === 0,
+      `the teal hero starts at the very top of the screen (${today.heroTop}px)`);
+    assert(today.titleTop >= SAFE_AREA_TOP,
+      `and its first line clears the notch (${today.titleTop}px, inset ${SAFE_AREA_TOP}px)`);
+
+    // The band this replaces was the window's own background showing above a
+    // teal header. Nothing between y=0 and the inset may be a different colour
+    // from the header itself.
+    const bandColours = await page.evaluate((inset) => {
+      const seen = new Set();
+      for (let y = 1; y < inset; y += 6) {
+        const element = document.elementFromPoint(195, y);
+        if (element) seen.add(getComputedStyle(element.closest("*")).backgroundColor || "");
+      }
+      return [...seen];
+    }, SAFE_AREA_TOP);
+    assert(bandColours.every((colour) => colour === "rgba(0, 0, 0, 0)" || colour === today.heroColour),
+      `nothing but the header paints the inset strip (${bandColours.join(" | ")})`);
+
+    const tabs = await page.evaluate((inset) => {
+      const bar = document.querySelector(".footer-tabs");
+      const rect = bar.getBoundingClientRect();
+      const lastTab = [...bar.querySelectorAll(".tab")].pop().getBoundingClientRect();
+      return {
+        bottom: Math.round(rect.bottom),
+        tabBottom: Math.round(lastTab.bottom),
+        clearance: Math.round(rect.bottom - lastTab.bottom),
+        inset
+      };
+    }, SAFE_AREA_BOTTOM);
+    assert(tabs.clearance >= SAFE_AREA_BOTTOM,
+      `the tab labels clear the home indicator (${tabs.clearance}px of ${SAFE_AREA_BOTTOM}px)`);
+
+    // Every screen, not just Today: the fix is worthless if one tab's header
+    // sits under the clock.
+    for (const tab of ["waters", "trip", "bugs", "log", "pro"]) {
+      await page.evaluate((id) => activateTab(id), tab);
+      await settle();
+      // The first thing with words on it, wherever the padding happens to sit
+      // on that screen - a header's own box may legitimately start at the top
+      // edge as long as its text does not.
+      const measured = await page.evaluate((id) => {
+        const element = document.querySelector(`#${id} .eyebrow, #${id} h1, #${id} h2`);
+        return { text: (element.textContent || "").trim().slice(0, 24), top: Math.round(element.getBoundingClientRect().top) };
+      }, tab);
+      assert(measured.top >= SAFE_AREA_TOP,
+        `${tab} starts below the notch ("${measured.text}" at ${measured.top}px)`);
+    }
+
+    // And the container is told which glyph colour that screen needs.
+    const chrome = await page.evaluate(() => {
+      const sent = [];
+      window.webkit = { messageHandlers: { riseChrome: { postMessage: (message) => sent.push(message.statusBar) } } };
+      ["today", "waters", "trip", "bugs", "log", "pro"].forEach((tab) => activateTab(tab));
+      return sent;
+    });
+    assert(chrome.join(",") === "light,light,dark,dark,dark,dark",
+      `the status bar follows the screen underneath it (${chrome.join(",")})`);
+    await page.close();
+  }
+
+  /* ---------------------------------------------------------------- */
+  group("Every control is at least 44x44pt (#3 build 14)");
+
+  {
+    for (const width of [320, 390, 430, 768]) {
+      const page = await openApp(browser, { viewport: { width, height: 900 } });
+      const small = await page.evaluate(() => {
+        // Pro on, so the gated panels and their controls are measured too.
+        proAccessActive = true;
+        renderEverything();
+        const undersized = [];
+        document.querySelectorAll(".view").forEach((view) => {
+          const wasActive = view.classList.contains("active");
+          view.classList.add("active");
+          view.querySelectorAll("button, a[href], select, input:not([type=hidden]), summary, [role=button]").forEach((element) => {
+            const rect = element.getBoundingClientRect();
+            if (!rect.width && !rect.height) return;
+            // A hit area extended past the visual box with an absolutely
+            // positioned ::after counts: the pseudo-element is part of the
+            // element for hit testing.
+            const after = getComputedStyle(element, "::after");
+            const grow = (side) => {
+              const value = parseFloat(after[side]);
+              return after.content !== "none" && after.position === "absolute" && value < 0 ? -value : 0;
+            };
+            const width = rect.width + grow("left") + grow("right");
+            const height = rect.height + grow("top") + grow("bottom");
+            if (width >= 44 && height >= 44) return;
+            undersized.push(`${view.id}:${element.className || element.tagName} ${Math.round(width)}x${Math.round(height)}`);
+          });
+          if (!wasActive) view.classList.remove("active");
+        });
+        return undersized;
+      });
+      assert(!small.length,
+        `nothing is under 44pt at ${width}pt (${small.slice(0, 3).join(", ") || "none"}${small.length > 3 ? ` +${small.length - 3}` : ""})`);
+      await page.close();
+    }
+  }
+
+  /* ---------------------------------------------------------------- */
+  group("A purchase lands the buyer on something they can see (#4 build 14)");
+
+  {
+    const page = await openApp(browser, {
+      // A phone, because the point of this fix is what fits on one: the Today
+      // hero alone is taller than 844px.
+      viewport: { width: 390, height: 844 },
+      before: () => {
+        window.__subscriptionMessages = [];
+        window.webkit = {
+          messageHandlers: {
+            riseSubscription: { postMessage: (message) => window.__subscriptionMessages.push(message) }
+          }
+        };
+      }
+    });
+
+    const relaunch = await page.evaluate(() => {
+      // What an existing subscriber gets at launch: the reply to the startup
+      // status query, not to a purchase.
+      window.riseSubscriptionResult({ status: "active", active: true, message: "The Rise Pro is active." });
+      return { welcome: Boolean(document.querySelector(".pro-welcome")), pro: proAccessActive };
+    });
+    assert(relaunch.pro && !relaunch.welcome,
+      "relaunching as a subscriber does not replay the welcome");
+
+    const purchase = await page.evaluate(() => {
+      proAccessActive = false;
+      renderAll();
+      activateTab("pro");
+      const button = document.querySelector("[data-subscribe-plan]");
+      button.removeAttribute("disabled");
+      button.click();
+      const pending = subscriptionActionPending;
+      window.riseSubscriptionResult({ status: "active", active: true, message: "The Rise Pro is active." });
+      const panel = document.querySelector(".pro-welcome");
+      const panelTop = panel ? panel.getBoundingClientRect().top : Infinity;
+      return {
+        pending,
+        tab: document.querySelector(".view.active").id,
+        welcome: Boolean(panel),
+        panelTop: Math.round(panelTop),
+        // Existing is not enough. Appended below the hero and left at the top
+        // of the scroller it landed 1,418px down an 844px screen, which is the
+        // unchanged Today screen the buyer was already looking at.
+        panelOnScreen: panelTop >= 0 && panelTop < window.innerHeight - 80,
+        breakdownRows: document.querySelectorAll("#today .score-breakdown-panel .score-breakdown-row").length,
+        destinations: [...document.querySelectorAll(".pro-welcome-item button")]
+          .map((button) => button.dataset.tabJump || "breakdown")
+      };
+    });
+    assert(purchase.pending === "purchase" && purchase.tab === "today",
+      `a completed purchase moves the buyer off the paywall (${purchase.tab})`);
+    assert(purchase.welcome && purchase.breakdownRows > 0,
+      `with the rating breakdown open beneath it (${purchase.breakdownRows} rows)`);
+    assert(purchase.panelOnScreen,
+      `and the panel is on the screen the buyer is looking at (${purchase.panelTop}px of 844px)`);
+    assert(purchase.destinations.join(",") === "waters,breakdown,trip,bugs",
+      `and a route to each of the four unlocks (${purchase.destinations.join(",")})`);
+
+    // The one row that does not switch tabs has to move the screen instead, or
+    // "Show me" appears to do nothing.
+    const shown = await page.evaluate(() => {
+      document.querySelector(".pro-welcome-item [data-show-breakdown]").click();
+      const panel = document.querySelector("#today .score-breakdown-panel");
+      return Math.round(panel.getBoundingClientRect().top);
+    });
+    assert(shown >= 0 && shown < 200,
+      `Show me brings the rating breakdown to the top of the screen (${shown}px)`);
+
+    const dismissed = await page.evaluate(() => {
+      document.querySelector("[data-dismiss-pro-welcome]").click();
+      return Boolean(document.querySelector(".pro-welcome"));
+    });
+    assert(!dismissed, "one tap removes it");
+
+    const cancelled = await page.evaluate(() => {
+      proAccessActive = false;
+      proWelcomeOpen = false;
+      renderAll();
+      activateTab("pro");
+      const button = document.querySelector("[data-subscribe-plan]");
+      button.removeAttribute("disabled");
+      button.click();
+      window.riseSubscriptionResult({ status: "cancelled", active: false, message: "Purchase cancelled." });
+      // A later status refresh must not inherit the cancelled purchase.
+      window.riseSubscriptionResult({ status: "active", active: true, message: "The Rise Pro is active." });
+      return Boolean(document.querySelector(".pro-welcome"));
+    });
+    assert(!cancelled, "a cancelled purchase cannot arm it for the next reply");
+    await page.close();
+  }
+
+  /* ---------------------------------------------------------------- */
+  group("A fresh install is told what to set up (#5 build 14)");
+
+  {
+    const page = await openApp(browser, { viewport: { width: 390, height: 844 } });
+    const fresh = await page.evaluate(() => {
+      const panel = document.querySelector("#today .first-run");
+      const top = panel ? panel.getBoundingClientRect().top : Infinity;
+      return {
+        shown: Boolean(panel),
+        top: Math.round(top),
+        // The Today hero is taller than a phone screen, so a setup panel
+        // rendered below it is not on the screen the app opened on.
+        onScreen: top >= 0 && top < window.innerHeight - 80,
+        steps: [...document.querySelectorAll(".first-run-step")].map((step) => step.dataset.step),
+        done: [...document.querySelectorAll(".first-run-step.done")].length,
+        actions: [...document.querySelectorAll(".first-run-step button")].map((button) =>
+          button.dataset.refreshAll !== undefined ? "refresh"
+            : button.dataset.useLocation !== undefined ? "location"
+            : button.dataset.tabJump || "?")
+      };
+    });
+    assert(fresh.shown && fresh.steps.join(",") === "readings,location,log",
+      `a fresh install opens with the three setup steps (${fresh.steps.join(",")})`);
+    assert(fresh.done === 0, `none of them claim to be done (${fresh.done})`);
+    assert(fresh.onScreen, `and a fresh install opens on it (${fresh.top}px of 844px)`);
+    assert(fresh.actions.join(",") === "refresh,location,log",
+      `each step carries the button that performs it (${fresh.actions.join(",")})`);
+
+    const logged = await page.evaluate(() => {
+      setLogs([{ loggedAt: "2026-09-01T18:00:00.000Z", date: "Sep 1, 2026", waterName: "Crooked River", waterId: "crooked", fly: "X-Caddis #16", fish: "Redband Trout" }]);
+      renderToday();
+      return [...document.querySelectorAll(".first-run-step")].map((step) => `${step.dataset.step}:${step.classList.contains("done")}`);
+    });
+    assert(logged.join(",") === "readings:false,location:false,log:true",
+      `a step checks itself off when it is actually done (${logged.join(", ")})`);
+
+    const skipped = await page.evaluate(() => {
+      document.querySelector("[data-dismiss-onboarding]").click();
+      return { gone: !document.querySelector(".first-run"), stored: localStorage.getItem("riseOnboarding.v1") };
+    });
+    assert(skipped.gone && skipped.stored === "true", "Skip removes it and remembers");
+
+    await page.reload({ waitUntil: "load" });
+    const afterReload = await page.evaluate(() => Boolean(document.querySelector(".first-run")));
+    assert(!afterReload, "and it stays gone across a relaunch");
+    await page.close();
+  }
+
+  /* ---------------------------------------------------------------- */
+  group("A long journal renders a page at a time (#5 build 14)");
+
+  {
+    const page = await openApp(browser);
+    await page.evaluate(() => localStorage.setItem("riseOnboarding.v1", "true"));
+    const seed = [];
+    for (let index = 0; index < 500; index += 1) {
+      seed.push(sampleEntryFor(index));
+    }
+    await seedLogs(page, seed);
+
+    const paged = await page.evaluate(() => {
+      activateTab("log");
+      const start = performance.now();
+      for (let run = 0; run < 5; run += 1) renderLog();
+      const pagedMs = (performance.now() - start) / 5;
+      logVisibleCount = 500;
+      const unpagedStart = performance.now();
+      for (let run = 0; run < 5; run += 1) renderLog();
+      const unpagedMs = (performance.now() - unpagedStart) / 5;
+      logVisibleCount = 40;
+      renderLog();
+      return {
+        pagedMs,
+        unpagedMs,
+        cards: document.querySelectorAll("#log .catch-card").length,
+        fish: document.querySelector("#log .log-stat strong").textContent,
+        header: document.querySelector("#log .log-top .subtle").textContent,
+        note: document.querySelector(".log-more .subtle")?.textContent || ""
+      };
+    });
+    assert(paged.cards === 40, `500 entries put 40 cards in the DOM (${paged.cards})`);
+    assert(paged.pagedMs * 2 < paged.unpagedMs,
+      `which is the render cost that matters (${Math.round(paged.pagedMs)}ms paged vs ${Math.round(paged.unpagedMs)}ms whole)`);
+    assert(paged.fish === "500" && /500 entries kept/.test(paged.header),
+      `the counts still run over the whole journal (${paged.fish} fish)`);
+    assert(/Showing 40 of 500/.test(paged.note),
+      `and the screen says so rather than implying the rest are gone (${paged.note.trim().slice(0, 60)})`);
+
+    const more = await page.evaluate(() => {
+      document.querySelector("[data-show-more-log]").click();
+      return document.querySelectorAll("#log .catch-card").length;
+    });
+    assert(more === 80, `Show more adds a page (${more})`);
+
+    // Paging slices from the front, so a card's index is still its index in
+    // the journal. If that ever stops being true, Delete removes a stranger.
+    const deleted = await page.evaluate(() => {
+      const before = getLogs();
+      const target = before[1].fly;
+      document.querySelectorAll("[data-delete-log]")[1].click();
+      const after = getLogs();
+      return { before: before.length, after: after.length, target, stillPresent: after.some((entry) => entry.fly === target) };
+    });
+    assert(deleted.after === deleted.before - 1 && !deleted.stillPresent,
+      `Delete on a paged list removes the entry it points at (${deleted.target})`);
+
+    const exported = await page.evaluate(() => {
+      let csv = null;
+      window.webkit = { messageHandlers: { riseStore: { postMessage: (message) => { if (message.action === "exportLog") csv = message.body; } } } };
+      document.querySelector("[data-export-log]").click();
+      return csv ? csv.trim().split("\n").length - 1 : 0;
+    });
+    assert(exported === 499, `and the export still carries every entry (${exported})`);
     await page.close();
   }
 
