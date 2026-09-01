@@ -1287,22 +1287,33 @@ try {
        colour the container is told matches the colour actually painted in the
        strip the glyphs sit in, at whatever scroll position the app is in. */
     await page.evaluate((inset) => {
+      window.__inset = inset;
+      /* Sixteen points over the two zones the glyphs occupy - the clock at the
+         left, the wifi arc and the battery at the right - read independently
+         of the app's own four-point sample, and denser than it. */
       window.__strip = () => {
         const seen = [];
-        for (let y = 1; y < inset; y += 6) {
-          let element = document.elementFromPoint(195, y);
-          while (element) {
-            const colour = getComputedStyle(element).backgroundColor;
-            if (colour && colour !== "rgba(0, 0, 0, 0)" && !/, 0\)$/.test(colour)) { seen.push(colour); break; }
-            element = element.parentElement;
+        for (const x of [0.04, 0.08, 0.12, 0.16, 0.84, 0.88, 0.92, 0.96]) {
+          for (const fraction of [0.4, 0.6]) {
+            let element = document.elementFromPoint(Math.round(window.innerWidth * x), Math.round(inset * fraction));
+            while (element) {
+              const colour = getComputedStyle(element).backgroundColor;
+              const parts = (colour || "").match(/[\d.]+/g);
+              if (parts && parts.length >= 3 && (parts.length < 4 || Number(parts[3]) >= 0.5)) { seen.push(colour); break; }
+              element = element.parentElement;
+            }
           }
         }
-        // Dark enough to need white glyphs? Rec. 601 luma over every sample.
+        // Rec. 601 luma, the same measure the app uses to make the call.
         const luma = seen.map((colour) => {
-          const [r, g, b] = colour.match(/\d+(\.\d+)?/g).map(Number);
+          const [r, g, b] = colour.match(/[\d.]+/g).map(Number);
           return (0.299 * r + 0.587 * g + 0.114 * b) / 255;
         });
-        return { colours: [...new Set(seen)], painted: luma.every((value) => value < 0.5) ? "dark" : "light" };
+        return {
+          colours: [...new Set(seen)],
+          // The share of the glyph area each choice would be legible against.
+          legible: (style) => luma.filter((value) => (style === "light" ? value < 0.5 : value >= 0.5)).length / luma.length
+        };
       };
     }, SAFE_AREA_TOP);
 
@@ -1313,11 +1324,21 @@ try {
       await settle();
       const seen = await page.evaluate(() => {
         const strip = window.__strip();
-        return { ...strip, style: statusBarStyleNow(), scrollTop: Math.round(document.querySelector("main").scrollTop) };
+        const style = statusBarStyleNow();
+        return {
+          colours: strip.colours,
+          style,
+          legible: strip.legible(style),
+          alternative: strip.legible(style === "light" ? "dark" : "light"),
+          scrollTop: Math.round(document.querySelector("main").scrollTop)
+        };
       });
-      const wanted = seen.painted === "dark" ? "light" : "dark";
-      assert(seen.style === wanted,
-        `${label}: the strip is painted ${seen.colours.join(" | ")} and the glyphs are ${seen.style} (${seen.scrollTop}px down)`);
+      /* Where the glyph zones are one colour this is 1 or 0 and the assertion
+         is exact. Where a boundary cuts through them neither choice is
+         perfect, and the requirement is that the app took the better one. */
+      assert(seen.legible >= 0.75 && seen.legible >= seen.alternative,
+        `${label}: ${seen.style} glyphs are legible over ${Math.round(seen.legible * 100)}% of where they are drawn ` +
+        `(${seen.colours.join(" | ")}, ${seen.scrollTop}px down)`);
       return seen;
     };
 
@@ -1325,6 +1346,16 @@ try {
     await agrees("scrolled past the hero", () => {
       const scroller = document.querySelector("main");
       scroller.scrollTop = document.querySelector("#today .today-hero").getBoundingClientRect().bottom + scroller.scrollTop;
+    });
+    /* The second thing the simulator caught: the teal ends inside the inset,
+       below the glyphs but above its bottom edge. Sampling the strip's bottom
+       edge called that cream and drew a dark clock on the last of the teal. */
+    await agrees("with the teal ending inside the inset, below the glyphs", () => {
+      const scroller = document.querySelector("main");
+      // The Today body is pulled up over the hero's bottom padding, so this,
+      // not the hero's own bottom, is where the teal stops being visible.
+      const teal = document.querySelector("#today .today-body").getBoundingClientRect().top;
+      scroller.scrollTop = scroller.scrollTop + teal - window.__inset * 0.85;
     });
     await agrees("scrolled back to the top", () => { document.querySelector("main").scrollTop = 0; });
     await agrees("at the bottom of Today", () => {

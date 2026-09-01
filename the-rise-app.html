@@ -8890,8 +8890,8 @@
     // 0 black to 1 white. 1 when nothing is: paper is the safer assumption,
     // because dark glyphs on a dark bar are ugly and light glyphs on a light
     // bar are unreadable.
-    function paintedBrightnessAt(y) {
-      let element = document.elementFromPoint(Math.round(window.innerWidth / 2), y);
+    function paintedBrightnessAt(x, y) {
+      let element = document.elementFromPoint(Math.round(x), Math.round(y));
       while (element) {
         const parts = (getComputedStyle(element).backgroundColor || "").match(/[\d.]+/g);
         // Anything under half-opaque lets the layer beneath it decide.
@@ -8907,11 +8907,26 @@
       // A device with no notch reports a zero inset while its glyphs still
       // occupy the top ~20px, so the strip is never treated as empty.
       const strip = Math.max(safeAreaInsetTop(), 20);
-      /* Sampled at the middle and the bottom of the strip, never at the very
-         top: every screen fades in from translateY(8px), and a sample taken up
-         there flickers the glyphs dark for the length of the animation on the
-         way into Today. Both samples must be dark before white is asked for. */
-      return [strip / 2, strip - 2].every((y) => paintedBrightnessAt(y) < 0.5) ? "light" : "dark";
+      /* Sampled where the glyphs are: the clock at the left, the battery at
+         the right, in the middle of the inset's height. Not the centre -
+         that is behind the Dynamic Island, and it is the one column that
+         reads differently, because the paper body's top edge is a curve that
+         rises in the middle. The simulator showed the cost: a dark clock on
+         teal, because the arc had reached the centre while the clock was
+         still over the hero. Not the strip's edges either - the bottom reads
+         the wrong side of a boundary that falls inside the inset, and the top
+         flickers for the 200ms every screen fades in from translateY(8px).
+
+         One style has to serve both ends of a bar that is not always one
+         colour, so it follows the average rather than any single point. */
+      const samples = [];
+      for (const x of [0.1, 0.9]) {
+        for (const fraction of [0.4, 0.6]) {
+          samples.push(paintedBrightnessAt(window.innerWidth * x, strip * fraction));
+        }
+      }
+      const mean = samples.reduce((total, value) => total + value, 0) / samples.length;
+      return mean < 0.5 ? "light" : "dark";
     }
 
     function syncStatusBarChrome() {
