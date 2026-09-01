@@ -2347,18 +2347,20 @@
       gap: 8px;
       padding: 14px;
       border-radius: 14px;
-      border: 1px dashed rgba(139, 106, 43, .5);
-      background: rgba(214, 196, 156, .18);
+      border: 1px dashed currentColor;
+      background: rgba(127, 127, 127, .12);
+      color: inherit;
     }
 
     .pro-lock strong {
       font-size: 13px;
-      color: #6d5326;
+      color: inherit;
     }
 
     .pro-lock span {
       font-size: 12px;
-      color: #6b6152;
+      color: inherit;
+      opacity: .82;
       line-height: 1.45;
     }
 
@@ -4129,9 +4131,9 @@
     ];
 
     const sampleLogs = [
-      { date: "Jun 21", time: "9:40 AM", waterName: "Deschutes", waterId: "lower-deschutes", fly: "Elk Hair Caddis #14", fish: "Redband Trout", length: "17", count: "1", notes: "Soft inside seam below riffle.", flow: "4,160 cfs", temp: "54 F", photo: "" },
-      { date: "Jun 18", time: "6:50 PM", waterName: "Hosmer Lake", waterId: "hosmer", fly: "Callibaetis #14", fish: "Redband Trout", length: "19", count: "1", notes: "Cruising the channel edge.", flow: "Stillwater", temp: "62 F", photo: "" },
-      { date: "Jun 14", time: "7:30 AM", waterName: "Deschutes", waterId: "middle-deschutes", fly: "BWO Emerger #18", fish: "Redband Trout", length: "20", count: "1", notes: "Ate during the first overcast push.", flow: "1,020 cfs", temp: "51 F", photo: "" }
+      { loggedAt: "2026-06-21T09:40:00", date: "Jun 21, 2026", time: "9:40 AM", waterName: "Deschutes", waterId: "lower-deschutes", fly: "Elk Hair Caddis #14", fish: "Redband Trout", length: "17", count: "1", notes: "Soft inside seam below riffle.", flow: "4,160 cfs", temp: "54 F", photo: "" },
+      { loggedAt: "2026-06-18T18:50:00", date: "Jun 18, 2026", time: "6:50 PM", waterName: "Hosmer Lake", waterId: "hosmer", fly: "Callibaetis #14", fish: "Redband Trout", length: "19", count: "1", notes: "Cruising the channel edge.", flow: "Stillwater", temp: "62 F", photo: "" },
+      { loggedAt: "2026-06-14T07:30:00", date: "Jun 14, 2026", time: "7:30 AM", waterName: "Deschutes", waterId: "middle-deschutes", fly: "BWO Emerger #18", fish: "Redband Trout", length: "20", count: "1", notes: "Ate during the first overcast push.", flow: "1,020 cfs", temp: "51 F", photo: "" }
     ];
 
     const icon = {
@@ -5426,9 +5428,9 @@
       const hatch = predictedHatches(water)[0] || "hatch";
       if (water.type === "Lake") return `${water.wind} wind + ${hatch.toLowerCase()} activity near weed edges`;
       const flowNote = flowContextLabel(water);
-      return flowNote
-        ? `${flowNote.toLowerCase()} + ${hatch.toLowerCase()} hatch building`
-        : `${clarity.label} water + ${hatch.toLowerCase()} hatch building`;
+      if (flowNote) return `${flowNote.toLowerCase()} + ${hatch.toLowerCase()} hatch building`;
+      if (clarity.measured) return `${clarity.label} water + ${hatch.toLowerCase()} hatch building`;
+      return `${liveDisplayValue(water, "temp")} water + ${hatch.toLowerCase()} hatch building`;
     }
 
     function rankedWatersForCurrentMode(list = visibleWaters()) {
@@ -6145,7 +6147,7 @@
       const month = currentMonth();
       const inSeason = (water.hatch || []).filter((hatch) => hatchSeasonFit(hatch, month) === 1);
       const seasonText = inSeason.length
-        ? `${inSeason.length} of ${water.hatch.length} listed hatches are in season now`
+        ? `${inSeason.length} of ${water.hatch.length} listed ${water.hatch.length === 1 ? "hatch is" : "hatches are"} in season now`.replace(/^1 of (\d+) listed hatches are/, "1 of $1 listed hatches is")
         : "None of this water's listed hatches are in season this month";
       const window = primeWindowHours(water);
       const timeText = window
@@ -6778,7 +6780,7 @@
               </select>
             </div>
             <h1 class="prime-title">${primeWindowFor(best)}</h1>
-            <div class="condition-line">${liveTemp} water - ${liveWind} - ${clarity.label}</div>
+            <div class="condition-line">${liveTemp} water - ${liveWind} - clarity ${clarity.label}</div>
             ${dataStatusStrip("today")}
             <div class="fishability-card">
               <button class="score-ring score-button" data-score-breakdown aria-expanded="${scoreBreakdownOpen}" style="--score-deg:${scoreDeg}deg" aria-label="Show why this rating is ${score}"><strong>${score}</strong></button>
@@ -6983,7 +6985,7 @@
             <div class="trip-card">
               <span class="trip-label">Conditions</span>
               <strong>${liveDisplayValue(water, "temp")} water</strong>
-              <p>${liveDisplayValue(water, "flow")} - ${liveDisplayValue(water, "wind")} - ${clarity.label}</p>
+              <p>${liveDisplayValue(water, "flow")} - ${liveDisplayValue(water, "wind")} - clarity ${clarity.label}</p>
             </div>
           </div>
 

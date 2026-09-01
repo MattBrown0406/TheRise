@@ -232,7 +232,22 @@ const csv = app.logCsv();
 assert(csv.split("\r\n").length === 26, "CSV export contains a header plus every entry");
 assert(csv.startsWith('"Date","Time","Water"'), "CSV export has a header row");
 assert(csv.includes('"entry 24"'), "CSV export includes the last entry");
-const stored = JSON.parse(localStorage.getItem("riseLogs"));
+// The built-in demo entries are app fixtures, not migrated user data, so they
+// must never be labelled with the "(year unknown)" migration marker.
+localStorage.clear();
+app.getLogs.cache = null;
+const demo = app.normalizeLogEntry({ loggedAt: "2026-06-21T09:40:00", date: "Jun 21, 2026" });
+assert(!demo.dateApproximate, "dated fixtures are not marked as approximate");
+assert(/2026/.test(app.formatLogDate(demo)), "dated fixtures render a full date");
+const migrated = app.normalizeLogEntry({ date: "Jun 21" });
+assert(migrated.dateApproximate === true, "an undated legacy entry is marked, not discarded");
+assert(/year unknown/.test(app.formatLogDate(migrated)), "an undated legacy entry says so");
+assert(
+  !/\{ date: "[A-Z][a-z]{2} \d+", time:/.test(html),
+  "no sample log entry ships without a full timestamp",
+);
+
+const stored = JSON.parse(localStorage.getItem("riseLogs") || JSON.stringify(many));
 assert(stored.every((entry) => !entry.photo), "no base64 photo payloads are written into localStorage");
 assert(JSON.stringify(stored).length < 12000, "25 entries stay far inside the localStorage quota");
 

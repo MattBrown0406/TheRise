@@ -1,11 +1,11 @@
 {
   "version": 1,
-  "sourceSha256": "60a23542e8b62a83bb9b9e0f8ef00fb50de95fc0a4c4edd0b4ffdc247efea5da",
-  "generatorSha256": "8326f2c44cc006bb41850a5e583b7349fa0a67501ba65df256895577d610d1d6",
+  "sourceSha256": "0baa6e2c0e7ae63f43571cc4743c08dec690f0a3bdf0f00f23a31578ce16dbcc",
+  "generatorSha256": "bae4011edc018c32ee74a288594c354661935bd9dd3c6a598474210c54cb262c",
   "outputs": {
-    "app-store-screenshots/iphone/10-pro-upgrade.png": "8f7b06ca953c8a375a61428220f070aa5eccebd047e41cec9574371f1466203d",
-    "app-store-screenshots/ipad/10-pro-upgrade.png": "b3e7b70d20282407bdbb94c2bb597a00aea8dfe359e85c278ec488cbd068e9f4",
-    "app-store-screenshots/metadata/iphone-monthly-subscription-6.99.png": "0cd0c303c1b3f5a4354edbf664f420927c0e907ac2c8d82fa3e9994c6244fa6d",
-    "app-store-screenshots/metadata/iphone-annual-subscription-49.99.png": "8f7b06ca953c8a375a61428220f070aa5eccebd047e41cec9574371f1466203d"
+    "app-store-screenshots/iphone/10-pro-upgrade.png": "1fd57c7303dca56fa39eb7d1736a8fe884b955ef3990712bdb59978ec732d5dc",
+    "app-store-screenshots/ipad/10-pro-upgrade.png": "d8ceb49fd219d83196197cad9646578df0c619eb71703b766abc4dce3fd02a5b",
+    "app-store-screenshots/metadata/iphone-monthly-subscription-6.99.png": "3cc179ac23f0d8a3f8bcaee8b400fcf3bd4f59458b315458e9b591b98c731e66",
+    "app-store-screenshots/metadata/iphone-annual-subscription-49.99.png": "1fd57c7303dca56fa39eb7d1736a8fe884b955ef3990712bdb59978ec732d5dc"
   }
 }

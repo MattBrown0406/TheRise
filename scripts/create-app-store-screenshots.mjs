@@ -1,22 +1,74 @@
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, relative, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const generatorPath = fileURLToPath(import.meta.url);
 const root = resolve(dirname(generatorPath), "..");
 const sourceHtml = resolve(root, "the-rise-app.html");
-const tmpDir = resolve(root, "app-store-screenshots/tmp");
-const rawDir = resolve(root, "app-store-screenshots/raw");
+// Chrome writes the harness and raw frames here. Snap-packaged Chromium on
+// Linux runs with a private /tmp and cannot write outside $HOME, so the working
+// directory is overridable; the finished PNGs always land back in the repo.
+const workRoot = process.env.RISE_SCREENSHOT_WORKDIR
+  ? resolve(process.env.RISE_SCREENSHOT_WORKDIR)
+  : resolve(root, "app-store-screenshots");
+const tmpDir = resolve(workRoot, "tmp");
+const rawDir = resolve(workRoot, "raw");
 const iphoneDir = resolve(root, "app-store-screenshots/iphone");
 const ipadDir = resolve(root, "app-store-screenshots/ipad");
 const metadataDir = resolve(root, "app-store-screenshots/metadata");
 const subscriptionManifestPath = resolve(root, "app-store-screenshots/subscription-review-manifest.json");
 const harnessPath = resolve(tmpDir, "the-rise-screenshot-harness.html");
 
-const chrome = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
-const magick = "/opt/homebrew/bin/magick";
+// Resolved at run time instead of hardcoded to one machine's layout.
+// Override with RISE_CHROME / RISE_MAGICK.
+const chromeCandidates = [
+  process.env.RISE_CHROME,
+  "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+  "/Applications/Chromium.app/Contents/MacOS/Chromium",
+  "/usr/bin/google-chrome",
+  "/usr/bin/google-chrome-stable",
+  "/usr/bin/chromium",
+  "/usr/bin/chromium-browser",
+  "/snap/bin/chromium"
+].filter(Boolean);
+
+const magickCandidates = [
+  process.env.RISE_MAGICK,
+  "/opt/homebrew/bin/magick",
+  "/usr/local/bin/magick",
+  "/usr/bin/magick",
+  "/usr/bin/convert"
+].filter(Boolean);
+
+function resolveBinary(candidates, label, envVar) {
+  const found = candidates.find((candidate) => existsSync(candidate));
+  if (!found) {
+    throw new Error(`${label} not found. Tried:\n  ${candidates.join("\n  ")}\nSet ${envVar} to override.`);
+  }
+  return found;
+}
+
+const chrome = resolveBinary(chromeCandidates, "Chrome or Chromium", "RISE_CHROME");
+
+// Chromium refuses to start as root without --no-sandbox. CI images and
+// containers routinely run as root; developer machines do not and keep the
+// sandbox.
+const needsNoSandbox = process.platform === "linux" && typeof process.getuid === "function" && process.getuid() === 0;
+
+const baseChromeFlags = [
+  "--headless=new",
+  "--disable-gpu",
+  "--hide-scrollbars",
+  "--no-first-run",
+  "--no-default-browser-check",
+  "--disable-background-networking",
+  "--disable-sync",
+  "--disable-extensions",
+  ...(needsNoSandbox ? ["--no-sandbox", "--disable-dev-shm-usage"] : [])
+];
+const magick = resolveBinary(magickCandidates, "ImageMagick", "RISE_MAGICK");
 
 const shots = [
   ["01-today-command-center", "today"],
@@ -33,6 +85,19 @@ const shots = [
 
 const screenshotCss = `
 <style id="app-store-screenshot-css">
+  /* Screens fade in on render. Chrome captures as soon as the harness signals
+     ready, which raced the animation and produced washed-out frames. Freeze all
+     motion so every capture is deterministic. */
+  html.screenshot-mode,
+  html.screenshot-mode body,
+  html.screenshot-mode *,
+  html.screenshot-mode *::before,
+  html.screenshot-mode *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+
   html.screenshot-mode,
   html.screenshot-mode body {
     width: 100%;
@@ -107,6 +172,27 @@ const screenshotCss = `
   }
 </style>`;
 
+const screenshotClock = `
+<script id="app-store-screenshot-clock">
+  // The app now scores on the real month and hour, so screenshots would change
+  // depending on when they were generated. Pin the clock to a June morning so
+  // captures are deterministic. June evening is inside the prime window for the
+  // waters shown, so the screenshots depict a real, representative state.
+  (function () {
+    var FIXED = new Date("2026-06-15T19:15:00").getTime();
+    var RealDate = Date;
+    function PinnedDate() {
+      if (arguments.length === 0) return new RealDate(FIXED);
+      return new (Function.prototype.bind.apply(RealDate, [null].concat(Array.prototype.slice.call(arguments))))();
+    }
+    PinnedDate.prototype = RealDate.prototype;
+    PinnedDate.now = function () { return FIXED; };
+    PinnedDate.parse = RealDate.parse;
+    PinnedDate.UTC = RealDate.UTC;
+    window.Date = PinnedDate;
+  })();
+</script>`;
+
 const screenshotJs = `
 <script id="app-store-screenshot-js">
   document.documentElement.classList.add("screenshot-mode", "screenshot-" + (new URLSearchParams(location.search).get("device") || "iphone"));
@@ -126,6 +212,12 @@ const screenshotJs = `
   window.addEventListener("load", () => {
     const params = new URLSearchParams(location.search);
     const shot = params.get("shot") || "today";
+    // Shots that exist to show a Pro feature are captured with Pro active,
+    // otherwise the store listing would advertise a locked panel.
+    const proShots = ["today-score", "waters-detail", "trip", "bugs", "bugs-barr"];
+    if (proShots.includes(shot)) {
+      try { proAccessActive = true; } catch (error) { /* older builds */ }
+    }
     const setTab = (tab) => {
       if (typeof activateTab === "function") activateTab(tab);
     };
@@ -155,7 +247,7 @@ const screenshotJs = `
         scoreBreakdownOpen = false;
         if (typeof renderToday === "function") renderToday();
         setTab("today");
-        setTimeout(() => document.querySelector(".section-title")?.scrollIntoView({ block: "start" }), 120);
+        // Scrolled in the ready handler below, after activateTab's own scroll.
       } else if (shot === "bugs") {
         activeBug = "pmd";
         activeBugStage = null;
@@ -186,9 +278,27 @@ const screenshotJs = `
         setTab("today");
       }
       if (typeof bindDynamic === "function") bindDynamic();
+      // Chrome captures shortly after first paint, so anything that must appear
+      // in the frame has to happen synchronously here rather than on a timer.
+      // The app scrolls <main>, not the window: main is height:100% with
+      // overflow-y:auto. Scrolling the window here did nothing.
+      const scroller = document.querySelector("main");
+      const applyScroll = () => {
+        if (!scroller) return;
+        if (shot === "pack") {
+          const target = document.querySelector(".section-title");
+          if (!target) throw new Error("pack shot: .section-title not found");
+          scroller.scrollTop += target.getBoundingClientRect().top - scroller.getBoundingClientRect().top - 8;
+        } else {
+          scroller.scrollTop = 0;
+        }
+      };
+      applyScroll();
       if (shot === "pro") document.documentElement.dataset.screenshotOverflow = subscriptionOverflow();
+      // Re-apply once late images have settled, then report the final position.
       setTimeout(() => {
-        if (shot !== "pack") window.scrollTo(0, 0);
+        applyScroll();
+        document.documentElement.dataset.screenshotScroll = String(Math.round(scroller ? scroller.scrollTop : 0));
         document.documentElement.dataset.screenshotReady = "true";
       }, 450);
     } catch (error) {
@@ -199,18 +309,35 @@ const screenshotJs = `
 </script>`;
 
 function ensureTools() {
-  if (!existsSync(chrome)) throw new Error(`Chrome not found at ${chrome}`);
-  if (!existsSync(magick)) throw new Error(`ImageMagick not found at ${magick}`);
+  // resolveBinary already threw if either tool was missing.
+  console.log(`Using browser: ${chrome}`);
+  console.log(`Using ImageMagick: ${magick}`);
+  if (workRoot !== resolve(root, "app-store-screenshots")) {
+    console.log(`Using work directory: ${workRoot}`);
+  }
+}
+
+const harnessAssetDirs = ["bug-plates", "fly-plates"];
+
+function stageHarnessAssets() {
+  for (const dir of harnessAssetDirs) {
+    const source = resolve(root, dir);
+    if (!existsSync(source)) throw new Error(`Missing asset directory: ${source}`);
+    cpSync(source, resolve(tmpDir, dir), { recursive: true });
+  }
 }
 
 function prepareHarness() {
   mkdirSync(tmpDir, { recursive: true });
+  stageHarnessAssets();
   let html = readFileSync(sourceHtml, "utf8");
-  html = html.replace("<head>", `<head>\n<base href="${pathToFileURL(`${root}/`).href}">`);
+  // Base href points at the harness directory, which now holds the artwork, so
+  // the document and every subresource live in one tree.
+  html = html.replace("<head>", `<head>\n<base href="${pathToFileURL(`${tmpDir}/`).href}">`);
   html = html
     .replace("runInitialDataSync();", "/* screenshot harness: live data sync disabled */")
     .replace("startDailyOpenSyncWatcher();", "/* screenshot harness: sync watcher disabled */");
-  html = html.replace("</head>", `${screenshotCss}\n</head>`);
+  html = html.replace("</head>", `${screenshotClock}\n${screenshotCss}\n</head>`);
   html = html.replace("</body>", `${screenshotJs}\n</body>`);
   writeFileSync(harnessPath, html);
 }
@@ -227,14 +354,7 @@ function runChromeScreenshot(device, shotId, shotKey, viewport) {
   const url = `${pathToFileURL(harnessPath).href}?device=${device}&shot=${encodeURIComponent(shotKey)}`;
   try {
     execFileSync(chrome, [
-      "--headless=new",
-      "--disable-gpu",
-      "--hide-scrollbars",
-      "--no-first-run",
-      "--no-default-browser-check",
-      "--disable-background-networking",
-      "--disable-sync",
-      "--disable-extensions",
+      ...baseChromeFlags,
       `--user-data-dir=${resolve(tmpDir, `chrome-${device}-${shotId}`)}`,
       `--window-size=${viewport.width},${viewport.height}`,
       "--force-device-scale-factor=1",
@@ -254,14 +374,7 @@ function runSubscriptionScreenshot(plan, viewport) {
   const url = `${pathToFileURL(harnessPath).href}?device=iphone&shot=pro&billing=${plan}`;
   try {
     execFileSync(chrome, [
-      "--headless=new",
-      "--disable-gpu",
-      "--hide-scrollbars",
-      "--no-first-run",
-      "--no-default-browser-check",
-      "--disable-background-networking",
-      "--disable-sync",
-      "--disable-extensions",
+      ...baseChromeFlags,
       `--user-data-dir=${resolve(tmpDir, `chrome-metadata-${plan}`)}`,
       `--window-size=${viewport.width},${viewport.height}`,
       "--force-device-scale-factor=1",
@@ -282,14 +395,7 @@ function verifySubscriptionLayout(plan) {
   let html = "";
   try {
     html = execFileSync(chrome, [
-      "--headless=new",
-      "--disable-gpu",
-      "--hide-scrollbars",
-      "--no-first-run",
-      "--no-default-browser-check",
-      "--disable-background-networking",
-      "--disable-sync",
-      "--disable-extensions",
+      ...baseChromeFlags,
       `--user-data-dir=${resolve(tmpDir, `chrome-layout-${plan}`)}`,
       `--window-size=${viewport.width},${viewport.height}`,
       "--force-device-scale-factor=1",

@@ -31,6 +31,7 @@ METADATA_SYNC_SCRIPT = ROOT / "scripts/sync-app-store-metadata.rb"
 SCREENSHOT_SCRIPT = ROOT / "scripts/create-app-store-screenshots.mjs"
 SCREENSHOT_MANIFEST = ROOT / "app-store-screenshots/subscription-review-manifest.json"
 APP_LOGIC_TESTS = ROOT / "scripts/test-app-logic.mjs"
+STORE_TESTS = ROOT / "scripts/test-rise-store.sh"
 STORE_SWIFT = ROOT / "ios/TheRise/TheRise/RiseStore.swift"
 
 PRIVACY_URL = "https://mattbrown0406.github.io/TheRise/privacy.html"
@@ -123,7 +124,7 @@ def main() -> int:
     project = PROJECT.read_text(encoding="utf-8")
     build_numbers = re.findall(r"CURRENT_PROJECT_VERSION = ([^;]+);", project)
     versions = re.findall(r"MARKETING_VERSION = ([^;]+);", project)
-    require(bool(build_numbers) and set(build_numbers) == {"8"}, f"expected build 8, found {build_numbers}")
+    require(bool(build_numbers) and set(build_numbers) == {"9"}, f"expected build 9, found {build_numbers}")
     require(bool(versions) and set(versions) == {"1.0"}, f"expected version 1.0, found {versions}")
 
     review_doc = REVIEW_DOC.read_text(encoding="utf-8")
@@ -148,7 +149,7 @@ def main() -> int:
     require(len(notes.strip()) <= 4000, "App Review notes exceed the 4,000-character limit")
     require(PRIVACY_URL == privacy_metadata, "Privacy Policy metadata URL is incorrect")
     for token in (
-        "Version 1.0 build 8",
+        "Version 1.0 build 9",
         "The Rise Pro Monthly",
         "The Rise Pro Annual",
         "therise_pro_monthly",
@@ -231,8 +232,15 @@ def main() -> int:
     require("function exportLog()" in web, "the catch log cannot be exported")
 
     store_swift = STORE_SWIFT.read_text(encoding="utf-8")
-    for token in ("applicationSupportDirectory", "isValidPhotoIdentifier", "WKURLSchemeHandler", "func saveLog", "func loadLog"):
+    for token in ("applicationSupportDirectory", "isValidPhotoIdentifier", "func saveLog", "func loadLog"):
         require(token in store_swift, f"native catch-log storage is missing: {token}")
+    require(
+        "import UIKit" not in store_swift and "import WebKit" not in store_swift,
+        "RiseStore must stay Foundation-only so it can be compiled and tested off-device",
+    )
+    scheme_swift = (ROOT / "ios/TheRise/TheRise/RisePhotoSchemeHandler.swift").read_text(encoding="utf-8")
+    require("WKURLSchemeHandler" in scheme_swift, "the catch-photo scheme handler is missing")
+    require("RisePhotoSchemeHandler.swift" in project, "RisePhotoSchemeHandler.swift is not in the Xcode target")
     require("riseStore" in swift, "the native store bridge is not registered")
     require("RisePhotoSchemeHandler.scheme" in swift, "the catch-photo scheme handler is not registered")
     require("RiseStore.swift" in project, "RiseStore.swift is not in the Xcode target")
@@ -288,6 +296,19 @@ def main() -> int:
     require(result.returncode == 0, "app behaviour tests failed")
     logic_summary = result.stdout.strip().splitlines()[-1] if result.stdout.strip() else "no output"
 
+    require(STORE_TESTS.is_file(), "native storage tests are missing")
+    store_result = subprocess.run(
+        ["bash", str(STORE_TESTS)],
+        capture_output=True,
+        text=True,
+        cwd=ROOT,
+    )
+    if store_result.returncode != 0:
+        sys.stdout.write(store_result.stdout)
+        sys.stderr.write(store_result.stderr)
+    require(store_result.returncode == 0, "native storage tests failed")
+    store_summary = store_result.stdout.strip().splitlines()[-1] if store_result.stdout.strip() else "no output"
+
     if args.online:
         check_online(PRIVACY_URL)
         check_online(EULA_URL)
@@ -298,13 +319,14 @@ def main() -> int:
     print("PASS: subscription disclosure, legal links, and localized-price bridge")
     if not args.skip_screenshots:
         print("PASS: regenerated Pro and IAP review screenshots")
-    print("PASS: version 1.0 build 8 and RevenueCat product identifiers")
+    print("PASS: version 1.0 build 9 and RevenueCat product identifiers")
     print("PASS: App Store metadata/IAP submission checklist")
     print("PASS: catch-log durability, export, and native container storage")
     print("PASS: subscription claims match shipped functionality")
     print("PASS: data provenance labelling and single-source coordinates")
     print("PASS: season, time-of-day, and flow inputs wired into the score")
     print(f"PASS: app behaviour tests ({logic_summary})")
+    print(f"PASS: native storage tests ({store_summary})")
     if args.online:
         print("PASS: public Privacy Policy and Apple Standard EULA URLs")
     return 0

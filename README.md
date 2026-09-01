@@ -38,11 +38,21 @@ Expected URLs after GitHub Pages is enabled:
 
 ## Tests
 
-Behaviour tests run the app script against a stub DOM and assert on scoring,
-seasonality, data provenance, and catch-log durability:
+Neither suite needs Xcode, a simulator, or a device.
+
+App behaviour, run against a stub DOM — scoring, seasonality, data provenance,
+catch-log durability:
 
 ```bash
 node scripts/test-app-logic.mjs
+```
+
+Native storage, compiled and run with any Swift toolchain. `RiseStore` imports
+only Foundation for exactly this reason; keep it that way. `RisePhotoSchemeHandler`
+holds the WebKit-dependent half:
+
+```bash
+scripts/test-rise-store.sh
 ```
 
 ## App Store release checks
@@ -53,16 +63,35 @@ Run the deterministic pre-build checks, including live legal-link validation:
 python3 scripts/verify-release-readiness.py --online
 ```
 
-The release checks run the behaviour tests too. Screenshot freshness can only be
-verified on macOS, because `scripts/create-app-store-screenshots.mjs` shells out
-to Chrome and ImageMagick at hardcoded macOS paths. On other machines:
+The release checks run both test suites.
+
+## App Store screenshots
+
+Any change to `the-rise-app.html` invalidates the screenshots. Regenerate them:
+
+```bash
+node scripts/create-app-store-screenshots.mjs
+```
+
+The generator finds Chrome or Chromium and ImageMagick automatically on macOS and
+Linux; override with `RISE_CHROME` and `RISE_MAGICK`. A sandboxed browser (snap
+Chromium) cannot write outside `$HOME`, so point the working directory somewhere
+it can reach:
+
+```bash
+RISE_SCREENSHOT_WORKDIR="$HOME/rise-screenshots" node scripts/create-app-store-screenshots.mjs
+```
+
+Captures are deterministic: the harness pins the clock to a fixed June evening,
+freezes animation, and stages the artwork beside the harness. Two runs produce
+byte-identical PNGs, so a changed screenshot always means a changed app.
+
+If you cannot run the generator, the freshness check can be skipped — but the
+screenshots are then stale and must not be submitted:
 
 ```bash
 python3 scripts/verify-release-readiness.py --skip-screenshots
 ```
-
-Any change to `the-rise-app.html` invalidates the App Store screenshots. Rerun
-the generator on macOS before submitting.
 
 ## Data honesty
 

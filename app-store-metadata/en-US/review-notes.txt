@@ -1,4 +1,4 @@
-Version 1.0 build 8 addresses the August 12, 2026 review feedback for submission 80533227-abed-4218-b443-1cdef4bc50c7.
+Version 1.0 build 9 addresses the August 12, 2026 review feedback for submission 80533227-abed-4218-b443-1cdef4bc50c7, and adds the functionality the subscription unlocks.
 
 AUTO-RENEWABLE SUBSCRIPTIONS
 To locate the subscriptions:
@@ -39,4 +39,4 @@ To verify the catch-photo flow:
 4. Choose Camera or Photo Library and grant the requested permission.
 5. Select a photo, complete the required catch fields, and save the entry.
 
-Build 8 includes NSCameraUsageDescription, NSPhotoLibraryUsageDescription, and NSLocationWhenInUseUsageDescription.
+Build 9 includes NSCameraUsageDescription, NSPhotoLibraryUsageDescription, and NSLocationWhenInUseUsageDescription.
