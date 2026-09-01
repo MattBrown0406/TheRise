@@ -8975,7 +8975,12 @@
       // blocks, so offsetTop is a distance to some intermediate box and using
       // it left the target 1,371px down an 844px screen.
       const delta = target.getBoundingClientRect().top - scroller.getBoundingClientRect().top;
-      scroller.scrollTop = Math.max(0, scroller.scrollTop + delta - 12);
+      /* The scroller starts at the top of the window now, so 12px below its
+         top edge is behind the clock. On the simulator that put "SETUP - 0 OF
+         3" under the Dynamic Island and the Skip button under the battery, on
+         the one screen a fresh install opens on. The gap clears the inset. */
+      const gap = safeAreaInsetTop() + 12;
+      scroller.scrollTop = Math.max(0, scroller.scrollTop + delta - gap);
       // This is a programmatic scroll that moves the teal hero off the strip
       // - the first-run panel on Today is exactly that - so the glyphs have to
       // follow it here as well as on a finger scroll.

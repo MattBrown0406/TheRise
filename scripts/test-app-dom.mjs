@@ -1337,6 +1337,24 @@ try {
       document.querySelector("main").scrollTop = 0;
       scrollAppTo("#today .first-run");
     });
+    /* And that panel has to be readable once it is there. The scroller starts
+       at the top of the window, so scrolling a target to 12px below the
+       scroller's top edge parked "SETUP - 0 OF 3" under the Dynamic Island and
+       the Skip button under the battery - on the one screen a fresh install
+       opens on. */
+    const parked = await page.evaluate(() => {
+      const panel = document.querySelector("#today .first-run");
+      const skip = panel.querySelector("button");
+      return {
+        panelTop: Math.round(panel.getBoundingClientRect().top),
+        eyebrowTop: Math.round(panel.querySelector(".eyebrow").getBoundingClientRect().top),
+        skipTop: Math.round(skip.getBoundingClientRect().top),
+        skipLabel: (skip.textContent || "").trim()
+      };
+    });
+    assert(parked.eyebrowTop >= SAFE_AREA_TOP && parked.skipTop >= SAFE_AREA_TOP,
+      `and the panel it scrolls to clears the notch ("${parked.skipLabel}" at ${parked.skipTop}px, ` +
+      `eyebrow at ${parked.eyebrowTop}px, inset ${SAFE_AREA_TOP}px)`);
 
     // The scroll listener, not just the function: a finger scroll has to reach
     // the container without anything else being called.
