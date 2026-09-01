@@ -424,6 +424,35 @@ def main() -> int:
         "logged readings are displayed and exported without saying where they came from",
     )
 
+    # --- Screen reachability --------------------------------------------------
+    # The knots screen shipped for eleven builds rendered on every launch with
+    # nothing anywhere that could open it, while the review notes told Apple it
+    # was there. A screen the reviewer cannot reach is a 2.1 rejection, so every
+    # section must be openable from a tab or a jump, and the knots feature —
+    # scrapped by Matt on 2026-09-01 — must be gone from the app and the
+    # metadata rather than merely unreachable.
+    sections = set(re.findall(r'<section id="([a-z-]+)" class="view', web))
+    reachable = set(re.findall(r'data-tab="([a-z-]+)"', web)) | set(
+        re.findall(r'data-tab-jump="([a-z-]+)"', web)
+    )
+    require(bool(sections), "no app screens found; the section markup changed shape")
+    unreachable = sorted(sections - reachable)
+    require(not unreachable, f"screens the user cannot open: {', '.join(unreachable)}")
+    require(
+        not (reachable - sections),
+        f"tabs pointing at screens that do not exist: {', '.join(sorted(reachable - sections))}",
+    )
+    knot_sources = {
+        "the-rise-app.html": web,
+        "review-notes.txt": REVIEW_NOTES.read_text(encoding="utf-8"),
+        "description.txt": APP_DESCRIPTION.read_text(encoding="utf-8"),
+        "create-app-store-screenshots.mjs": SCREENSHOT_SCRIPT.read_text(encoding="utf-8"),
+        "test-app-dom.mjs": APP_DOM_TESTS.read_text(encoding="utf-8"),
+        "test-app-logic.mjs": APP_LOGIC_TESTS.read_text(encoding="utf-8"),
+    }
+    for name, text in knot_sources.items():
+        require("knot" not in text.lower(), f"the scrapped knots feature is back in {name}")
+
     # --- Behaviour suite ------------------------------------------------------
     require(APP_LOGIC_TESTS.is_file(), "app behaviour tests are missing")
     result = subprocess.run(
@@ -490,6 +519,7 @@ def main() -> int:
     print("PASS: a sync that fetched nothing reports failure and retries")
     print("PASS: alias keys reachable, reports attributed to one water, no boost for being named")
     print("PASS: journal restore, tab scrolling, and logged-reading provenance")
+    print("PASS: every screen is reachable from a tab, and the knots feature is gone")
     print(f"PASS: app behaviour tests ({logic_summary})")
     print(f"PASS: real-DOM tests ({dom_summary})")
     print(f"PASS: native storage tests ({store_summary})")

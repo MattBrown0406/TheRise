@@ -265,7 +265,12 @@ const gateCount = (html.match(/if \(!proAccessActive\)/g) || []).length;
 assert(gateCount >= 4, `Pro gates at least four surfaces (found ${gateCount})`);
 
 group("Rendering (#5)");
-assert(Object.keys(app.screenRenderers).length === 7, "all seven screens are registered");
+const sectionIds = [...html.matchAll(/<section id="([a-z-]+)" class="view/g)].map((match) => match[1]);
+assert(
+  sectionIds.length > 0 && sectionIds.every((id) => id in app.screenRenderers)
+    && Object.keys(app.screenRenderers).length === sectionIds.length,
+  `every screen section has a registered renderer (${sectionIds.length} sections)`
+);
 assert(/dirtyScreens/.test(html), "screens are tracked for deferred rendering");
 
 // Every screen must render without throwing and produce real markup. This is

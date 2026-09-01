@@ -29,7 +29,7 @@ The Rise Pro unlocks four features inside the app. Each is visible in a locked s
 3. Fish this plan - Waters > select any water > Fish This Plan. A staged plan for the current window.
 4. Hatch ID assistant - Bugs > Hatch ID Assistant. Filters by size, colour, water type and behaviour.
 
-The app sends no notifications and requires no account. Water rankings, live USGS and NWS readings, hatches, fly recommendations, the bug library, knots, and the catch log are free.
+The app sends no notifications and requires no account. Water rankings, live USGS and NWS readings, hatches, fly recommendations, the bug library, and the catch log are free.
 
 PHOTO PICKER
 To verify the catch-photo flow:

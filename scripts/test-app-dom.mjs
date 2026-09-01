@@ -374,7 +374,7 @@ try {
   {
     const page = await openApp(browser);
     const language = await page.evaluate(async () => {
-      const screens = ["today", "waters", "trip", "bugs", "log", "knots", "pro"];
+      const screens = ["today", "waters", "trip", "bugs", "log", "pro"];
       const found = [];
       for (const id of screens) {
         activateTab(id);
@@ -401,7 +401,7 @@ try {
 
     const outcome = await page.evaluate(async () => {
       const wait = () => new Promise((done) => setTimeout(done, 60));
-      const screens = ["today", "waters", "trip", "bugs", "log", "knots", "pro"];
+      const screens = ["today", "waters", "trip", "bugs", "log", "pro"];
       const selectors = clickActions.map(([selector]) => selector);
       const fired = new Set();
       const missing = [];

@@ -1457,7 +1457,6 @@
 
     .water-list,
     .bug-list,
-    .knot-list,
     .log-list {
       display: grid;
       gap: 10px;
@@ -1465,7 +1464,6 @@
 
     .water-card,
     .bug-card,
-    .knot-card,
     .log-card {
       border: 1px solid var(--line);
       border-radius: 8px;
@@ -2574,7 +2572,6 @@
     }
 
     .bug-layout,
-    .knot-layout,
     .pro-layout {
       display: grid;
       grid-template-columns: 310px minmax(0, 1fr);
@@ -2583,29 +2580,6 @@
 
     .bug-layout {
       grid-template-columns: minmax(0, 1fr);
-    }
-
-    .knot-layout {
-      grid-template-columns: minmax(0, 1fr);
-      gap: 12px;
-    }
-
-    .knot-picker .knot-list {
-      display: flex;
-      overflow-x: auto;
-      padding-bottom: 2px;
-      scroll-snap-type: x proximity;
-    }
-
-    .knot-picker {
-      padding: 10px;
-    }
-
-    .knot-picker .knot-card {
-      flex: 0 0 164px;
-      min-height: 92px;
-      padding: 12px;
-      scroll-snap-align: start;
     }
 
     .bug-art,
@@ -2759,13 +2733,6 @@
       gap: 10px;
     }
 
-    .knot-visual svg {
-      width: 100%;
-      min-width: 100%;
-      height: auto;
-      display: block;
-    }
-
     .detail-hero {
       display: grid;
       grid-template-columns: 220px minmax(0, 1fr);
@@ -2817,51 +2784,6 @@
       margin-top: 8px;
       font-size: 11px;
       padding: 7px 8px;
-    }
-
-    .knot-visual {
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      background: #fbfaf5;
-      overflow: auto;
-      min-width: 0;
-      max-width: 100%;
-    }
-
-    .knot-detail,
-    .knot-layout {
-      min-width: 0;
-      max-width: 100%;
-    }
-
-    .knot-tips {
-      display: grid;
-      gap: 7px;
-      margin: 0 0 14px;
-    }
-
-    .knot-tips div {
-      border-left: 3px solid rgba(185, 107, 53, .58);
-      padding: 7px 10px;
-      background: #fbfaf5;
-      color: var(--muted);
-      font-size: 13px;
-      line-height: 1.35;
-    }
-
-    .knot-detail {
-      padding: 10px;
-    }
-
-    .knot-detail h2 {
-      font-size: 20px;
-      line-height: 1.12;
-    }
-
-    .step-count {
-      color: var(--muted);
-      font-size: 13px;
-      font-weight: 750;
     }
 
     .pro-hero {
@@ -2981,7 +2903,6 @@
       .hero,
       .content-grid,
       .bug-layout,
-      .knot-layout,
       .detail-hero {
         grid-template-columns: 1fr;
       }
@@ -3072,10 +2993,6 @@
       .bug-stage-strip {
         grid-template-columns: repeat(4, minmax(0, 1fr));
         gap: 6px;
-      }
-
-      .knot-detail {
-        order: -1;
       }
 
       .bug-strip-stage {
@@ -3496,15 +3413,10 @@
 
     .content-grid,
     .bug-layout,
-    .knot-layout,
     .pro-layout,
     .detail-hero,
     .hero {
       grid-template-columns: 1fr;
-    }
-
-    .knot-layout {
-      grid-template-columns: minmax(0, 1fr);
     }
 
     .top-water-card,
@@ -3669,7 +3581,6 @@
       <section id="trip" class="view"></section>
       <section id="bugs" class="view"></section>
       <section id="log" class="view"></section>
-      <section id="knots" class="view"></section>
       <section id="pro" class="view"></section>
     </main>
 
@@ -4105,54 +4016,6 @@
       }
     ];
 
-    const knots = [
-      {
-        id: "improved-clinch",
-        name: "Improved Clinch",
-        use: "Fly to tippet",
-        difficulty: "Easy",
-        steps: ["Pass 5-6 inches of tag end through the hook eye.", "Wrap the tag end 5 turns around the standing line.", "Pass the tag back through the small loop beside the eye.", "Pass the tag through the larger loop you just created.", "Wet the knot, pull the standing line to seat it, then trim the tag."],
-        note: "Reliable for most small dries and nymphs. The improved step is the final pass through the large loop before seating.",
-        tips: ["Keep the small loop beside the hook eye open with your fingers.", "Use 4 wraps for heavier/stiffer tippet and 5-7 wraps for fine tippet.", "Seat the knot slowly after wetting it so the wraps stack cleanly instead of crossing."]
-      },
-      {
-        id: "non-slip-loop",
-        name: "Non-Slip Loop",
-        use: "Streamers and leeches",
-        difficulty: "Medium",
-        steps: ["Tie a loose overhand knot in the leader and leave the opening big enough to pass the tag through later.", "Pass the tag end through the fly eye and keep the loose overhand knot open.", "Bring the tag back through the open overhand knot, then slide the knot to set the loop size.", "Wrap the tag end around the standing line 3-5 times, working away from the fly.", "Bring the tag back through the same overhand opening again, entering from the same side it came out.", "Wet the knot, pull the standing line and fly in opposite directions to seat it, then trim the tag."],
-        note: "Adds movement to lake leeches and small streamers without choking the fly eye.",
-        tips: ["The tag must re-enter the overhand knot from the same side it came out.", "Set loop size before final tightening.", "Use fewer wraps with heavier tippet."]
-      },
-      {
-        id: "blood-knot",
-        name: "Blood Knot",
-        use: "Tippet to leader",
-        difficulty: "Medium",
-        steps: ["Overlap the two line ends by 5-6 inches and hold the crossing open.", "Wrap one tag around the opposite standing line 5 turns and bring it back through the center.", "Wrap the second tag 5 turns the opposite direction and pass it through the center the other way.", "Wet the knot and pull both standing lines evenly until the wraps barrel together."],
-        note: "Best when joining leader or tippet sections of similar diameter.",
-        tips: ["Both tag ends should exit the center in opposite directions.", "Pull standing lines, not tag ends, to finish seating.", "If the diameters are very different, use a surgeon's knot instead."]
-      },
-      {
-        id: "surgeons",
-        name: "Double Surgeon's",
-        use: "Fast tippet connection",
-        difficulty: "Easy",
-        steps: ["Overlap leader and tippet with the tag ends pointing opposite directions.", "Form one large overhand loop with both strands together.", "Pass the doubled strands through that same loop twice.", "Wet the knot and pull all four ends evenly so both strands cinch together."],
-        note: "Fast and strong when wind, cold fingers, or mismatched diameters make a blood knot fussy.",
-        tips: ["Keep both strands parallel through the knot.", "Pull all four ends while tightening so one strand does not cut across the other.", "Trim both tags close after the knot seats."]
-      },
-      {
-        id: "perfection-loop",
-        name: "Perfection Loop",
-        use: "Leader butt loop",
-        difficulty: "Medium",
-        steps: ["Make the first loop with the tag passing behind the standing line.", "Make a second loop in front of the first and pinch both crossings.", "Pass the tag between the two loops.", "Reach behind and pull the rear loop through the front loop.", "Wet and tighten by pulling the new loop in line with the standing line."],
-        note: "Clean fixed loop for loop-to-loop leader connections.",
-        tips: ["Do not pull on the tag while seating; pull the finished loop and standing line.", "This knot should finish with the loop aligned straight with the leader.", "Start with a small first loop if you want a compact final loop."]
-      }
-    ];
-
     let activeWater = readSavedWaterId(ACTIVE_WATER_KEY) || waters[0].id;
     let homeWaterId = readSavedWaterId(HOME_WATER_KEY) || activeWater;
     let activeWaterFlyByWater = {};
@@ -4165,8 +4028,6 @@
     let expandedWaterId = null;
     let scoreBreakdownOpen = false;
     let activeBug = bugs[0].id;
-    let activeKnot = knots[0].id;
-    let knotStep = 0;
     let billing = "annual";
     let proAccessActive = false;
     let subscriptionLoading = true;
@@ -4223,9 +4084,7 @@
     const icon = {
       save: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></svg>',
       bell: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg>',
-      plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 5v14"/><path d="M5 12h14"/></svg>',
-      left: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M15 18l-6-6 6-6"/></svg>',
-      right: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 18l6-6-6-6"/></svg>'
+      plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 5v14"/><path d="M5 12h14"/></svg>'
     };
 
     const flyRefs = {
@@ -4974,10 +4833,6 @@
 
     function getBug() {
       return bugs.find((bug) => bug.id === activeBug) || bugs[0];
-    }
-
-    function getKnot() {
-      return knots.find((knot) => knot.id === activeKnot) || knots[0];
     }
 
     function clampScore(score) {
@@ -6545,7 +6400,7 @@
        proAccessActive previously only relabelled the Subscribe button. These are
        the features the subscription actually buys, and the paywall now lists
        only these. Nothing that used to be free before launch is charged for
-       twice: rankings, live readings, hatches, flies, bugs, knots and the catch
+       twice: rankings, live readings, hatches, flies, bugs and the catch
        log all stay free.
        --------------------------------------------------------------------- */
 
@@ -7529,542 +7384,6 @@
       `;
     }
 
-    function improvedClinchInstructionSvg(step) {
-      const labels = [
-        ["Pass tag end", "through the eye"],
-        ["Wrap tag end", "5 turns around standing line"],
-        ["Pass tag through", "the small eye loop"],
-        ["Pass tag through", "the large loop"],
-        ["Wet and seat", "by pulling standing line"]
-      ];
-      const instruction = labels[step] || labels[0];
-      const arrow = (d, cls = "red-motion") => `<path class="${cls}" d="${d}" marker-end="url(#redArrow)"/>`;
-      const pull = (d) => `<path class="pull-motion" d="${d}" marker-end="url(#pullArrow)"/>`;
-      const line = (d, cls = "line") => `<path class="${cls}" d="${d}"/>`;
-      const target = (cx, cy, r = 22) => `<circle class="target" cx="${cx}" cy="${cy}" r="${r}"/>`;
-      const loopTarget = (cx, cy, rx, ry) => `<ellipse class="target" cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}"/>`;
-      const hook = () => `
-        <g class="hook">
-          <path class="hook-wire" d="M306 220 H142 C94 220 60 254 67 294 C76 342 132 357 176 327 C198 312 215 299 242 293"/>
-          <path class="hook-highlight" d="M300 214 H145 C105 214 78 241 76 276"/>
-          <path class="hook-point" d="M238 292 L282 283 L244 304 Z"/>
-          <path class="hook-barb" d="M218 298 L207 283 L231 294 Z"/>
-          <ellipse class="hook-eye" cx="326" cy="220" rx="26" ry="15" transform="rotate(12 326 220)"/>
-          <ellipse class="eye-hole" cx="326" cy="220" rx="12" ry="6" transform="rotate(12 326 220)"/>
-        </g>
-      `;
-      const standingLine = () => line("M326 220 H700", "standing-line");
-      const wrapNumbers = () => [404, 443, 482, 521, 560]
-        .map((x, index) => `<text class="turn-count" x="${x}" y="183">${index + 1}</text>`)
-        .join("");
-      const wrappedTagPath = "M326 220 C350 256 382 256 394 220 C394 190 426 190 426 220 C426 250 458 250 458 220 C458 190 490 190 490 220 C490 250 522 250 522 220 C522 190 554 190 554 220 C554 250 586 250 586 220 C604 192 640 176 696 172";
-      const threadedSmallLoopPath = `${wrappedTagPath} C610 96 420 103 326 220 C344 244 374 260 410 252`;
-      const completedThroughSmallLoopPath = `${wrappedTagPath} C610 96 420 103 326 220 C344 244 374 260 410 252`;
-      const largeLoopPassPath = "M410 252 C456 314 568 306 642 232";
-      const smallEyeLoop = () => `
-        ${line("M326 220 C350 256 386 256 410 220", "tag-line soft")}
-        ${loopTarget(358, 228, 42, 30)}
-      `;
-      const bigLoop = () => `
-        ${line("M330 220 C398 126 560 124 646 220 C588 314 430 318 330 220", "guide-loop")}
-      `;
-      const seatedKnot = () => `
-        <path class="knot-body" d="M328 220 C344 197 394 196 416 220 C394 244 344 243 328 220 Z"/>
-        <path class="knot-rib" d="M342 201 L354 239"/>
-        <path class="knot-rib" d="M354 198 L368 242"/>
-        <path class="knot-rib" d="M368 198 L383 242"/>
-        <path class="knot-rib" d="M383 201 L398 238"/>
-        <path class="tag-line soft" d="M331 224 C348 243 374 242 410 222"/>
-        <path class="tag-line soft" d="M334 238 C352 263 370 288 390 314"/>
-      `;
-      const drawings = [
-        () => `
-          ${hook()}
-          ${standingLine()}
-          ${line("M326 220 C313 224 310 237 321 248 C346 270 378 300 408 333", "active-tag")}
-          ${arrow("M690 205 H344")}
-          ${arrow("M438 345 C392 312 350 268 326 223")}
-          <text class="line-label" x="570" y="202">standing line</text>
-          <text class="line-label" x="412" y="354">tag end: pull 5-6 inches through</text>
-        `,
-        () => `
-          ${hook()}
-          ${standingLine()}
-          ${smallEyeLoop()}
-          ${line(wrappedTagPath, "active-tag")}
-          ${wrapNumbers()}
-          ${arrow("M662 142 C604 148 390 161 384 216")}
-          <path class="wrap-direction" d="M374 176 C420 128 548 128 604 176"/>
-          <text class="line-label" x="424" y="296">five turns around the standing line</text>
-          <text class="line-label" x="260" y="278">keep this eye loop open</text>
-        `,
-        () => `
-          ${hook()}
-          ${standingLine()}
-          ${smallEyeLoop()}
-          ${line(threadedSmallLoopPath, "active-tag")}
-          ${wrapNumbers()}
-          ${target(326, 220, 24)}
-          ${arrow("M438 252 C390 260 348 244 329 224")}
-          <text class="line-label" x="386" y="318">tag goes back through the small loop</text>
-        `,
-        () => `
-          ${hook()}
-          ${standingLine()}
-          ${smallEyeLoop()}
-          ${bigLoop()}
-          ${line(completedThroughSmallLoopPath, "completed-tag")}
-          ${line(largeLoopPassPath, "active-tag")}
-          ${wrapNumbers()}
-          ${arrow("M486 344 C522 300 586 250 642 232")}
-          <text class="line-label" x="390" y="362">tag goes up through the large loop</text>
-        `,
-        () => `
-          ${hook()}
-          ${line("M326 220 H704", "standing-line")}
-          ${seatedKnot()}
-          <path class="trim-mark" d="M394 303 L416 324 M416 303 L394 324"/>
-          ${pull("M650 220 H714")}
-          ${pull("M352 260 C368 286 382 306 394 322")}
-          <text class="line-label" x="520" y="202">pull standing line</text>
-          <text class="line-label" x="392" y="346">trim close after it seats</text>
-        `
-      ];
-
-      return `
-        <svg class="improved-clinch-board" viewBox="0 0 760 430" aria-label="Improved Clinch Knot step ${step + 1}" role="img">
-          <defs>
-            <marker id="redArrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
-              <path d="M0 0 L10 5 L0 10 Z" fill="#d33b37"/>
-            </marker>
-            <marker id="pullArrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
-              <path d="M0 0 L10 5 L0 10 Z" fill="#315747"/>
-            </marker>
-            <style>
-              .title,.subtitle,.line-label,.turn-count{font-family:Inter,system-ui,sans-serif}
-              .title{fill:#111815;font-size:30px;font-weight:900}
-              .subtitle{fill:#5f6d63;font-size:18px;font-weight:750}
-              .line-label{fill:#5f6d63;font-size:15px;font-weight:800}
-              .hook-wire,.hook-highlight,.hook-eye,.eye-hole,.standing-line,.tag-line,.completed-tag,.active-tag,.guide-loop,.wrap-turn,.seated-wrap,.knot-rib,.red-motion,.pull-motion,.wrap-direction,.trim-mark{fill:none;stroke-linecap:round;stroke-linejoin:round}
-              .hook-wire{stroke:#111815;stroke-width:9}
-              .hook-highlight{stroke:#fffdf7;stroke-width:2;opacity:.42}
-              .hook-point,.hook-barb{fill:#111815;stroke:none}
-              .hook-eye{stroke:#111815;stroke-width:6}
-              .eye-hole{stroke:#111815;stroke-width:2}
-              .standing-line{stroke:#111815;stroke-width:5}
-              .tag-line{stroke:#111815;stroke-width:5}
-              .tag-line.soft{stroke-width:4;opacity:.52}
-              .completed-tag{stroke:#9a6b66;stroke-width:4;opacity:.45}
-              .guide-loop{stroke:#315747;stroke-width:3;opacity:.34}
-              .active-tag{stroke:#d33b37;stroke-width:4.5}
-              .wrap-turn{stroke:#111815;stroke-width:5}
-              .wrap-turn.under{opacity:.72}
-              .seated-wrap{stroke:#111815;stroke-width:5}
-              .knot-body{fill:#fffdf7;stroke:#111815;stroke-width:5}
-              .knot-rib{stroke:#111815;stroke-width:4}
-              .red-motion{stroke:#d33b37;stroke-width:3;marker-end:url(#redArrow)}
-              .pull-motion{stroke:#315747;stroke-width:3.5;marker-end:url(#pullArrow)}
-              .wrap-direction{stroke:#d33b37;stroke-width:2.5;stroke-dasharray:8 7;marker-end:url(#redArrow)}
-              .trim-mark{stroke:#d33b37;stroke-width:3}
-              .target{fill:none;stroke:#d33b37;stroke-width:3;stroke-dasharray:7 6}
-              .turn-count{fill:#111815;font-size:13px;font-weight:900;text-anchor:middle}
-            </style>
-          </defs>
-          <rect width="760" height="430" fill="#fffdf7"/>
-          <text class="title" x="24" y="42">Step ${step + 1}: ${instruction[0]}</text>
-          <text class="subtitle" x="24" y="70">${instruction[1]}</text>
-          <path d="M24 92 H736" stroke="#111815" stroke-width="2"/>
-          ${drawings[step] ? drawings[step]() : drawings[0]()}
-        </svg>
-      `;
-    }
-
-    function nonSlipLoopInstructionSvg(step) {
-      const labels = [
-        ["Tie a loose overhand", "make the opening obvious and do not tighten it"],
-        ["Pass tag through eye", "the fly is now captured on the tag end"],
-        ["Back through overhand", "slide the knot to choose the loop size"],
-        ["Wrap the standing line", "use the red tag end and work away from the fly"],
-        ["Back through same opening", "enter the overhand from the same side as before"],
-        ["Seat the knot", "pull the standing line and fly, then trim the tag"]
-      ];
-      const instruction = labels[step] || labels[0];
-      const line = (d, cls = "completed-line") => `<path class="${cls}" d="${d}"/>`;
-      const active = (d) => `<path class="active-tag" d="${d}" marker-end="url(#nsRedArrow)"/>`;
-      const arrow = (d, cls = "red-motion") => `<path class="${cls}" d="${d}" marker-end="url(#nsRedArrow)"/>`;
-      const pull = (d) => `<path class="pull-motion" d="${d}" marker-end="url(#nsPullArrow)"/>`;
-      const label = (text, x, y, cls = "line-label") => `<text class="${cls}" x="${x}" y="${y}">${text}</text>`;
-      const hook = () => `
-        <g class="hook">
-          <path class="hook-wire" d="M296 212 H136 C92 212 60 244 65 283 C72 333 131 350 177 319 C200 303 216 288 242 283"/>
-          <path class="hook-highlight" d="M288 205 H140 C104 205 79 229 75 262"/>
-          <path class="hook-point" d="M239 282 L283 273 L245 295 Z"/>
-          <path class="hook-barb" d="M219 288 L207 273 L232 283 Z"/>
-          <ellipse class="hook-eye" cx="316" cy="212" rx="25" ry="15" transform="rotate(12 316 212)"/>
-          <ellipse class="eye-hole" cx="316" cy="212" rx="11" ry="6" transform="rotate(12 316 212)"/>
-        </g>
-      `;
-      const ghostHook = () => `<g class="ghost">${hook()}</g>`;
-      const standing = (x = 488) => line(`M${x} 212 H704`, "standing-line");
-      const overhand = (cls = "guide-loop") => `
-        <path class="${cls}" d="M454 212 C427 177 463 146 510 163 C567 184 553 255 493 254 C447 253 414 226 454 212"/>
-        <path class="cross-gap" d="M437 212 C462 204 492 206 523 220"/>
-      `;
-      const openingTarget = () => `
-        <circle class="target" cx="454" cy="212" r="31"/>
-        <text class="target-num" x="454" y="217">open</text>
-      `;
-      const looseOverhandPath = "M704 212 H525 C494 212 466 197 461 173 C454 137 523 139 548 177 C577 221 520 266 461 224 C438 208 415 216 394 243 C382 257 370 269 356 280";
-      const flyLoop = "M454 212 C414 170 354 171 316 212 C354 253 414 253 454 212";
-      const throughEyeOnly = "M454 212 C414 170 354 171 316 212 C298 220 278 232 260 246";
-      const backThroughOverhand = "M260 246 C282 230 300 218 316 212 C354 253 414 253 454 212 C478 232 504 254 526 282";
-      const wrapPath = "M454 212 C474 242 503 242 503 212 C503 182 533 182 533 212 C533 242 563 242 563 212 C563 182 593 182 593 212 C593 242 623 242 623 212 C623 184 650 181 676 194";
-      const returnPath = "M676 194 C630 270 535 284 474 241 C453 226 435 214 414 212 C394 213 379 229 369 250";
-      const wrapNumbers = () => [503, 533, 563, 593]
-        .map((x, index) => `<text class="turn-count" x="${x}" y="176">${index + 1}</text>`)
-        .join("");
-      const finalKnot = () => `
-        ${line(flyLoop, "finished-loop")}
-        <path class="knot-body" d="M430 212 C449 192 494 192 519 212 C494 234 449 234 430 212 Z"/>
-        <path class="knot-rib" d="M443 195 L456 231"/>
-        <path class="knot-rib" d="M458 192 L473 234"/>
-        <path class="knot-rib" d="M474 192 L490 234"/>
-        <path class="knot-rib" d="M491 195 L506 231"/>
-        ${line("M519 212 H704", "standing-line")}
-        ${line("M446 228 C462 252 486 276 508 294", "tag-line")}
-      `;
-      const drawings = [
-        () => `
-          ${ghostHook()}
-          ${line(looseOverhandPath, "active-tag")}
-          ${openingTarget()}
-          ${label("standing line to rod", 560, 190)}
-          ${label("tag end you will tie with", 294, 304, "tag-label")}
-          ${arrow("M374 300 C392 272 421 231 452 214")}
-        `,
-        () => `
-          ${hook()}
-          ${standing()}
-          ${overhand()}
-          ${active(throughEyeOnly)}
-          <circle class="target" cx="316" cy="212" r="28"/>
-          ${label("keep this overhand loose", 432, 294)}
-        `,
-        () => `
-          ${hook()}
-          ${standing()}
-          ${overhand()}
-          ${line(throughEyeOnly, "completed-line")}
-          ${active(backThroughOverhand)}
-          ${openingTarget()}
-          ${label("now pass back through the overhand", 382, 316, "tag-label")}
-          ${label("set loop size here", 286, 292)}
-        `,
-        () => `
-          ${hook()}
-          ${line(flyLoop, "completed-line")}
-          ${standing()}
-          ${overhand("guide-loop")}
-          ${active(wrapPath)}
-          ${wrapNumbers()}
-          ${label("red tag wraps around black standing line", 392, 310, "tag-label")}
-        `,
-        () => `
-          ${hook()}
-          ${line(flyLoop, "completed-line")}
-          ${standing()}
-          ${overhand("guide-loop")}
-          ${line(wrapPath, "completed-tag")}
-          ${active(returnPath)}
-          ${wrapNumbers()}
-          ${openingTarget()}
-          ${label("do not go through the hook eye again", 386, 315)}
-          ${label("tag returns through same opening", 320, 340, "tag-label")}
-        `,
-        () => `
-          ${hook()}
-          ${finalKnot()}
-          ${pull("M640 212 H716")}
-          ${pull("M292 212 H198")}
-          <path class="trim-mark" d="M502 282 L524 303 M524 282 L502 303"/>
-          ${label("pull standing line", 540, 190)}
-          ${label("pull fly", 204, 190)}
-          ${label("trim tag", 496, 326, "tag-label")}
-        `
-      ];
-
-      return `
-        <svg class="non-slip-loop-board" viewBox="0 0 760 430" aria-label="Non-Slip Loop Knot step ${step + 1}" role="img">
-          <defs>
-            <marker id="nsRedArrow" markerWidth="14" markerHeight="14" refX="12" refY="7" orient="auto" markerUnits="userSpaceOnUse">
-              <path d="M0 0 L14 7 L0 14 Z" fill="#d33b37"/>
-            </marker>
-            <marker id="nsPullArrow" markerWidth="14" markerHeight="14" refX="12" refY="7" orient="auto" markerUnits="userSpaceOnUse">
-              <path d="M0 0 L14 7 L0 14 Z" fill="#315747"/>
-            </marker>
-            <style>
-              .title,.subtitle,.line-label,.tag-label,.turn-count,.target-num,.legend-text{font-family:Inter,system-ui,sans-serif}
-              .title{fill:#111815;font-size:30px;font-weight:900}
-              .subtitle{fill:#5f6d63;font-size:18px;font-weight:750}
-              .line-label{fill:#5f6d63;font-size:15px;font-weight:800}
-              .tag-label{fill:#a53934;font-size:15px;font-weight:900}
-              .target-num{fill:#a53934;font-size:11px;font-weight:900;text-anchor:middle}
-              .legend-text{fill:#5f6d63;font-size:13px;font-weight:850}
-              .hook-wire,.hook-highlight,.hook-eye,.eye-hole,.standing-line,.tag-line,.completed-line,.completed-tag,.active-tag,.guide-loop,.loop-guide,.finished-loop,.knot-rib,.red-motion,.pull-motion,.trim-mark,.cross-gap{fill:none;stroke-linecap:round;stroke-linejoin:round}
-              .hook-wire{stroke:#111815;stroke-width:9}
-              .hook-highlight{stroke:#fffdf7;stroke-width:2;opacity:.42}
-              .hook-point,.hook-barb{fill:#111815;stroke:none}
-              .hook-eye{stroke:#111815;stroke-width:6}
-              .eye-hole{stroke:#111815;stroke-width:2}
-              .standing-line{stroke:#111815;stroke-width:5.5}
-              .tag-line{stroke:#111815;stroke-width:4;opacity:.68}
-              .completed-line{stroke:#111815;stroke-width:4.8;opacity:.82}
-              .guide-loop{stroke:#315747;stroke-width:3;opacity:.34}
-              .loop-guide{stroke:#315747;stroke-width:3;opacity:.22;stroke-dasharray:8 6}
-              .finished-loop{stroke:#111815;stroke-width:5}
-              .completed-tag{stroke:#9a6b66;stroke-width:4;opacity:.38}
-              .active-tag{stroke:#d33b37;stroke-width:5.2}
-              .cross-gap{stroke:#fffdf7;stroke-width:8}
-              .knot-body{fill:#fffdf7;stroke:#111815;stroke-width:5}
-              .knot-rib{stroke:#111815;stroke-width:4}
-              .red-motion{stroke:#d33b37;stroke-width:3;marker-end:url(#nsRedArrow)}
-              .pull-motion{stroke:#315747;stroke-width:3.5;marker-end:url(#nsPullArrow)}
-              .trim-mark{stroke:#d33b37;stroke-width:3}
-              .target{fill:#fffdf7;fill-opacity:.66;stroke:#d33b37;stroke-width:3;stroke-dasharray:7 6}
-              .turn-count{fill:#111815;font-size:13px;font-weight:900;text-anchor:middle}
-              .ghost{opacity:.18}
-            </style>
-          </defs>
-          <rect width="760" height="430" fill="#fffdf7"/>
-          <text class="title" x="24" y="42">Step ${step + 1}: ${instruction[0]}</text>
-          <text class="subtitle" x="24" y="70">${instruction[1]}</text>
-          <path d="M24 92 H736" stroke="#111815" stroke-width="2"/>
-          <g transform="translate(24 106)">
-            <path d="M0 0 H32" class="standing-line"/>
-            <text class="legend-text" x="42" y="5">standing or finished line</text>
-            <path d="M218 0 H250" class="active-tag"/>
-            <text class="legend-text" x="260" y="5">red tag end is what moves</text>
-          </g>
-          ${drawings[step] ? drawings[step]() : drawings[0]()}
-        </svg>
-      `;
-    }
-
-    function knotSvg(step) {
-      const knot = getKnot();
-      if (knot.id === "improved-clinch") {
-        return improvedClinchInstructionSvg(step);
-      }
-      if (knot.id === "non-slip-loop") {
-        return nonSlipLoopInstructionSvg(step);
-      }
-      const line = (d, extra = "") => `
-        <path class="line-under ${extra}" d="${d}"/>
-        <path class="line-core ${extra}" d="${d}"/>
-        <path class="line-ribs ${extra}" d="${d}"/>
-      `;
-      const oval = (cx, cy, rx, ry, extra = "") => `
-        <ellipse class="line-under ${extra}" cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}"/>
-        <ellipse class="line-core ${extra}" cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}"/>
-        <ellipse class="line-ribs ${extra}" cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}"/>
-      `;
-      const hook = (x = 26, y = 76, scale = 1) => `
-        <g transform="translate(${x} ${y}) scale(${scale})">
-          <path class="hook" d="M111 88 H42 C19 88 4 106 8 128 C13 154 43 162 67 145 C78 137 88 127 101 125"/>
-          <path class="hook-highlight-small" d="M108 82 H43 C25 82 14 93 12 109"/>
-          <path class="hook-point-fill" d="M99 125 L123 120 L103 132 Z"/>
-          <path class="hook-barb-fill" d="M88 129 L82 121 L96 127 Z"/>
-          <ellipse class="hook-eye" cx="127" cy="88" rx="18" ry="11" transform="rotate(12 127 88)"/>
-          <ellipse class="hook-hole" cx="127" cy="88" rx="8" ry="4" transform="rotate(12 127 88)"/>
-        </g>
-      `;
-      const arrow = (d) => `<path class="red-arrow" d="${d}" marker-end="url(#knotArrow)"/>`;
-      const pull = (d) => `<path class="pull-arrow" d="${d}" marker-end="url(#pullArrow)"/>`;
-      const wraps = (startX, y, count = 5) => Array.from({ length: count }, (_, index) => {
-        const cx = startX + index * 18;
-        return oval(cx, y, 12, 20, "wrap");
-      }).join("");
-      const caption = (text, x, y, maxChars = 30) => {
-        const words = text.split(" ");
-        const lines = [];
-        let current = "";
-        words.forEach((word) => {
-          const next = current ? `${current} ${word}` : word;
-          if (next.length > maxChars && current) {
-            lines.push(current);
-            current = word;
-          } else {
-            current = next;
-          }
-        });
-        if (current) lines.push(current);
-        return `<text class="panel-copy" x="${x}" y="${y}">${lines.map((lineText, index) => `<tspan x="${x}" dy="${index ? 23 : 0}">${lineText}</tspan>`).join("")}</text>`;
-      };
-
-      const improvedClinchPanels = [
-        () => `
-          ${hook(20, 80, .9)}
-          ${line("M136 159 H388")}
-          ${line("M136 159 C166 115 244 88 330 52")}
-          ${arrow("M338 55 C358 89 352 119 333 144")}
-        `,
-        () => `
-          ${hook(20, 76, .9)}
-          ${line("M136 155 H394")}
-          ${line("M138 155 C176 184 212 185 238 156")}
-          ${wraps(248, 155, 5)}
-          ${line("M337 155 C363 135 383 128 405 127")}
-          ${arrow("M382 58 C348 75 334 98 336 126")}
-        `,
-        () => `
-          ${hook(20, 76, .9)}
-          ${line("M136 155 H394")}
-          ${wraps(222, 155, 5)}
-          ${line("M314 155 C279 196 214 196 151 160")}
-          <circle class="target" cx="145" cy="158" r="22"/>
-          ${arrow("M304 204 C247 202 185 185 153 164")}
-        `,
-        () => `
-          ${hook(20, 76, .9)}
-          ${line("M136 155 H394")}
-          ${wraps(222, 155, 5)}
-          ${line("M316 156 C275 220 196 223 148 164")}
-          ${line("M151 164 C214 105 286 106 330 158")}
-          <ellipse class="target" cx="238" cy="164" rx="92" ry="62"/>
-          ${arrow("M318 216 C283 205 257 187 241 170")}
-        `,
-        () => `
-          ${hook(24, 44, .82)}
-          ${line("M134 117 H810")}
-          ${wraps(168, 117, 5)}
-          ${line("M134 117 C167 138 220 139 274 118")}
-          ${pull("M142 117 H76")}
-          ${pull("M565 117 H635")}
-          ${arrow("M292 165 C323 159 345 148 363 127")}
-        `
-      ];
-
-      const genericPanels = {
-        "non-slip-loop": [
-          () => `${hook(20, 76, .9)}${line("M137 155 H394")}${oval(230, 155, 68, 48)}${arrow("M285 84 C316 100 331 122 329 149")}`,
-          () => `${hook(20, 76, .9)}${line("M137 155 H394")}${oval(230, 155, 68, 48)}${line("M296 155 C330 133 363 130 394 139")}${arrow("M376 104 C338 112 314 130 298 151")}`,
-          () => `${hook(20, 76, .9)}${line("M137 155 H394")}${oval(230, 155, 68, 48)}${wraps(284, 155, 4)}${arrow("M371 204 C332 223 280 209 252 173")}`,
-          () => `${hook(20, 76, .9)}${line("M137 155 H394")}${oval(255, 155, 96, 55)}${wraps(278, 155, 3)}<circle class="target" cx="254" cy="154" r="22"/>${arrow("M365 217 C319 220 278 195 255 160")}`,
-          () => `${hook(20, 76, .9)}${line("M137 155 C190 102 288 102 341 155")}${wraps(286, 155, 3)}${pull("M139 155 H86")}${pull("M394 155 H430")}`
-        ],
-        "blood-knot": [
-          () => `${line("M36 120 H390")}${line("M390 170 H36")}${caption("Overlap both line ends", 94, 73, 24)}`,
-          () => `${line("M36 120 H390")}${line("M390 170 H36")}${wraps(152, 120, 5)}${arrow("M130 64 C188 43 252 64 279 111")}`,
-          () => `${line("M36 120 H390")}${line("M390 170 H36")}${wraps(152, 120, 4)}${wraps(200, 170, 4)}<circle class="target" cx="214" cy="145" r="19"/>${arrow("M300 217 C254 229 222 202 215 151")}`,
-          () => `${line("M36 145 H390")}${wraps(154, 145, 6)}${pull("M40 145 H0")}${pull("M390 145 H430")}`
-        ],
-        surgeons: [
-          () => `${line("M34 128 H392")}${line("M34 166 H392")}${caption("Lay leader and tippet together", 74, 78, 27)}`,
-          () => `${line("M66 148 C130 66 260 66 324 148 C260 230 130 230 66 148")}${line("M70 148 H394")}${arrow("M326 91 C289 61 188 65 121 131")}`,
-          () => `${line("M66 148 C130 66 260 66 324 148 C260 230 130 230 66 148")}${line("M70 148 H394")}${oval(204, 148, 94, 43)}${arrow("M341 205 C284 237 179 220 117 165")}`,
-          () => `${line("M34 146 H392")}${line("M64 166 H362")}${wraps(176, 146, 4)}${pull("M35 146 H0")}${pull("M392 146 H430")}`
-        ],
-        "perfection-loop": [
-          () => `${line("M34 154 H392")}${line("M145 154 C181 82 292 82 328 154")}${arrow("M287 83 C318 100 334 123 330 151")}`,
-          () => `${line("M34 154 H392")}${oval(242, 154, 88, 58)}${line("M231 154 C278 106 355 113 376 178")}`,
-          () => `${line("M34 154 H392")}${oval(242, 154, 88, 58)}${line("M231 154 C278 106 355 113 376 178 C332 176 288 193 249 220")}<circle class="target" cx="330" cy="154" r="20"/>${arrow("M389 105 C356 113 337 130 331 150")}`,
-          () => `${line("M34 154 H392")}${oval(242, 154, 88, 58)}${line("M231 154 C278 106 355 113 376 178 C332 176 288 193 249 220")}${arrow("M318 222 C296 207 279 186 267 163")}`,
-          () => `${line("M34 154 H392")}${oval(270, 154, 110, 62)}${wraps(252, 154, 3)}${pull("M35 154 H0")}${pull("M380 154 H430")}`
-        ]
-      };
-
-      const boardPanels = genericPanels[knot.id] || genericPanels["non-slip-loop"];
-      const currentPanel = boardPanels[Math.min(step, boardPanels.length - 1)] || boardPanels[0];
-
-      return `
-        <svg class="knot-step-board" viewBox="0 0 760 430" aria-label="${knot.name} step ${step + 1}" role="img">
-          <defs>
-            <marker id="knotArrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
-              <path d="M0 0 L12 6 L0 12 Z" fill="#d33b37"/>
-            </marker>
-            <marker id="pullArrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
-              <path d="M0 0 L12 6 L0 12 Z" fill="#315747"/>
-            </marker>
-            <filter id="knotShadow" x="-10%" y="-10%" width="120%" height="120%">
-              <feDropShadow dx="0" dy="1.5" stdDeviation="1.2" flood-color="#162019" flood-opacity=".16"/>
-            </filter>
-            <style>
-              .board-title,.panel-copy,.step-num{font-family:Inter,system-ui,sans-serif}
-              .board-title{fill:#111815;font-size:30px;font-weight:900}
-              .step-dot{fill:#b8b8b8;stroke:#898989;stroke-width:1}
-              .step-num{fill:#111815;font-size:24px;font-weight:850;text-anchor:middle}
-              .panel-copy{fill:#111815;font-size:19px;font-weight:750}
-              .hook{fill:none;stroke:#111815;stroke-width:7;filter:url(#knotShadow)}
-              .hook-highlight-small{fill:none;stroke:#fffdf7;stroke-width:1.5;stroke-linecap:round;opacity:.42}
-              .hook-point-fill,.hook-barb-fill{fill:#111815;stroke:none}
-              .hook-eye{fill:#f7f4ec;stroke:#353733;stroke-width:8}
-              .hook-hole{fill:#fff;stroke:#6a6d66;stroke-width:2}
-              .line-under,.line-core,.line-ribs{fill:none;stroke-linecap:round;stroke-linejoin:round}
-              .line-under{stroke:#111815;stroke-width:7;filter:url(#knotShadow)}
-              .line-core{stroke:#fffdf7;stroke-width:2;opacity:.42}
-              .line-ribs{stroke:#111815;stroke-width:0}
-              .wrap.line-under{stroke-width:6}
-              .wrap.line-core{stroke-width:2}
-              .wrap.line-ribs{stroke-width:0}
-              .red-arrow,.pull-arrow{fill:none;stroke-linecap:round;stroke-linejoin:round;stroke-width:4}
-              .red-arrow{stroke:#d33b37}
-              .pull-arrow{stroke:#315747}
-              .target{fill:none;stroke:#d33b37;stroke-width:3;stroke-dasharray:6 6}
-            </style>
-          </defs>
-          <rect width="760" height="430" fill="#fffdf7"/>
-          <text class="board-title" x="24" y="42">Step ${step + 1}: ${knot.name}</text>
-          <path d="M24 66 H736" stroke="#111815" stroke-width="2"/>
-          ${caption(knot.steps[step] || knot.steps[knot.steps.length - 1], 24, 96, 54)}
-          <g transform="translate(88 128) scale(1.34)">
-            ${currentPanel()}
-          </g>
-        </svg>
-      `;
-    }
-
-    function renderKnots() {
-      const selected = getKnot();
-      knotStep = Math.min(knotStep, selected.steps.length - 1);
-      $("#knots").innerHTML = `
-        <div class="topbar">
-          <div>
-            <p class="eyebrow">Knots</p>
-            <h1>${selected.name}</h1>
-            <p class="subtle">${selected.use} - ${selected.difficulty}</p>
-          </div>
-          <div class="toolbar">
-            <button class="icon-btn" data-step="-1" aria-label="Previous step">${icon.left}</button>
-            <span class="step-count">${knotStep + 1} of ${selected.steps.length}</span>
-            <button class="icon-btn" data-step="1" aria-label="Next step">${icon.right}</button>
-          </div>
-        </div>
-        <div class="knot-layout">
-          <div class="panel knot-picker">
-            <div class="knot-list">
-              ${knots.map((knot) => `
-                <button class="knot-card selectable ${knot.id === activeKnot ? "active" : ""}" data-knot="${knot.id}">
-                  <div class="item-top">
-                    <strong>${knot.name}</strong>
-                    <span class="chip ${knot.difficulty === "Easy" ? "" : "copper"}">${knot.difficulty}</span>
-                  </div>
-                  <div class="subtle">${knot.use}</div>
-                </button>
-              `).join("")}
-            </div>
-          </div>
-          <div class="panel knot-detail">
-            <div class="knot-visual">${knotSvg(knotStep)}</div>
-            <div style="height: 16px"></div>
-            <h2>${selected.steps[knotStep]}</h2>
-            <p class="subtle">${selected.note}</p>
-            ${selected.tips?.length ? `<div class="knot-tips">${selected.tips.map((tip) => `<div>${tip}</div>`).join("")}</div>` : ""}
-            <div class="chips">${selected.steps.map((_, index) => `<button class="chip ${index === knotStep ? "copper" : ""}" data-knot-step="${index}">Step ${index + 1}</button>`).join("")}</div>
-          </div>
-        </div>
-      `;
-    }
-
     /* ---------------------------------------------------------------------
        Catch log storage.
 
@@ -8502,7 +7821,7 @@
                 </div>
               `).join("")}
             </div>
-            <p class="subtle" style="margin-top:12px">Every feature above works on this device with no account. The Rise does not send notifications; water rankings, live gauge and forecast readings, hatches, fly picks, the bug library, knots, and your catch log are free and stay free.</p>
+            <p class="subtle" style="margin-top:12px">Every feature above works on this device with no account. The Rise does not send notifications; water rankings, live gauge and forecast readings, hatches, fly picks, the bug library, and your catch log are free and stay free.</p>
           </div>
         </div>
       `;
@@ -8542,8 +7861,8 @@
     /* ---------------------------------------------------------------------
        Rendering.
 
-       renderAll used to rebuild the innerHTML of all seven screens on every
-       interaction, including the six the user could not see. Screens are now
+       renderAll used to rebuild the innerHTML of all six screens on every
+       interaction, including the five the user could not see. Screens are now
        rendered on demand: the visible one immediately, the rest marked dirty
        and rebuilt when they are opened.
        --------------------------------------------------------------------- */
@@ -8554,7 +7873,6 @@
       trip: renderTrip,
       bugs: renderBugs,
       log: renderLog,
-      knots: renderKnots,
       pro: renderPro
     };
 
@@ -8800,23 +8118,6 @@
         renderWaters();
       }],
       ["[data-tab-jump]", (element) => activateTab(element.dataset.tabJump)],
-      ["[data-knot]", (element) => {
-        activeKnot = element.dataset.knot;
-        knotStep = 0;
-        renderKnots();
-      }],
-      ["[data-step]", (element) => {
-        const selected = getKnot();
-        const nextStep = knotStep + Number(element.dataset.step);
-        knotStep = Math.max(0, Math.min(selected.steps.length - 1, nextStep));
-        renderKnots();
-        requestAnimationFrame(() => $(".knot-visual")?.scrollIntoView({ block: "start", behavior: "smooth" }));
-      }],
-      ["[data-knot-step]", (element) => {
-        knotStep = Number(element.dataset.knotStep);
-        renderKnots();
-        requestAnimationFrame(() => $(".knot-visual")?.scrollIntoView({ block: "start", behavior: "smooth" }));
-      }],
       ["[data-new-log]", () => {
         logFormOpen = !logFormOpen;
         logSaveMessage = "";
