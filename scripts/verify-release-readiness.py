@@ -509,6 +509,57 @@ def main() -> int:
     for name, text in knot_sources.items():
         require("knot" not in text.lower(), f"the scrapped knots feature is back in {name}")
 
+    # --- Round five -----------------------------------------------------------
+    # "Unavailable" and "Loading..." rendered in the 52px price face pushed the
+    # Pro hero past the right edge of a 390pt iPhone and clipped Restore
+    # Purchases and the subscription disclosure with it. Only a real localized
+    # price gets the big face.
+    require(
+        ".price.price-pending strong" in web,
+        "a non-price price state renders in the full-size price face again",
+    )
+    require(
+        'class="price ${priceReady ? "" : "price-pending"}"' in web,
+        "the Pro price no longer marks itself as pending when there is no price",
+    )
+
+    # Deriving the Waters list must not change the angler's selection. Typing a
+    # search term used to reassign activeWater to the top result, moving a
+    # planned trip onto a water the angler never picked.
+    search_state_start = web.index("function watersSearchState(")
+    search_state_end = web.index("function watersHeadlineMarkup(", search_state_start)
+    require(
+        "activeWater =" not in web[search_state_start:search_state_end],
+        "rendering the Waters list reassigns the selected water again",
+    )
+
+    # "There is no caddis, mayfly, or stonefly activity" splits on the commas,
+    # and only the first fragment carries the "no". The tail fragments inherit
+    # the negation; a fragment with a verb of its own does not.
+    require(
+        "FINITE_VERB_MARKERS" in web and "isListContinuation" in web,
+        "a negated list is only negated in its first item again",
+    )
+
+    # The in-memory journal must not advance past a write that failed. It used
+    # to be assigned first, so a catch the app had just said it could not save
+    # stayed on screen for the session and vanished at next launch.
+    set_logs_start = web.index("function setLogs(")
+    set_logs_end = web.index("function parseLogPayload(", set_logs_start)
+    set_logs = web[set_logs_start:set_logs_end]
+    require(
+        "if (persisted) logCache = logs;" in set_logs,
+        "the journal cache advances before the write is known to have landed",
+    )
+    require(
+        set_logs.index("logCache = logs") > set_logs.index("localStorage.setItem"),
+        "the journal cache is still assigned ahead of the write attempt",
+    )
+    require(
+        "nextLogs = logs.map((item, itemIndex) =>" in web,
+        "an edit is written into the live cache array again instead of a new one",
+    )
+
     # --- Behaviour suite ------------------------------------------------------
     require(APP_LOGIC_TESTS.is_file(), "app behaviour tests are missing")
     result = subprocess.run(
@@ -579,6 +630,7 @@ def main() -> int:
     print("PASS: readings and saved locations expire instead of ageing into fiction")
     print("PASS: an edit keeps the conditions, one tap writes one catch, photos outlive a failed write")
     print("PASS: negation and forecast text are read correctly, search input escaped and stable")
+    print("PASS: the Pro card fits every price state, search keeps the selection, a failed write changes nothing")
     print(f"PASS: app behaviour tests ({logic_summary})")
     print(f"PASS: real-DOM tests ({dom_summary})")
     print(f"PASS: native storage tests ({store_summary})")

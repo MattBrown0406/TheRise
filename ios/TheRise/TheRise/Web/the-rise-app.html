@@ -2807,13 +2807,27 @@
     .price {
       display: flex;
       align-items: baseline;
+      flex-wrap: wrap;
       gap: 8px;
       margin: 18px 0;
+      min-width: 0;
     }
 
     .price strong {
       font-size: 52px;
       line-height: .9;
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }
+
+    /* "Unavailable" and "Loading..." are words, not prices. Rendered in the
+       52px price face they pushed the hero card past the right edge of a 390pt
+       iPhone and clipped the title, Restore Purchases and the disclosure with
+       it - and "Loading..." is every cold launch. Only a real localized price
+       gets the big face. */
+    .price.price-pending strong {
+      font-size: 22px;
+      line-height: 1.25;
     }
 
     .pro-actions {
@@ -5957,20 +5971,62 @@
       "landed", "hooked", "numbers", "clarity"
     ];
 
+    // Words that make a fragment a statement of its own rather than the tail of
+    // the list before it. "the water is clear" carries a verb; "or stonefly
+    // activity" does not.
+    const FINITE_VERB_MARKERS = [
+      "is", "are", "was", "were", "be", "been", "being", "has", "have", "had",
+      "will", "would", "can", "could", "should", "may", "might", "do", "does",
+      "did", "report", "reports", "reported", "seems", "seem", "looks", "look",
+      "remains", "remain", "continues", "continue", "expect", "expects",
+      "fished", "fishing", "produced", "producing", "started", "picked"
+    ];
+
+    // A clause boundary either ends the thought or continues it. A comma can do
+    // either, so it is kept and judged; a full stop or a contrastive
+    // conjunction always ends it.
+    const CLAUSE_BOUNDARY = /([.;:!?]+|,+|\s+(?:but|however|though|although|until|unless|except|yet)\s+)/i;
+
+    function isListContinuation(clause) {
+      return !FINITE_VERB_MARKERS.some((term) => mentionsTerm(clause, term));
+    }
+
     function passageClauses(text) {
-      return String(text || "")
-        .split(/[.,;:!?]+|\s+(?:but|however|though|although|until|unless|except|yet)\s+/i)
-        .map((clause) => clause.trim())
-        .filter(Boolean)
-        .map((clause) => ({
+      const parts = String(text || "").split(CLAUSE_BOUNDARY);
+      const clauses = [];
+      let softBoundary = false;
+      let carriedNegation = false;
+      for (let index = 0; index < parts.length; index += 1) {
+        const part = String(parts[index] || "");
+        // Odd positions are the captured separators.
+        if (index % 2 === 1) {
+          softBoundary = /^,+$/.test(part.trim());
+          if (!softBoundary) carriedNegation = false;
+          continue;
+        }
+        const clause = part.trim();
+        if (!clause) continue;
+        const ownNegation = NEGATION_CONTRACTION.test(clause)
+          || NEGATION_TERMS.some((term) => mentionsTerm(clause, term));
+        // "There is no caddis, mayfly, or stonefly activity" splits on the
+        // commas, and only the first fragment carries the "no". The tail
+        // fragments have no verb of their own, so they are the rest of the
+        // negated list and inherit the negation. A fragment that states
+        // something in its own right - "the water is clear" - does not.
+        const negated = ownNegation
+          || (softBoundary && carriedNegation && isListContinuation(clause));
+        carriedNegation = negated;
+        softBoundary = false;
+        clauses.push({
           text: clause,
-          negated: NEGATION_CONTRACTION.test(clause)
-            || NEGATION_TERMS.some((term) => mentionsTerm(clause, term)),
+          negated,
           // A clause with weather words and nothing about fishing is a
           // forecast. It is not a report on the water and is not read as one.
           aboutFishing: FISHING_MARKERS.some((term) => mentionsTerm(clause, term))
             || !WEATHER_MARKERS.some((term) => mentionsTerm(clause, term))
-        }));
+        });
+      }
+      return clauses;
     }
 
     const POSITIVE_TERMS = ["good", "fishing well", "productive"];
@@ -7314,10 +7370,12 @@
       // water the filter had just excluded in the hero, headlined "TOP WATER
       // TODAY", directly above a count that read "0 waters".
       const topWater = ranked[0] || null;
-      if (topWater) {
-        const selected = ranked.find((water) => water.id === activeWater) || topWater;
-        activeWater = selected.id;
-      }
+      // Deriving the list must not change what the angler picked. This used to
+      // reassign activeWater to the top result whenever the selected water fell
+      // out of the filter, so typing "todd" in the search box silently moved a
+      // trip planned for the Lower Deschutes onto Todd Lake - and clearing the
+      // search did not move it back. Selection changes only in setActiveWater,
+      // when a card is tapped.
       return { filtered, ranked, topWater };
     }
 
@@ -7703,7 +7761,6 @@
 
     // Returns false only when the log could not be persisted anywhere.
     function setLogs(logs) {
-      logCache = logs;
       const savedAt = new Date().toISOString();
       let localOk = false;
       try {
@@ -7717,7 +7774,13 @@
       // The envelope carries the write time so a restore can tell which copy is
       // newer instead of guessing from row counts.
       postStoreMessage({ action: "saveLog", body: JSON.stringify({ version: 2, savedAt, logs }) });
-      return localOk || hasNativeStoreBridge();
+      const persisted = localOk || hasNativeStoreBridge();
+      // The in-memory journal is only advanced when the write landed somewhere.
+      // Assigning it first meant a catch the app had just told the user it
+      // could not save stayed in the list for the rest of the session and then
+      // vanished at next launch.
+      if (persisted) logCache = logs;
+      return persisted;
     }
 
     // Accepts the v2 envelope and the bare array written by earlier builds.
@@ -8045,7 +8108,7 @@
           <div class="pro-hero">
             <p class="eyebrow">The Rise Pro</p>
             <h1>The Rise Pro — ${planLabel}</h1>
-            <div class="price"><strong>${priceReady ? displayPrice : subscriptionLoading ? "Loading..." : "Unavailable"}</strong><span>${priceReady ? `per ${renewalPeriod}` : "localized App Store price"}</span></div>
+            <div class="price ${priceReady ? "" : "price-pending"}"><strong>${priceReady ? esc(displayPrice) : subscriptionLoading ? "Loading..." : "Unavailable"}</strong><span>${priceReady ? `per ${renewalPeriod}` : "localized App Store price"}</span></div>
             <div class="pro-actions">
               <button class="primary-btn" data-subscribe-plan="${isAnnual ? "annual" : "monthly"}" ${!priceReady || subscriptionLoading || proAccessActive ? "disabled" : ""}>${icon.bell}${purchaseLabel}</button>
               <button class="ghost-btn" data-restore-purchases ${subscriptionLoading ? "disabled" : ""}>Restore Purchases</button>
@@ -8053,7 +8116,7 @@
             </div>
             <p class="subtle pro-status">${subscriptionMessage}</p>
             <div class="subscription-disclosure" aria-label="Subscription terms">
-              <p>${priceReady ? `The Rise Pro ${planLabel} is an auto-renewable subscription at ${displayPrice} per ${renewalPeriod}. Payment is charged to your Apple Account when you confirm the purchase. The subscription renews automatically unless auto-renew is turned off at least 24 hours before the end of the current period. Your account is charged for renewal within 24 hours before the current period ends. Manage or cancel your subscription in your Apple Account settings.` : "Subscription pricing is loaded directly from the App Store for your region. Purchase remains unavailable until the localized price is displayed."}</p>
+              <p>${priceReady ? `The Rise Pro ${planLabel} is an auto-renewable subscription at ${esc(displayPrice)} per ${renewalPeriod}. Payment is charged to your Apple Account when you confirm the purchase. The subscription renews automatically unless auto-renew is turned off at least 24 hours before the end of the current period. Your account is charged for renewal within 24 hours before the current period ends. Manage or cancel your subscription in your Apple Account settings.` : "Subscription pricing is loaded directly from the App Store for your region. Purchase remains unavailable until the localized price is displayed."}</p>
               <div class="subscription-legal-links">
                 <a href="https://mattbrown0406.github.io/TheRise/privacy.html">Privacy Policy</a>
                 <a href="https://www.apple.com/legal/internet-services/itunes/dev/stdeula/">Terms of Use (EULA)</a>
@@ -8577,14 +8640,17 @@
         for (const key of ["flow", "flowSource", "temp", "tempSource"]) {
           if (original[key] !== undefined) preservedReadings[key] = original[key];
         }
-        logs[editingLogIndex] = {
+        const edited = {
           ...original,
           ...entry,
           ...preservedReadings,
           loggedAt: original.loggedAt || entry.loggedAt,
           date: original.date || entry.date
         };
-        nextLogs = [...logs];
+        // Built as a new array rather than written into the one getLogs handed
+        // back: that array *is* the live cache, so editing it in place applied
+        // the edit before the write was attempted and survived a failure.
+        nextLogs = logs.map((item, itemIndex) => (itemIndex === editingLogIndex ? edited : item));
       } else {
         // No cap. The journal is the user's own record and is never truncated.
         nextLogs = [entry, ...logs];

@@ -849,6 +849,140 @@ try {
     await page.close();
   }
 
+  /* ---------------------------------------------------------------- */
+  group("The Pro card fits an iPhone in every price state (#1 round five)");
+
+  for (const width of [390, 430]) {
+    const page = await openApp(browser, { viewport: { width, height: 844 } });
+    const states = await page.evaluate(async () => {
+      const measure = () => {
+        renderPro();
+        activateTab("pro");
+        const hero = document.querySelector("#pro .pro-hero");
+        const screen = document.querySelector("#pro");
+        return {
+          heroOverflow: hero.scrollWidth - hero.clientWidth,
+          screenOverflow: screen.scrollWidth - screen.clientWidth,
+          documentOverflow: document.documentElement.scrollWidth - window.innerWidth,
+          priceText: document.querySelector("#pro .price strong")?.textContent || "",
+          restoreVisible: Boolean(document.querySelector("#pro [data-restore-purchases]")?.getBoundingClientRect().width)
+        };
+      };
+      const out = {};
+      subscriptionLoading = true;
+      subscriptionPrices = { monthly: null, annual: null };
+      out.loading = measure();
+      subscriptionLoading = false;
+      out.unavailable = measure();
+      subscriptionPrices = { monthly: "$6.99", annual: "$49.99" };
+      out.priced = measure();
+      return out;
+    });
+    for (const [state, result] of Object.entries(states)) {
+      assert(result.heroOverflow <= 0,
+        `${width}pt / ${state} ("${result.priceText}"): the hero card does not overflow (${result.heroOverflow}px)`);
+      assert(result.documentOverflow <= 0,
+        `${width}pt / ${state}: nothing runs off the right edge of the screen (${result.documentOverflow}px)`);
+      assert(result.restoreVisible, `${width}pt / ${state}: Restore Purchases is still on screen`);
+    }
+    await page.close();
+  }
+
+  /* ---------------------------------------------------------------- */
+  group("Searching the water list does not retarget the chosen water (#2 round five)");
+
+  {
+    const page = await openApp(browser);
+    const result = await page.evaluate(async () => {
+      activateTab("waters");
+      await new Promise((done) => requestAnimationFrame(done));
+      const target = waters.find((water) => water.id === "lower-deschutes") || waters[1];
+      const card = document.querySelector(`.waters-main-list [data-water="${target.id}"]`)
+        || (() => { setActiveWater(target.id); return null; })();
+      if (card) card.click();
+      const chosen = activeWater;
+      const field = document.querySelector("[data-water-search]");
+      field.value = "todd";
+      field.dispatchEvent(new Event("input", { bubbles: true }));
+      await new Promise((done) => setTimeout(done, 250));
+      const duringSearch = activeWater;
+      const searchResults = [...document.querySelectorAll(".waters-main-list [data-water]")].map((node) => node.dataset.water);
+      field.value = "";
+      field.dispatchEvent(new Event("input", { bubbles: true }));
+      await new Promise((done) => setTimeout(done, 250));
+      renderTrip();
+      const tripWater = document.querySelector("#trip h1")?.textContent || "";
+      return { chosen, duringSearch, afterClear: activeWater, searchResults, tripWater, targetName: target.name };
+    });
+    assert(result.chosen === "lower-deschutes", `the angler picked the Lower Deschutes (${result.chosen})`);
+    assert(result.searchResults.length && !result.searchResults.includes("lower-deschutes"),
+      `the search excludes it from the list (${result.searchResults.slice(0, 3).join(", ")})`);
+    assert(result.duringSearch === result.chosen,
+      `searching for another water does not change the selection (${result.duringSearch})`);
+    assert(result.afterClear === result.chosen,
+      `and clearing the search leaves it where it was (${result.afterClear})`);
+    assert(result.tripWater.includes(result.targetName),
+      `the trip screen and the selection agree (${result.tripWater})`);
+    await page.close();
+  }
+
+  /* ---------------------------------------------------------------- */
+  group("A failed write leaves the journal alone on screen (#4 round five)");
+
+  {
+    const page = await openApp(browser);
+    await seedLogs(page, [sampleEntry({ fly: "ORIGINAL FLY", notes: "as caught" })]);
+    const result = await page.evaluate(async () => {
+      activateTab("log");
+      await new Promise((done) => requestAnimationFrame(done));
+      document.querySelector("[data-edit-log]")?.click();
+      await new Promise((done) => requestAnimationFrame(done));
+      const form = document.querySelector("#logForm form") || document.querySelector("#logForm");
+      const flyField = form.querySelector("[name=fly]");
+      flyField.value = "EDITED FLY";
+      const realSetItem = Storage.prototype.setItem;
+      Storage.prototype.setItem = function () { throw new Error("QuotaExceededError"); };
+      form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+      await new Promise((done) => setTimeout(done, 150));
+      Storage.prototype.setItem = realSetItem;
+      return {
+        cached: getLogs().map((entry) => entry.fly),
+        onScreen: [...document.querySelectorAll("#log [data-edit-log]")].map((node) =>
+          node.closest(".water-card, .log-card")?.textContent || ""),
+        message: document.querySelector("#log .log-save-message, #log .subtle")?.textContent || "",
+        screenText: document.querySelector("#log").textContent
+      };
+    });
+    assert(result.cached.length === 1 && result.cached[0] === "ORIGINAL FLY",
+      `an edit that could not be written is not applied in memory (${result.cached.join(", ")})`);
+    assert(!result.screenText.includes("EDITED FLY"),
+      "and the edit is not shown as though it had been saved");
+    assert(/could not be saved/i.test(result.screenText),
+      "the angler is told the write failed");
+    await page.close();
+  }
+
+  {
+    const page = await openApp(browser);
+    const result = await page.evaluate(async () => {
+      activateTab("log");
+      await new Promise((done) => requestAnimationFrame(done));
+      document.querySelector("[data-new-log]")?.click();
+      await new Promise((done) => requestAnimationFrame(done));
+      const form = document.querySelector("#logForm form") || document.querySelector("#logForm");
+      form.querySelector("[name=fly]").value = "UNSAVEABLE";
+      const realSetItem = Storage.prototype.setItem;
+      Storage.prototype.setItem = function () { throw new Error("QuotaExceededError"); };
+      form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+      await new Promise((done) => setTimeout(done, 150));
+      Storage.prototype.setItem = realSetItem;
+      return { cached: getLogs().length, screenText: document.querySelector("#log").textContent };
+    });
+    assert(result.cached === 0, `a new catch that could not be written is not in the journal (${result.cached})`);
+    assert(!result.screenText.includes("UNSAVEABLE"), "and it is not listed on screen either");
+    await page.close();
+  }
+
 } finally {
   for (const context of openContexts) {
     await context.close().catch(() => {});

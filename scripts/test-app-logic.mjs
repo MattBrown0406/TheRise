@@ -541,5 +541,67 @@ group("Waters search state (#7 round four)");
 const beforeQuery = app.watersSearchState();
 assert(beforeQuery.topWater !== null, "an empty search has a top water");
 
+/* ------------------------------------------------------------------ */
+group("A negated list stays negated past the comma (#3 round five)");
+
+function clausesOf(text) {
+  return app.passageClauses(text).map((clause) => `${clause.negated ? "NEG " : ""}${clause.text}`);
+}
+
+const negatedList = app.passageClauses("there is no caddis, mayfly, or stonefly activity right now");
+assert(negatedList.every((clause) => clause.negated),
+  `every item of a negated list is negated (${clausesOf("there is no caddis, mayfly, or stonefly activity right now").join(" | ")})`);
+
+const listSource = { readable: true, label: "ODFW Central Zone" };
+const listWater = app.waters.find((water) => water.id === "crooked");
+const listSignals = app.extractSignalsForWater(
+  listWater,
+  "Crooked River: there is no caddis, mayfly, or stonefly activity right now.",
+  listSource
+);
+assert(!listSignals || !listSignals.hatches.length,
+  `and none of the three insects reaches the card (${JSON.stringify(listSignals?.hatches || [])})`);
+
+// The carry must stop at anything that states something in its own right.
+const mixed = app.passageClauses("there is no caddis activity, the water is clear and fishing has been good");
+assert(mixed[0].negated, "the negated clause is negated");
+assert(!mixed[1].negated,
+  `a clause with its own verb does not inherit the negation (${clausesOf("there is no caddis activity, the water is clear and fishing has been good").join(" | ")})`);
+
+// And at a contrastive conjunction, which reverses the sense rather than
+// continuing it.
+const contrast = app.passageClauses("not much is happening, but the caddis are thick");
+assert(contrast[0].negated, "the first half is negated");
+assert(!contrast[contrast.length - 1].negated, "and 'but' ends the negation rather than carrying it");
+
+const contrastSignals = app.extractSignalsForWater(
+  listWater,
+  "Crooked River: not much is happening, but the caddis are thick in the evening.",
+  listSource
+);
+assert(Boolean(contrastSignals) && contrastSignals.hatches.includes("Caddis"),
+  `a hatch asserted after 'but' is still read (${JSON.stringify(contrastSignals?.hatches || [])})`);
+
+// A full stop always ends the negation.
+const sentences = app.passageClauses("there is no caddis activity. mayflies are hatching");
+assert(sentences[0].negated && !sentences[1].negated, "a full stop ends the negation");
+
+/* ------------------------------------------------------------------ */
+group("A catch the app could not save does not stay in the journal (#4 round five)");
+
+const realSetItem = localStorage.setItem.bind(localStorage);
+app.setLogs([{ ...app.normalizeLogEntry({ fly: "KEEP-ME", loggedAt: "2026-04-02T12:00:00.000Z" }) }]);
+const beforeFailedWrite = JSON.stringify(app.getLogs());
+localStorage.setItem = () => { throw new Error("QuotaExceededError"); };
+const wrote = app.setLogs([
+  app.normalizeLogEntry({ fly: "LOST", loggedAt: "2026-04-03T12:00:00.000Z" }),
+  ...app.getLogs()
+]);
+localStorage.setItem = realSetItem;
+assert(wrote === false, "a write with nowhere to go reports failure");
+assert(JSON.stringify(app.getLogs()) === beforeFailedWrite,
+  `and the journal is unchanged in memory too (${app.getLogs().map((entry) => entry.fly).join(", ")})`);
+localStorage.removeItem("riseLogs");
+
 console.log(`\n${checks - failures}/${checks} checks passed`);
 process.exit(failures ? 1 : 0);
