@@ -145,7 +145,12 @@ vm.runInContext(`${scriptBody}\n;globalThis.__app = {
   waterAliasMap, waterAliasExclusions, aliasesForWater, scoreBoostFromSignals,
   passageAboutWater, extractSignalsForWater, watersForBulkSync,
   localIntelSources, referenceLinks, reportLinks, clickActions,
-  liveReports, PRO_FEATURES, screenRenderers
+  liveReports, PRO_FEATURES, screenRenderers,
+  cueSignalsFromText, passageClauses, reportFreshness, reportAgeHours,
+  hoursSince, ageLabel, formatSavedTime, hydrateWaterCache, cacheReport,
+  readUserLocation, saveUserLocation, watersSearchState, watersResultsMarkup,
+  readingProvenanceWord, loggedReadingLabel, scoreSourceLabel,
+  READING_FRESH_HOURS, READING_EXPIRY_HOURS, LOCATION_EXPIRY_HOURS
 };`, context);
 
 const app = context.__app;
@@ -418,6 +423,123 @@ assert(app.scoreBoostFromSignals("fishing well with good numbers", { type: "agen
   "an actual positive report still raises the score");
 assert(app.scoreBoostFromSignals("fishing has been slow and tough", { type: "agency" }, [], []) < 0,
   "an actual slow report still lowers it");
+
+
+/* ================================================================== */
+/* Round four                                                          */
+/* ================================================================== */
+
+group("A report parser that can read a negative (#6 round four)");
+const agency = { label: "ODFW Central Zone", type: "agency", readable: true };
+assert(app.scoreBoostFromSignals("fishing has not been good and few fish have been landed.", agency, [], []) < 0,
+  "'has not been good' lowers the score instead of raising it");
+assert(app.cueSignalsFromText("fishing has not been good and few fish have been landed.")
+  .includes("technical human report"),
+  "a negated positive is reported as the negative it is");
+assert(!app.cueSignalsFromText("fishing has not been good and few fish have been landed.")
+  .includes("positive human report"),
+  "and never as a positive report");
+assert(app.scoreBoostFromSignals("do not expect good numbers until the water warms.", agency, [], []) < 0,
+  "'do not expect good numbers' is not a positive report");
+
+const noCaddis = app.extractSignalsForWater(
+  app.waters.find((water) => water.id === "crooked"),
+  "Crooked River. There is no caddis activity yet; anglers report poor results.",
+  agency
+);
+assert(!(noCaddis?.hatches || []).some((hatch) => /caddis/i.test(hatch)),
+  "'there is no caddis activity' does not put caddis on the card");
+assert((noCaddis?.scoreBoost ?? 0) < 0, "and the poor results still lower the score");
+
+group("A weather forecast is not a water report (#6 round four)");
+const skyText = "Skies will be clear and cold overnight with a good chance of snow.";
+assert(!app.cueSignalsFromText(skyText).includes("clear water"),
+  "a clear sky is not clear water");
+assert(!app.cueSignalsFromText(skyText).includes("positive human report"),
+  "a good chance of snow is not a good fishing report");
+assert(app.scoreBoostFromSignals(skyText, agency, [], []) === 0,
+  "a forecast sentence moves the score by nothing");
+assert(app.cueSignalsFromText("the water is clear and fishing well").includes("clear water"),
+  "an actual clarity report still registers");
+
+group("Readings expire (#3 round four)");
+const hoursAgo = (hours) => new Date(Date.now() - hours * 3600000).toISOString();
+assert(app.reportFreshness({ cachedAt: hoursAgo(1) }) === "fresh", "an hour-old reading is fresh");
+assert(app.reportFreshness({ cachedAt: hoursAgo(30) }) === "stale", "a day-old reading is stale, not fresh");
+assert(app.reportFreshness({ cachedAt: hoursAgo(24 * 45) }) === "expired", "a 45-day-old reading is expired");
+assert(app.reportFreshness({}) === "fresh", "a reading fetched this session has no timestamp and is current");
+
+const deschutes = app.waters.find((water) => water.id === "lower-deschutes");
+app.liveReports.byWater[deschutes.id] = {
+  status: "ready", fromCache: true, cachedAt: hoursAgo(24 * 45),
+  usgs: { flow: "9,340 cfs", waterTemp: "41 F" }, nws: {}
+};
+assert(app.valueProvenance(deschutes, "flow") === "reference",
+  "a 45-day-old gauge reading is not labelled measured");
+assert(app.liveDisplayValue(deschutes, "flow") === deschutes.flow,
+  "and the water falls back to its own reference value");
+
+app.liveReports.byWater[deschutes.id].cachedAt = hoursAgo(30);
+assert(app.valueProvenance(deschutes, "flow") === "stale",
+  "a day-old gauge reading is measured, but not current");
+assert(app.liveDisplayValue(deschutes, "flow") === "9,340 cfs",
+  "a stale reading is still shown - it is real, it is just not from today");
+assert(/readings/i.test(app.scoreSourceLabel(deschutes)) && !/live data/i.test(app.scoreSourceLabel(deschutes)),
+  `a stale report does not call itself live data (${app.scoreSourceLabel(deschutes)})`);
+
+app.liveReports.byWater[deschutes.id].cachedAt = hoursAgo(1);
+assert(app.valueProvenance(deschutes, "flow") === "measured", "a fresh gauge reading is measured");
+delete app.liveReports.byWater[deschutes.id];
+
+assert(app.readingProvenanceWord({ flowSource: "stale" }, "flow") === "measured earlier",
+  "a catch logged against a stale reading says so");
+assert(/\(measured earlier\)/.test(app.loggedReadingLabel({ flow: "9,340 cfs", flowSource: "stale" }, "flow")),
+  "and the journal prints it beside the number");
+
+group("A saved reading says how old it is (#3 round four)");
+assert(/days ago/.test(app.formatSavedTime(hoursAgo(24 * 45))),
+  `a 45-day-old save reports its age (${app.formatSavedTime(hoursAgo(24 * 45))})`);
+assert(!/ago/.test(app.formatSavedTime(hoursAgo(2))), "a save from this morning does not");
+assert(app.ageLabel(24 * 45) === "45 days ago", "age reads in days once it is past a day");
+assert(app.ageLabel(3) === "3h ago", "and in hours before that");
+
+group("An expired cache is dropped at launch (#3 round four)");
+localStorage.setItem("riseWaterReports.v1", JSON.stringify({
+  version: 1,
+  byWater: {
+    "lower-deschutes": { cachedAt: hoursAgo(24 * 45), usgs: { flow: "9,340 cfs" }, nws: {} },
+    crooked: { cachedAt: hoursAgo(2), usgs: { flow: "235 cfs" }, nws: {} }
+  },
+  localIntel: { byWater: { crooked: { scoreBoost: .24, sources: ["ODFW"] } }, sources: [], updatedAt: hoursAgo(24 * 45), errors: [] },
+  lastSavedAt: hoursAgo(24 * 45),
+  lastDailyOpen: ""
+}));
+delete app.liveReports.byWater["lower-deschutes"];
+delete app.liveReports.byWater.crooked;
+app.hydrateWaterCache();
+assert(!app.liveReports.byWater["lower-deschutes"], "the 45-day-old report is not hydrated");
+assert(Boolean(app.liveReports.byWater.crooked), "the two-hour-old report is");
+assert(!app.liveReports.cache.byWater["lower-deschutes"], "and it is pruned from the stored cache");
+assert(!Object.keys(app.liveReports.cache.localIntel.byWater).length,
+  "a 45-day-old local report no longer boosts anything");
+delete app.liveReports.byWater.crooked;
+
+group("A stale location is not where the angler is (#round four smaller)");
+localStorage.setItem("riseUserLocation.v1", JSON.stringify({
+  lat: 39.74, lon: -104.99, updatedAt: hoursAgo(24 * 171)
+}));
+assert(app.readUserLocation() === null, "a 171-day-old fix is discarded, not used as the current position");
+assert(localStorage.getItem("riseUserLocation.v1") === null, "and it is removed from storage");
+localStorage.setItem("riseUserLocation.v1", JSON.stringify({
+  lat: 44.06, lon: -121.31, updatedAt: hoursAgo(2)
+}));
+assert(app.readUserLocation() !== null, "a fix from two hours ago is still good");
+localStorage.removeItem("riseUserLocation.v1");
+
+// The no-match case needs a real search field; it is asserted in the DOM suite.
+group("Waters search state (#7 round four)");
+const beforeQuery = app.watersSearchState();
+assert(beforeQuery.topWater !== null, "an empty search has a top water");
 
 console.log(`\n${checks - failures}/${checks} checks passed`);
 process.exit(failures ? 1 : 0);

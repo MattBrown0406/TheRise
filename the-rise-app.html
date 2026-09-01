@@ -2325,6 +2325,10 @@
       color: #8a7a5c;
     }
 
+    .prov.stale {
+      color: #a2591f;
+    }
+
     .data-provenance-notice {
       margin-bottom: 12px;
       padding: 10px 12px;
@@ -4021,6 +4025,10 @@
     let activeWaterFlyByWater = {};
     let waterFilter = "All";
     let waterQuery = "";
+    // Long enough to collapse a burst of typing into one repaint, short enough
+    // that the list feels live under a normal typing speed.
+    const WATER_SEARCH_REPAINT_MS = 90;
+    let waterSearchRepaint = null;
     let waterSortMode = "Best";
     let showHiddenWaters = false;
     let userLocation = null;
@@ -4839,10 +4847,23 @@
       return Math.max(1, Math.min(10, score));
     }
 
+    // A saved fix was used forever. A six-month-old location from another state
+    // was still reported as the current distance to every water, and still
+    // applied its proximity penalty to the ranking. A location this old is not
+    // where the angler is, so it is discarded and asked for again.
+    const LOCATION_EXPIRY_HOURS = 12;
+
     function readUserLocation() {
       try {
         const saved = localStorage.getItem(USER_LOCATION_KEY);
-        return saved ? JSON.parse(saved) : null;
+        const parsed = saved ? JSON.parse(saved) : null;
+        if (!parsed) return null;
+        const age = hoursSince(parsed.updatedAt);
+        if (age === null || age > LOCATION_EXPIRY_HOURS) {
+          localStorage.removeItem(USER_LOCATION_KEY);
+          return null;
+        }
+        return parsed;
       } catch {
         return null;
       }
@@ -5023,7 +5044,12 @@
     function scoreSourceLabel(water) {
       const report = liveReports.byWater[water.id];
       const intel = localIntelForWater(water);
+      const freshness = report?.status === "ready" ? reportFreshness(report) : null;
       if (report?.refreshing) return "Updating local cache";
+      // A reading past the fresh window still informs the score, but the label
+      // must not call a week-old number live data.
+      if (freshness === "stale") return `Cached score - readings ${ageLabel(reportAgeHours(report))}`;
+      if (freshness === "expired") return "Seasonal reference score - saved readings expired";
       if (report?.status === "ready" && intel.sources?.length) return "Live data + local report score";
       if (report?.status === "ready" && report.refreshError) return "Cached live score - update failed";
       if (report?.status === "ready" && report.fromCache) return "Cached live score";
@@ -5477,10 +5503,64 @@
       }
     }
 
+    /* ---------------------------------------------------------------------
+       Reading age.
+
+       A cached report was hydrated as status "ready" no matter how old it was,
+       and every reading in it was labelled "measured" at any age. A July
+       snowmelt reading was still shown as a current measurement in September,
+       still counted as live data in the score, and was stamped onto a catch
+       logged today as the conditions the fish was caught in.
+
+       Readings now age. Under 12 hours they are current. Up to a week they are
+       shown as measured earlier, with how long ago. Past that they are dropped
+       from the cache entirely and the water falls back to its seasonal
+       reference values, which is what the app can honestly say it knows.
+       --------------------------------------------------------------------- */
+
+    const READING_FRESH_HOURS = 12;
+    const READING_EXPIRY_HOURS = 24 * 7;
+    const INTEL_EXPIRY_HOURS = 24 * 10;
+
+    function hoursSince(value) {
+      if (!value) return null;
+      const parsed = new Date(value).getTime();
+      if (Number.isNaN(parsed)) return null;
+      return (Date.now() - parsed) / 3600000;
+    }
+
+    function reportAgeHours(report) {
+      return hoursSince(report?.cachedAt);
+    }
+
+    // "fresh" | "stale" | "expired". A report fetched in this session has not
+    // been through the cache yet and carries no timestamp; it is current.
+    function reportFreshness(report) {
+      const age = reportAgeHours(report);
+      if (age === null) return "fresh";
+      if (age < READING_FRESH_HOURS) return "fresh";
+      if (age < READING_EXPIRY_HOURS) return "stale";
+      return "expired";
+    }
+
+    function ageLabel(hours) {
+      if (hours === null) return "";
+      if (hours < 1) return "just now";
+      if (hours < 24) return `${Math.round(hours)}h ago`;
+      const days = Math.round(hours / 24);
+      return `${days} day${days === 1 ? "" : "s"} ago`;
+    }
+
     function hydrateWaterCache() {
       const cache = readWaterCache();
-      liveReports.cache = cache;
+      const kept = {};
+      let expired = 0;
       Object.entries(cache.byWater || {}).forEach(([waterId, report]) => {
+        if (reportFreshness(report) === "expired") {
+          expired += 1;
+          return;
+        }
+        kept[waterId] = report;
         liveReports.byWater[waterId] = {
           ...report,
           status: "ready",
@@ -5488,6 +5568,22 @@
           refreshing: false
         };
       });
+
+      const intelAge = hoursSince(cache.localIntel?.updatedAt);
+      const intelExpired = intelAge !== null && intelAge > INTEL_EXPIRY_HOURS;
+      if (intelExpired) cache.localIntel = emptyWaterCache().localIntel;
+
+      if (expired || intelExpired) {
+        cache.byWater = kept;
+        const newest = Object.values(kept)
+          .map((report) => report.cachedAt)
+          .filter(Boolean)
+          .sort();
+        cache.lastSavedAt = newest.length ? newest[newest.length - 1] : "";
+        writeWaterCache(cache);
+        return;
+      }
+      liveReports.cache = cache;
     }
 
     /* ---------------------------------------------------------------------
@@ -5599,14 +5695,23 @@
       return `${parts.year}-${parts.month}-${parts.day}`;
     }
 
+    // "Jul 18, 5:05 PM" gave no year and no sense of age, so a reading from a
+    // different season read as one from this afternoon. Anything over a day old
+    // now says how old, and anything from another year says which year.
     function formatSavedTime(value) {
       if (!value) return "Never saved";
-      return new Date(value).toLocaleString([], {
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return "Never saved";
+      const hours = hoursSince(value);
+      const sameYear = date.getFullYear() === new Date().getFullYear();
+      const stamp = date.toLocaleString([], {
+        ...(sameYear ? {} : { year: "numeric" }),
         month: "short",
         day: "numeric",
         hour: "numeric",
         minute: "2-digit"
       });
+      return hours !== null && hours >= 24 ? `${stamp} (${ageLabel(hours)})` : stamp;
     }
 
     function cachedWaterCount() {
@@ -5819,14 +5924,80 @@
       return new RegExp(`(^|[^a-z0-9])${escaped}(?:e?s)?([^a-z0-9]|$)`, "i").test(text);
     }
 
+    /* ---------------------------------------------------------------------
+       Reading a report clause by clause.
+
+       Condition words used to be matched against the whole passage with no
+       regard for what was being said about them. "Fishing has not been good"
+       scored as a positive report. "There is no caddis activity yet" put
+       caddis on the card. And "skies will be clear and cold overnight with a
+       good chance of snow" produced clear *water* and a positive fishing
+       report out of a weather forecast.
+
+       A passage is now split into clauses, and each clause is judged on
+       whether it is negated and whether it is about fishing at all. A negated
+       positive is read as the negative report it is, rather than ignored.
+       --------------------------------------------------------------------- */
+
+    const NEGATION_TERMS = [
+      "not", "no", "never", "none", "cannot", "without", "few",
+      "hardly", "barely", "lack", "lacking", "stopped", "avoid", "nothing"
+    ];
+    const NEGATION_CONTRACTION = /\b(?:is|was|are|were|do|does|did|will|would|has|have|had|could|should)n[’']?t\b/i;
+
+    // Weather words that make a clause a forecast rather than a fishing report.
+    const WEATHER_MARKERS = [
+      "sky", "skies", "overnight", "forecast", "weather", "sunny", "sunshine",
+      "cloudy", "overcast", "snow", "freeze", "frost", "temperatures", "storm", "gusts"
+    ];
+    const FISHING_MARKERS = [
+      "fish", "fishing", "fished", "angler", "anglers", "hatch", "hatches",
+      "catch", "caught", "bite", "rise", "rising", "nymph", "streamer", "dry",
+      "report", "reports", "water", "river", "creek", "lake", "flow", "flows",
+      "landed", "hooked", "numbers", "clarity"
+    ];
+
+    function passageClauses(text) {
+      return String(text || "")
+        .split(/[.,;:!?]+|\s+(?:but|however|though|although|until|unless|except|yet)\s+/i)
+        .map((clause) => clause.trim())
+        .filter(Boolean)
+        .map((clause) => ({
+          text: clause,
+          negated: NEGATION_CONTRACTION.test(clause)
+            || NEGATION_TERMS.some((term) => mentionsTerm(clause, term)),
+          // A clause with weather words and nothing about fishing is a
+          // forecast. It is not a report on the water and is not read as one.
+          aboutFishing: FISHING_MARKERS.some((term) => mentionsTerm(clause, term))
+            || !WEATHER_MARKERS.some((term) => mentionsTerm(clause, term))
+        }));
+    }
+
+    const POSITIVE_TERMS = ["good", "fishing well", "productive"];
+    const NEGATIVE_TERMS = ["slow", "tough", "poor"];
+
+    // Clauses a hatch or fly name can honestly be read out of: about fishing,
+    // and not denying that the insect is there.
+    function reportableClauseText(clauses) {
+      return clauses.filter((clause) => clause.aboutFishing && !clause.negated)
+        .map((clause) => clause.text)
+        .join(" ");
+    }
+
     function cueSignalsFromText(text) {
       const cues = [];
-      if (mentionsTerm(text, "clear")) cues.push("clear water");
-      if (["off color", "dirty", "stained"].some((term) => mentionsTerm(text, term))) cues.push("color/clarity note");
-      if (["good", "fishing well", "productive"].some((term) => mentionsTerm(text, term))) cues.push("positive human report");
-      if (["slow", "tough", "poor"].some((term) => mentionsTerm(text, term))) cues.push("technical human report");
-      if (mentionsTerm(text, "morning")) cues.push("morning window");
-      if (mentionsTerm(text, "evening")) cues.push("evening window");
+      passageClauses(text).forEach((clause) => {
+        if (!clause.aboutFishing) return;
+        const positive = POSITIVE_TERMS.some((term) => mentionsTerm(clause.text, term));
+        const negative = NEGATIVE_TERMS.some((term) => mentionsTerm(clause.text, term));
+        if (positive) cues.push(clause.negated ? "technical human report" : "positive human report");
+        if (negative) cues.push(clause.negated ? "positive human report" : "technical human report");
+        if (clause.negated) return;
+        if (mentionsTerm(clause.text, "clear")) cues.push("clear water");
+        if (["off color", "dirty", "stained"].some((term) => mentionsTerm(clause.text, term))) cues.push("color/clarity note");
+        if (mentionsTerm(clause.text, "morning")) cues.push("morning window");
+        if (mentionsTerm(clause.text, "evening")) cues.push("evening window");
+      });
       return uniqueItems(cues);
     }
 
@@ -5839,8 +6010,14 @@
       let boost = 0;
       if (hatches.length) boost += .08;
       if (flies.length) boost += .06;
-      if (["fishing well", "good", "productive"].some((term) => mentionsTerm(text, term))) boost += .16;
-      if (["slow", "tough", "poor"].some((term) => mentionsTerm(text, term))) boost -= .24;
+      passageClauses(text).forEach((clause) => {
+        if (!clause.aboutFishing) return;
+        // A negated clause inverts: "fishing has not been good" is a report
+        // that the fishing is poor, and it used to raise the score.
+        const sign = clause.negated ? -1 : 1;
+        if (POSITIVE_TERMS.some((term) => mentionsTerm(clause.text, term))) boost += .16 * sign;
+        if (NEGATIVE_TERMS.some((term) => mentionsTerm(clause.text, term))) boost -= .24 * sign;
+      });
       if (!boost) return 0;
       const credibility = source.type === "shop" || source.type === "guide" ? 1.2 : 1;
       return Math.max(-.35, Math.min(.45, boost * credibility));
@@ -5902,12 +6079,15 @@
       if (!source.readable) return null;
       const passage = passageAboutWater(water, sourceText).toLowerCase();
       if (!passage) return null;
+      // Insect names are read only out of clauses that assert them. "There is
+      // no caddis activity yet" used to put caddis on the card.
+      const asserted = reportableClauseText(passageClauses(passage));
       const hatches = hatchSignalMap
-        .filter(([needle]) => mentionsNoun(passage, needle))
+        .filter(([needle]) => mentionsNoun(asserted, needle))
         .map(([, hatch]) => hatch)
         .filter((hatch) => hatchAllowedForWater(normalizeHatchForWater(hatch, water), water));
       const flies = flySignalMap
-        .filter(([needle]) => mentionsNoun(passage, needle))
+        .filter(([needle]) => mentionsNoun(asserted, needle))
         .map(([, fly]) => fly)
         .filter((fly) => flyAllowedForWater(fly, water));
       const cues = cueSignalsFromText(passage);
@@ -6217,19 +6397,23 @@
     // "unavailable" - no source exists and no honest value can be shown.
     function valueProvenance(water, key) {
       const report = liveReports.byWater[water.id];
-      const ready = report?.status === "ready";
+      const freshness = report?.status === "ready" ? reportFreshness(report) : null;
+      const ready = freshness === "fresh" || freshness === "stale";
+      // A reading past the fresh window is still a real measurement, but it is
+      // not a current one, and it must not be presented as one.
+      const measured = freshness === "stale" ? "stale" : "measured";
       if (key === "flow") {
         if (water.type === "Lake") return "reference";
         if (!hasGauge(water)) return "unavailable";
-        return ready && report.usgs?.flow ? "measured" : "reference";
+        return ready && report.usgs?.flow ? measured : "reference";
       }
       if (key === "temp") {
         if (!hasGauge(water)) return "reference";
-        return ready && report.usgs?.waterTemp ? "measured" : "reference";
+        return ready && report.usgs?.waterTemp ? measured : "reference";
       }
       if (key === "air" || key === "wind") {
         if (!hasLiveSource(water)) return "reference";
-        return ready && report.nws?.[key] ? "measured" : "reference";
+        return ready && report.nws?.[key] ? measured : "reference";
       }
       return "reference";
     }
@@ -6237,7 +6421,7 @@
     function liveDisplayValue(water, key) {
       const report = liveReports.byWater[water.id];
       if (key === "flow" && water.type !== "Lake" && !hasGauge(water)) return "No live gauge";
-      if (report?.status !== "ready") return water[key];
+      if (report?.status !== "ready" || reportFreshness(report) === "expired") return water[key];
       if (key === "flow") return report.usgs?.flow || water.flow;
       if (key === "temp") return report.usgs?.waterTemp || water.temp;
       if (key === "air") return report.nws?.air || water.air;
@@ -6249,6 +6433,9 @@
     function provenanceTag(water, key) {
       const provenance = valueProvenance(water, key);
       if (provenance === "measured") return `<em class="prov measured">measured</em>`;
+      if (provenance === "stale") {
+        return `<em class="prov stale">measured ${esc(ageLabel(reportAgeHours(liveReports.byWater[water.id])))}</em>`;
+      }
       if (provenance === "unavailable") return "";
       return `<em class="prov reference">reference</em>`;
     }
@@ -7002,7 +7189,12 @@
             <div class="home-water-control">
               <label for="home-water-select">Home Water</label>
               <select id="home-water-select" data-home-water aria-label="Choose home water">
-                ${waters.map((water) => `<option value="${water.id}" ${water.id === best.id ? "selected" : ""}>${water.name} - ${water.section}</option>`).join("")}
+                ${waters
+                  // Hidden waters are the ones the angler took off the list.
+                  // Offering them here as a home water ignored that, so the
+                  // only hidden water still listed is one already selected.
+                  .filter((water) => !hiddenWaterIds.includes(water.id) || water.id === best.id)
+                  .map((water) => `<option value="${water.id}" ${water.id === best.id ? "selected" : ""}>${esc(water.name)} - ${esc(water.section)}</option>`).join("")}
               </select>
             </div>
             <h1 class="prime-title">${primeWindowFor(best)}</h1>
@@ -7101,8 +7293,15 @@
       `;
     }
 
-    function renderWaters() {
-      const baseSelected = hiddenWaterIds.includes(activeWater) ? topRecommendedWater() : getWater();
+    /* The Waters screen used to be one template rebuilt in full on every
+       keystroke: 62 cards, ~44ms on a desktop and several times that on a
+       phone, and the focused search field was destroyed and recreated each
+       time. On iOS that is the pattern that dismisses the keyboard, because
+       focus() on a fresh node outside a user gesture will not bring it back.
+
+       The query-dependent parts are now their own two regions. Typing repaints
+       those and never touches the toolbar or the input. */
+    function watersSearchState() {
       const query = waterQuery.trim().toLowerCase();
       const filtered = waters.filter((water) => {
         if (!showHiddenWaters && hiddenWaterIds.includes(water.id)) return false;
@@ -7111,23 +7310,81 @@
         return matchesType && (!query || searchable.includes(query));
       });
       const ranked = rankedWatersForCurrentMode(filtered);
-      const topWater = ranked[0] || baseSelected;
-      const rankedRest = ranked.slice(1);
-      const selected = ranked.find((water) => water.id === activeWater) || topWater;
-      activeWater = selected.id;
+      // No match means no top water. Falling back to the selected water put a
+      // water the filter had just excluded in the hero, headlined "TOP WATER
+      // TODAY", directly above a count that read "0 waters".
+      const topWater = ranked[0] || null;
+      if (topWater) {
+        const selected = ranked.find((water) => water.id === activeWater) || topWater;
+        activeWater = selected.id;
+      }
+      return { filtered, ranked, topWater };
+    }
+
+    function watersHeadlineMarkup(state) {
+      if (!state.topWater) {
+        return `
+          <div>
+            <p class="eyebrow">Waters</p>
+            <h1>No matches</h1>
+            <p class="subtle">Nothing here matches the current search and filter.</p>
+          </div>
+        `;
+      }
+      return `
+        <div>
+          <p class="eyebrow">Waters</p>
+          <h1>${esc(state.topWater.name)}</h1>
+          <p class="subtle">${waterSortMode === "Near" && userLocation ? "Best nearby water" : "Highest rated today"} - ${esc(state.topWater.section)}</p>
+        </div>
+        <div class="waters-score-badge"><strong>${fishScore(state.topWater)}</strong><span>Fishability</span></div>
+      `;
+    }
+
+    function watersResultsMarkup(state) {
+      if (!state.topWater) {
+        const term = waterQuery.trim();
+        return `
+          <div class="waters-list-head">
+            <span>0 waters${hiddenWaterIds.length && !showHiddenWaters ? `, ${hiddenWaterIds.length} hidden` : ""}</span>
+            <span>${waterFilter === "All" ? "No filter" : esc(waterFilter)}</span>
+          </div>
+          <p class="subtle">${term ? `Nothing matches "${esc(term)}".` : "Nothing matches this filter."} Clear the search or change the filter to see waters again.</p>
+        `;
+      }
+      const rankedRest = state.ranked.slice(1);
+      return `
+        ${waterRankCard(state.topWater, 1, true)}
+        <div class="waters-list-head">
+          <span>${state.filtered.length} waters${hiddenWaterIds.length && !showHiddenWaters ? `, ${hiddenWaterIds.length} hidden` : ""}</span>
+          <span>${waterSortMode === "Near" && userLocation ? "Fishability + proximity" : "Ranked by fishability"}</span>
+        </div>
+        <div class="water-list">
+          ${rankedRest.length ? rankedRest.map((water, index) => waterRankCard(water, index + 2)).join("") : `<p class="subtle">No additional waters match this filter.</p>`}
+        </div>
+      `;
+    }
+
+    function renderWaterResults() {
+      const headline = $("#watersHeadline");
+      const results = $("#watersResults");
+      if (!headline || !results) {
+        renderWaters();
+        return;
+      }
+      const state = watersSearchState();
+      headline.innerHTML = watersHeadlineMarkup(state);
+      results.innerHTML = watersResultsMarkup(state);
+    }
+
+    function renderWaters() {
+      const state = watersSearchState();
       const syncing = Boolean(liveReports.bulkStatus);
 
       $("#waters").innerHTML = `
         <div class="waters-screen">
           <div class="waters-header">
-            <div class="waters-header-row">
-              <div>
-                <p class="eyebrow">Waters</p>
-                <h1>${topWater.name}</h1>
-                <p class="subtle">${waterSortMode === "Near" && userLocation ? "Best nearby water" : "Highest rated today"} - ${topWater.section}</p>
-              </div>
-              <div class="waters-score-badge"><strong>${fishScore(topWater)}</strong><span>Fishability</span></div>
-            </div>
+            <div class="waters-header-row" id="watersHeadline">${watersHeadlineMarkup(state)}</div>
             <div class="waters-toolbar">
               <div class="waters-toolbar-row">
                 <button class="ghost-btn" data-refresh-all>${syncing ? "Updating..." : "Update"}</button>
@@ -7142,22 +7399,13 @@
                 </div>
               </div>
               <label class="waters-search" aria-label="Search waters">
-                <input data-water-search value="${waterQuery}" placeholder="Search water, hatch, section">
+                <input data-water-search value="${attr(waterQuery)}" placeholder="Search water, hatch, section">
               </label>
             </div>
             <div class="waters-sync-line">${dataFreshnessLabel()} - ${cachedWaterCount()}/${waters.length} waters saved locally</div>
           </div>
           <div class="waters-quick-strip">${savedRecentPanel()}</div>
-          <div class="waters-main-list">
-            ${waterRankCard(topWater, 1, true)}
-            <div class="waters-list-head">
-              <span>${filtered.length} waters${hiddenWaterIds.length && !showHiddenWaters ? `, ${hiddenWaterIds.length} hidden` : ""}</span>
-              <span>${waterSortMode === "Near" && userLocation ? "Fishability + proximity" : "Ranked by fishability"}</span>
-            </div>
-            <div class="water-list">
-              ${rankedRest.length ? rankedRest.map((water, index) => waterRankCard(water, index + 2)).join("") : `<p class="subtle">No additional waters match this filter.</p>`}
-            </div>
-          </div>
+          <div class="waters-main-list" id="watersResults">${watersResultsMarkup(state)}</div>
         </div>
       `;
     }
@@ -7585,6 +7833,7 @@
     function readingProvenanceWord(entry, key) {
       const source = entry?.[`${key}Source`];
       if (source === "measured") return "measured";
+      if (source === "stale") return "measured earlier";
       if (source === "reference") return "reference";
       if (source === "unavailable") return "";
       // Entries written before build 11 carry no source at all.
@@ -8243,24 +8492,12 @@
       document.addEventListener("input", (event) => {
         const target = event.target;
         if (!(target instanceof Element) || !target.matches("[data-water-search]")) return;
-        // Captured before the re-render, because the element about to hold the
-        // caret does not exist yet. Restoring to value.length threw the caret
-        // to the end on every keystroke, so a typo in the middle of a search
-        // term could not be fixed.
-        const selectionStart = target.selectionStart;
-        const selectionEnd = target.selectionEnd;
+        // The field itself is never re-rendered, so focus, caret and the iOS
+        // keyboard all survive on their own. Only the results repaint, and a
+        // fast typist gets one repaint instead of one per character.
         waterQuery = target.value;
-        renderWaters();
-        // renderWaters() replaced the field, so focus and caret have to be put back.
-        const nextSearch = $("[data-water-search]");
-        if (nextSearch) {
-          nextSearch.focus();
-          const end = nextSearch.value.length;
-          nextSearch.setSelectionRange(
-            Math.min(selectionStart ?? end, end),
-            Math.min(selectionEnd ?? end, end)
-          );
-        }
+        clearTimeout(waterSearchRepaint);
+        waterSearchRepaint = setTimeout(renderWaterResults, WATER_SEARCH_REPAINT_MS);
       });
 
       document.addEventListener("submit", (event) => {
@@ -8271,15 +8508,36 @@
       });
     }
 
+    // Save is async — it awaits the photo decode, which is a real second or two
+    // on a large JPEG. Without this guard a second tap in that window ran the
+    // whole function again against the same form and wrote the catch twice.
+    let logSaveInFlight = false;
+
     async function saveLogEntry(logForm) {
+      if (logSaveInFlight) return;
+      logSaveInFlight = true;
+      const submitButton = logForm.querySelector('button[type="submit"]');
+      if (submitButton) submitButton.disabled = true;
+      try {
+        await writeLogEntry(logForm);
+      } finally {
+        logSaveInFlight = false;
+        if (submitButton && submitButton.isConnected) submitButton.disabled = false;
+      }
+    }
+
+    async function writeLogEntry(logForm) {
       const form = new FormData(logForm);
       const water = waters.find((item) => item.id === form.get("water")) || getWater();
       const existingEntry = editingLogIndex !== null ? getLogs()[editingLogIndex] : null;
       const capturedPhoto = await readPhotoFile(form.get("photo"));
-      // A new photo replaces the old one; the old file is removed from the container.
+      // A new photo replaces the old one, but the old file is not removed until
+      // the journal write has actually succeeded. Deleting first meant a quota
+      // failure destroyed the photo while the entry still pointed at it.
       let photoFields;
+      let photoToDelete = null;
       if (capturedPhoto) {
-        if (existingEntry) deleteStoredPhoto(existingEntry);
+        if (existingEntry) photoToDelete = existingEntry;
         photoFields = storePhoto(capturedPhoto);
       } else {
         photoFields = {
@@ -8310,12 +8568,21 @@
       const logs = getLogs();
       let nextLogs;
       if (editingLogIndex !== null) {
-        // Editing keeps the original timestamp; only a new catch gets today's.
+        // An edit changes what the angler typed. It must never restate the
+        // conditions: the readings belong to the moment the fish was caught,
+        // and rewriting them with today's numbers silently converted a real
+        // measurement into whatever the app happens to be showing now.
+        const original = logs[editingLogIndex];
+        const preservedReadings = {};
+        for (const key of ["flow", "flowSource", "temp", "tempSource"]) {
+          if (original[key] !== undefined) preservedReadings[key] = original[key];
+        }
         logs[editingLogIndex] = {
-          ...logs[editingLogIndex],
+          ...original,
           ...entry,
-          loggedAt: logs[editingLogIndex].loggedAt || entry.loggedAt,
-          date: logs[editingLogIndex].date || entry.date
+          ...preservedReadings,
+          loggedAt: original.loggedAt || entry.loggedAt,
+          date: original.date || entry.date
         };
         nextLogs = [...logs];
       } else {
@@ -8323,10 +8590,14 @@
         nextLogs = [entry, ...logs];
       }
       if (!setLogs(nextLogs)) {
+        // The write failed, so the new photo is an orphan and the old one is
+        // still the entry's only copy. Remove the orphan, keep the original.
+        if (capturedPhoto) deleteStoredPhoto(photoFields);
         logSaveMessage = "This catch could not be saved to this device. Free up storage and try again.";
         renderLog();
         return;
       }
+      if (photoToDelete) deleteStoredPhoto(photoToDelete);
       if (entry.fly && flyFeedback[entry.fly] !== "worked") {
         flyFeedback[entry.fly] = "worked";
         writeStoredObject(FLY_FEEDBACK_KEY, flyFeedback);

@@ -125,7 +125,7 @@ def main() -> int:
     project = PROJECT.read_text(encoding="utf-8")
     build_numbers = re.findall(r"CURRENT_PROJECT_VERSION = ([^;]+);", project)
     versions = re.findall(r"MARKETING_VERSION = ([^;]+);", project)
-    require(bool(build_numbers) and set(build_numbers) == {"11"}, f"expected build 11, found {build_numbers}")
+    require(bool(build_numbers) and set(build_numbers) == {"12"}, f"expected build 12, found {build_numbers}")
     require(bool(versions) and set(versions) == {"1.0"}, f"expected version 1.0, found {versions}")
 
     review_doc = REVIEW_DOC.read_text(encoding="utf-8")
@@ -150,7 +150,7 @@ def main() -> int:
     require(len(notes.strip()) <= 4000, "App Review notes exceed the 4,000-character limit")
     require(PRIVACY_URL == privacy_metadata, "Privacy Policy metadata URL is incorrect")
     for token in (
-        "Version 1.0 build 11",
+        "Version 1.0 build 12",
         "The Rise Pro Monthly",
         "The Rise Pro Annual",
         "therise_pro_monthly",
@@ -424,6 +424,62 @@ def main() -> int:
         "logged readings are displayed and exported without saying where they came from",
     )
 
+    # --- Readings age out -----------------------------------------------------
+    # A cached report was hydrated "ready" forever and labelled "measured" at
+    # any age, so a July gauge reading was a September measurement.
+    require(
+        "function reportFreshness(" in web and "READING_EXPIRY_HOURS" in web,
+        "cached readings do not age; a months-old number can be shown as measured again",
+    )
+    require(
+        'reportFreshness(report) === "expired"' in web,
+        "an expired report is not excluded from the displayed reading",
+    )
+    require(
+        "LOCATION_EXPIRY_HOURS" in web,
+        "a saved location is used forever again, whatever its age",
+    )
+
+    # --- The journal records the moment, not the edit -------------------------
+    require(
+        "const preservedReadings = {}" in web,
+        "editing a catch rewrites its flow and temperature with today's values again",
+    )
+    require(
+        "let logSaveInFlight = false;" in web,
+        "the save path is re-entrant again; a double-tap writes the catch twice",
+    )
+    require(
+        "if (photoToDelete) deleteStoredPhoto(photoToDelete);" in web,
+        "the old catch photo is deleted before the journal write succeeds again",
+    )
+
+    # --- Report parsing -------------------------------------------------------
+    require(
+        "function passageClauses(" in web and "NEGATION_TERMS" in web,
+        "the report parser cannot read a negative again",
+    )
+    require(
+        "WEATHER_MARKERS" in web,
+        "forecast text is read as a water report again",
+    )
+
+    # --- Search field ---------------------------------------------------------
+    require(
+        'value="${attr(waterQuery)}"' in web,
+        "the water search field interpolates the query unescaped again",
+    )
+    require(
+        "function renderWaterResults(" in web,
+        "typing rebuilds the whole Waters screen again, replacing the focused field",
+    )
+
+    app_delegate = (ROOT / "ios/TheRise/TheRise/AppDelegate.swift").read_text(encoding="utf-8")
+    require(
+        "#if DEBUG" in app_delegate and "Purchases.logLevel = .warn" in app_delegate,
+        "a shipping build logs purchase traffic to the device console again",
+    )
+
     # --- Screen reachability --------------------------------------------------
     # The knots screen shipped for eleven builds rendered on every launch with
     # nothing anywhere that could open it, while the review notes told Apple it
@@ -503,7 +559,7 @@ def main() -> int:
     print("PASS: subscription disclosure, legal links, and localized-price bridge")
     if not args.skip_screenshots:
         print("PASS: regenerated Pro and IAP review screenshots")
-    print("PASS: version 1.0 build 11 and RevenueCat product identifiers")
+    print("PASS: version 1.0 build 12 and RevenueCat product identifiers")
     print("PASS: App Store metadata/IAP submission checklist")
     print("PASS: catch-log durability, export, and native container storage")
     print("PASS: subscription claims match shipped functionality")
@@ -520,6 +576,9 @@ def main() -> int:
     print("PASS: alias keys reachable, reports attributed to one water, no boost for being named")
     print("PASS: journal restore, tab scrolling, and logged-reading provenance")
     print("PASS: every screen is reachable from a tab, and the knots feature is gone")
+    print("PASS: readings and saved locations expire instead of ageing into fiction")
+    print("PASS: an edit keeps the conditions, one tap writes one catch, photos outlive a failed write")
+    print("PASS: negation and forecast text are read correctly, search input escaped and stable")
     print(f"PASS: app behaviour tests ({logic_summary})")
     print(f"PASS: real-DOM tests ({dom_summary})")
     print(f"PASS: native storage tests ({store_summary})")

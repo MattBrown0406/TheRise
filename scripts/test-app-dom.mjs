@@ -12,7 +12,7 @@
  * Chrome is resolved at run time; override with RISE_CHROME.
  */
 
-import { copyFileSync, existsSync, mkdtempSync, rmSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { createRequire } from "node:module";
 import { homedir } from "node:os";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -29,6 +29,9 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const workRoot = process.env.RISE_DOM_TEST_WORKDIR
   ? resolve(process.env.RISE_DOM_TEST_WORKDIR)
   : mkdtempSync(join(homedir(), "rise-dom-test-"));
+// The override was honoured but never created, so the documented way to run
+// this suite died with a bare ENOENT from copyFileSync instead of a message.
+mkdirSync(workRoot, { recursive: true });
 const stagedApp = resolve(workRoot, "the-rise-app.html");
 copyFileSync(resolve(root, "the-rise-app.html"), stagedApp);
 const appUrl = pathToFileURL(stagedApp).href;
@@ -692,6 +695,160 @@ try {
     assert(caret.start === 4 && caret.end === 4, `the caret stays mid-word, ready for the next character (${caret.start},${caret.end})`);
     await page.close();
   }
+
+  /* ---------------------------------------------------------------- */
+  group("An edit does not rewrite the conditions the fish was caught in (#2 round four)");
+
+  {
+    const page = await openApp(browser);
+    await seedLogs(page, [sampleEntry({
+      waterId: "lower-deschutes",
+      waterName: "Lower Deschutes",
+      loggedAt: "2026-04-02T18:00:00.000Z",
+      date: "Apr 2, 2026",
+      flow: "1,120 cfs",
+      flowSource: "measured",
+      temp: "48 F",
+      tempSource: "measured",
+      notes: "original note"
+    })]);
+    const edited = await page.evaluate(async () => {
+      activateTab("log");
+      await new Promise((done) => requestAnimationFrame(done));
+      document.querySelector("[data-edit-log]").click();
+      await new Promise((done) => setTimeout(done, 60));
+      document.querySelector("#logForm [name=notes]").value = "corrected note";
+      document.querySelector("#logForm").dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+      await new Promise((done) => setTimeout(done, 250));
+      const stored = JSON.parse(localStorage.getItem("riseLogs") || "[]");
+      return { entry: stored[0], count: stored.length, card: document.querySelector(".catch-card")?.textContent || "" };
+    });
+    assert(edited.count === 1, `editing does not add an entry (${edited.count})`);
+    assert(edited.entry.notes === "corrected note", "the edit the angler made is saved");
+    assert(edited.entry.flow === "1,120 cfs", `the recorded flow survives the edit (${edited.entry.flow})`);
+    assert(edited.entry.temp === "48 F", `the recorded water temperature survives it (${edited.entry.temp})`);
+    assert(edited.entry.flowSource === "measured", "and it is still a measurement, not today's reference value");
+    assert(edited.entry.date === "Apr 2, 2026", `the catch is still dated April (${edited.entry.date})`);
+    await page.close();
+  }
+
+  /* ---------------------------------------------------------------- */
+  group("One double-tap on Save writes one catch (#5 round four)");
+
+  {
+    const page = await openApp(browser);
+    const saved = await page.evaluate(async () => {
+      activateTab("log");
+      await new Promise((done) => requestAnimationFrame(done));
+      document.querySelector("[data-new-log]").click();
+      await new Promise((done) => setTimeout(done, 60));
+      const form = document.querySelector("#logForm");
+      form.querySelector("[name=fly]").value = "X-Caddis #16";
+      // Two taps inside the await, which is what a real double-tap is.
+      form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+      form.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+      await new Promise((done) => setTimeout(done, 300));
+      const stored = JSON.parse(localStorage.getItem("riseLogs") || "[]");
+      return { count: stored.length, flies: stored.map((entry) => entry.fly) };
+    });
+    assert(saved.count === 1, `two taps write one catch (${saved.count}: ${saved.flies.join(", ")})`);
+    await page.close();
+  }
+
+  /* ---------------------------------------------------------------- */
+  group("The water search field is escaped and keeps the keyboard (#4, #7, #8 round four)");
+
+  {
+    const page = await openApp(browser);
+    const injection = await page.evaluate(async () => {
+      activateTab("waters");
+      await new Promise((done) => requestAnimationFrame(done));
+      const field = document.querySelector("[data-water-search]");
+      const before = field;
+      field.focus();
+      field.value = 'a" onfocus="window.__xss=1" x="';
+      field.dispatchEvent(new Event("input", { bubbles: true }));
+      await new Promise((done) => setTimeout(done, 200));
+      const after = document.querySelector("[data-water-search]");
+      after.blur();
+      after.focus();
+      await new Promise((done) => setTimeout(done, 60));
+      return {
+        value: after.value,
+        sameNode: before === after,
+        focused: document.activeElement === after,
+        xss: window.__xss,
+        outerHtml: after.outerHTML,
+        topCards: document.querySelectorAll("#waters .top-water-card").length,
+        headline: document.querySelector("#waters h1")?.textContent || "",
+        listHead: document.querySelector("#waters .waters-list-head")?.textContent || ""
+      };
+    });
+    assert(injection.xss === undefined, "an injected onfocus handler does not run");
+    assert(!/onfocus/.test(injection.outerHtml), "and it never becomes an attribute");
+    assert(injection.value === 'a" onfocus="window.__xss=1" x="',
+      `a search term containing a quote is not truncated (${injection.value})`);
+    assert(injection.sameNode, "the field the angler is typing in is never replaced");
+    assert(injection.focused, "so focus - and the iOS keyboard - stays put");
+    assert(injection.topCards === 0, "a search with no matches shows no top water card");
+    assert(/no match/i.test(injection.headline), `the headline says there are no matches (${injection.headline})`);
+    assert(/^0 waters/.test(injection.listHead.trim()), `and the count agrees (${injection.listHead.trim()})`);
+    await page.close();
+  }
+
+  {
+    const page = await openApp(browser);
+    const typing = await page.evaluate(async () => {
+      activateTab("waters");
+      await new Promise((done) => requestAnimationFrame(done));
+      const field = document.querySelector("[data-water-search]");
+      const identity = field;
+      field.focus();
+      const before = window.__listeners.length;
+      for (const character of "deschutes") {
+        field.value += character;
+        field.dispatchEvent(new Event("input", { bubbles: true }));
+      }
+      await new Promise((done) => setTimeout(done, 250));
+      return {
+        sameNode: document.querySelector("[data-water-search]") === identity,
+        newListeners: window.__listeners.length - before,
+        matches: document.querySelectorAll("#waters .ranked-water-card").length,
+        headline: document.querySelector("#waters h1")?.textContent || "",
+        toolbarButtons: document.querySelectorAll("#waters [data-water-filter]").length
+      };
+    });
+    assert(typing.sameNode, "nine keystrokes leave the search field in place");
+    assert(typing.newListeners === 0, `and attach no new listeners (${typing.newListeners})`);
+    assert(/deschutes/i.test(typing.headline), `the results still follow the query (${typing.headline})`);
+    assert(typing.toolbarButtons === 3, "the toolbar is not rebuilt around the field");
+    await page.close();
+  }
+
+  /* ---------------------------------------------------------------- */
+  group("A hidden water is not offered as a home water (round four, smaller)");
+
+  {
+    const page = await openApp(browser);
+    const options = await page.evaluate(async () => {
+      const hidden = waters.find((water) => water.id !== homeWaterId);
+      localStorage.setItem("riseHiddenWaters.v1", JSON.stringify([hidden.id]));
+      location.reload();
+      return hidden.id;
+    }).catch(() => null);
+    await page.waitForNavigation({ waitUntil: "load" }).catch(() => {});
+    await page.evaluate(() => new Promise((done) => requestAnimationFrame(done)));
+    const listed = await page.evaluate((hiddenId) => {
+      activateTab("today");
+      const values = [...document.querySelectorAll("#home-water-select option")].map((option) => option.value);
+      return { values, hiddenId, hiddenCount: hiddenWaterIds.length, selected: homeWaterId };
+    }, options);
+    assert(listed.hiddenCount === 1, `the water is hidden (${listed.hiddenCount})`);
+    assert(!listed.values.includes(listed.hiddenId), "a hidden water is not offered in the home-water list");
+    assert(listed.values.includes(listed.selected), "the selected home water is still listed");
+    await page.close();
+  }
+
 } finally {
   for (const context of openContexts) {
     await context.close().catch(() => {});
