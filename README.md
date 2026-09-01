@@ -38,14 +38,36 @@ Expected URLs after GitHub Pages is enabled:
 
 ## Tests
 
-Neither suite needs Xcode, a simulator, or a device.
+No suite needs Xcode, a simulator, or a device. Run all three:
+
+```bash
+npm install   # once, for the browser driver the DOM suite uses
+npm test
+```
 
 App behaviour, run against a stub DOM — scoring, seasonality, data provenance,
-catch-log durability:
+catch-log durability, escaping, report parsing:
 
 ```bash
 node scripts/test-app-logic.mjs
 ```
+
+Real DOM, run in real Chromium against the real file — event binding, catch-log
+editing and deletion, injection, request volume:
+
+```bash
+node scripts/test-app-dom.mjs
+```
+
+The stub DOM has no event dispatch, no bubbling and no HTML parser. A
+duplicated-handler bug that deleted several catches per tap, and an unescaped
+`innerHTML` bug that truncated fly names, both passed the stub suite and shipped.
+Anything about listeners, clicks or parsed markup belongs in the DOM suite.
+
+Chrome or Chromium is found automatically; override with `RISE_CHROME`. Snap
+Chromium is confined — it has a private `/tmp` and no access to dot-directories —
+so the file under test is staged in a plain directory inside `$HOME`. Override
+with `RISE_DOM_TEST_WORKDIR`.
 
 Native storage, compiled and run with any Swift toolchain. `RiseStore` imports
 only Foundation for exactly this reason; keep it that way. `RisePhotoSchemeHandler`
@@ -63,7 +85,7 @@ Run the deterministic pre-build checks, including live legal-link validation:
 python3 scripts/verify-release-readiness.py --online
 ```
 
-The release checks run both test suites.
+The release checks run all three test suites.
 
 ## App Store screenshots
 
@@ -92,6 +114,37 @@ screenshots are then stale and must not be submitted:
 ```bash
 python3 scripts/verify-release-readiness.py --skip-screenshots
 ```
+
+## Event handling
+
+Every handler is delegated once from the document by `bindDelegatedEvents()`, and
+every action lives in the `clickActions` table. Do not call `addEventListener`
+from a render path. Rendering replaces the markup of one screen at a time, so a
+listener attached per render accumulates on the six screens that were not
+replaced — that is how one Delete tap came to erase several catches. The release
+checks fail if per-render binding returns.
+
+## Escaping
+
+`esc()` escapes text between tags, `attr()` escapes a value inside a quoted
+attribute, and `safeText()` sanitizes text arriving off the network where it
+enters the app. Everything the user typed and everything a remote body sent goes
+through one of them before it reaches `innerHTML`. The release checks name the
+catch-log fields specifically.
+
+## Local reports
+
+Only the two public ODFW Central Zone pages are fetched and parsed. The fly
+shops, the guide service and the conservation group in `referenceLinks` are
+links for the angler; reselling their read inside a paid subscription is their
+terms of service and Apple 5.2. Adding any of them back to `localIntelSources`
+needs written permission from that business first, and the release checks fail
+until then.
+
+A source that could not be read contributes nothing and is named nowhere. There
+is no fallback prose, and there must never be again: the app used to run keyword
+extraction over its own placeholder text and credit the result to organizations
+the device never contacted.
 
 ## Data honesty
 

@@ -1,0 +1,15 @@
+{
+  "name": "the-rise",
+  "version": "1.0.0",
+  "private": true,
+  "description": "The Rise - Central Oregon fly fishing companion. The app itself is one HTML file with no build step; this manifest exists only so the test harness has a browser to drive.",
+  "scripts": {
+    "test": "node scripts/test-app-logic.mjs && node scripts/test-app-dom.mjs && bash scripts/test-rise-store.sh",
+    "test:logic": "node scripts/test-app-logic.mjs",
+    "test:dom": "node scripts/test-app-dom.mjs",
+    "test:store": "bash scripts/test-rise-store.sh"
+  },
+  "devDependencies": {
+    "puppeteer-core": "^23.11.1"
+  }
+}

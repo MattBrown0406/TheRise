@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>The Rise: Fly Fishing Prototype</title>
+  <title>The Rise - Central Oregon Fly Fishing</title>
   <style>
     :root {
       --ink: #162019;
@@ -3287,7 +3287,7 @@
       }
     }
 
-    /* iOS-only prototype shell */
+    /* iOS app shell */
     html {
       height: 100%;
       background: #155f6f;
@@ -3707,7 +3707,7 @@
         hatch,
         flies,
         read,
-        regs: `${regs} Demo only; verify current ODFW rules before fishing.`,
+        regs: `${regs} Always confirm current ODFW regulations before fishing.`,
         stocking,
         source: sourceOverride || waterDefaults[type].source,
         color: type === "Lake" ? "blue" : "pine"
@@ -3801,46 +3801,51 @@
       "yoran-lake": { lat: 43.57, lon: -122.08 }
     };
 
+    /* ---------------------------------------------------------------------
+       Local reports.
+
+       Two rules, both learned the hard way.
+
+       1. Only public agency reports are read and parsed. The Bend and Sisters
+          fly shops, the guide service and the conservation group are linked,
+          never scraped: reselling a shop's read inside a paid subscription is
+          their terms of service and Apple 5.2, not a feature. Re-enabling any
+          of them needs written permission from that business first.
+
+       2. A source that could not be read contributes nothing. There used to be
+          hand-written fallback prose behind every source, and when a fetch
+          failed the app ran keyword extraction over its own placeholder text
+          and then credited the result to organisations the device never
+          contacted, complete with a score boost. Fallback text is gone.
+       --------------------------------------------------------------------- */
+
+    // Read and parsed. Public agency reports only.
     const localIntelSources = [
       {
         label: "ODFW Central Zone",
         type: "agency",
-        url: "https://myodfw.com/recreation-report/fishing-report/central-zone",
-        fallback: "Central Zone stocking, access, and regulation updates. Check East Lake, Paulina, Crane Prairie, Fall River, Crooked River, community ponds, and Cascade Lakes before harvest."
+        url: "https://myodfw.com/recreation-report/fishing-report/central-zone"
       },
       {
         label: "ODFW Central Zone overview",
         type: "agency",
-        url: "https://myodfw.com/fishing/central-zone",
-        fallback: "Agency overview for Central Oregon waters, stocked trout, seasonal access, and lake-specific opportunities."
-      },
-      {
-        label: "Confluence Fly Shop",
-        type: "shop",
-        url: "https://confluenceflyshop.com/fishing-reports/",
-        fallback: "Bend-area shop read: Deschutes, Crooked, Fall River, Cascade Lakes. Human notes often emphasize caddis, PMD, BWO, terrestrials, leeches, and stillwater chironomids depending on weather."
-      },
-      {
-        label: "The Fly Fishers Place",
-        type: "shop",
-        url: "https://flyfishersplace.com/fishing-reports/",
-        fallback: "Sisters-area shop read: Metolius, Lower Deschutes, Crooked River, Fall River, East Lake, Crane Prairie, Hosmer, and Cascade Lakes. Human reports often call out green drakes, golden stones, PMDs, caddis, Callibaetis, damsels, balanced leeches, and chironomids."
-      },
-      {
-        label: "Deschutes River Alliance",
-        type: "conservation",
-        url: "https://deschutesriveralliance.org/",
-        fallback: "Lower Deschutes context for water quality, temperature, clarity, aquatic insects, and river conditions below the dams."
-      },
-      {
-        label: "Deschutes Camp",
-        type: "guide",
-        url: "https://deschutescamp.com/fishing-report/",
-        fallback: "Lower Deschutes guide-style human read: trout windows, steelhead context, caddis, PMDs, stoneflies, and canyon weather."
+        url: "https://myodfw.com/fishing/central-zone"
       }
     ];
 
-    const reportLinks = localIntelSources.map((source) => [source.label, source.url]);
+    // Listed as links for the angler to read themselves. Never fetched, never
+    // parsed, and never a factor in any score.
+    const referenceLinks = [
+      { label: "Confluence Fly Shop", url: "https://confluenceflyshop.com/fishing-reports/" },
+      { label: "The Fly Fishers Place", url: "https://flyfishersplace.com/fishing-reports/" },
+      { label: "Deschutes River Alliance", url: "https://deschutesriveralliance.org/" },
+      { label: "Deschutes Camp", url: "https://deschutescamp.com/fishing-report/" }
+    ];
+
+    const reportLinks = [
+      ...localIntelSources.map((source) => [source.label, source.url]),
+      ...referenceLinks.map((source) => [source.label, source.url])
+    ];
 
     const WATER_REPORT_CACHE_KEY = "riseWaterReports.v1";
     const USER_LOCATION_KEY = "riseUserLocation.v1";
@@ -4600,6 +4605,32 @@
       }
     };
 
+    /* ---------------------------------------------------------------------
+       HTML escaping.
+
+       Every screen is built with template strings and assigned to innerHTML,
+       and there was no escaping anywhere in the file. A fly name containing a
+       quote was silently truncated on save, a note containing "<" lost
+       everything after it, and script in a note ran inside a file:// WebView
+       wired to the native fetch and storage bridges.
+
+       esc() is for text between tags. attr() is for a value inside a quoted
+       attribute. Anything that came from the user, from the device, or off
+       the network goes through one of them.
+       --------------------------------------------------------------------- */
+    function esc(value) {
+      return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    function attr(value) {
+      return esc(value);
+    }
+
     function $(selector) {
       return document.querySelector(selector);
     }
@@ -4656,7 +4687,7 @@
         const saved = localStorage.getItem(SKILL_MODE_KEY);
         if (skillModes.includes(saved)) return saved;
       } catch {
-        // Local persistence is a convenience for the prototype.
+        // Saved on this device only; nothing is uploaded.
       }
       return readStoredBoolean(BEGINNER_MODE_KEY) ? "Beginner" : "Intermediate";
     }
@@ -4665,7 +4696,7 @@
       try {
         localStorage.setItem(key, JSON.stringify(value));
       } catch {
-        // Local persistence is a convenience for the prototype.
+        // Saved on this device only; nothing is uploaded.
       }
     }
 
@@ -4673,7 +4704,7 @@
       try {
         localStorage.setItem(key, JSON.stringify(value));
       } catch {
-        // Local persistence is a convenience for the prototype.
+        // Saved on this device only; nothing is uploaded.
       }
     }
 
@@ -4776,7 +4807,7 @@
         localStorage.setItem(SKILL_MODE_KEY, skillMode);
         localStorage.setItem(BEGINNER_MODE_KEY, beginnerMode ? "true" : "false");
       } catch {
-        // Local persistence is a convenience for the prototype.
+        // Saved on this device only; nothing is uploaded.
       }
     }
 
@@ -4849,7 +4880,7 @@
       try {
         localStorage.setItem(ACTIVE_WATER_KEY, activeWater);
       } catch {
-        // Local persistence is a convenience for the prototype.
+        // Saved on this device only; nothing is uploaded.
       }
     }
 
@@ -4858,7 +4889,7 @@
       try {
         localStorage.setItem(HOME_WATER_KEY, homeWaterId);
       } catch {
-        // Local persistence is a convenience for the prototype.
+        // Saved on this device only; nothing is uploaded.
       }
     }
 
@@ -4949,12 +4980,10 @@
       if (!navigator.geolocation) {
         locationStatus = "error";
         renderWaters();
-        bindDynamic();
         return;
       }
       locationStatus = "loading";
       renderWaters();
-      bindDynamic();
       navigator.geolocation.getCurrentPosition((position) => {
         saveUserLocation({
           lat: position.coords.latitude,
@@ -4965,11 +4994,9 @@
         waterSortMode = "Near";
         locationStatus = "ready";
         renderWaters();
-        bindDynamic();
       }, () => {
         locationStatus = "error";
         renderWaters();
-        bindDynamic();
       }, {
         enableHighAccuracy: true,
         timeout: 10000,
@@ -5483,7 +5510,12 @@
 
     function writeWaterCache(cache) {
       liveReports.cache = cache;
-      localStorage.setItem(WATER_REPORT_CACHE_KEY, JSON.stringify(cache));
+      try {
+        localStorage.setItem(WATER_REPORT_CACHE_KEY, JSON.stringify(cache));
+      } catch {
+        // A full quota costs this device its cached copy, nothing more. The
+        // in-memory cache above still serves the session.
+      }
     }
 
     function hydrateWaterCache() {
@@ -5759,6 +5791,17 @@
       }
     }
 
+    // Network text is sanitized where it enters the app, not at the thirty-odd
+    // places it is rendered. Nothing from a remote body reaches innerHTML, the
+    // cache or the catch log with markup still in it.
+    function safeText(value, maxLength = 120) {
+      return String(value ?? "")
+        .replace(/[<>&"'`]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim()
+        .slice(0, maxLength);
+    }
+
     function textFromHtml(html) {
       return String(html || "")
         .replace(/<script[\s\S]*?<\/script>/gi, " ")
@@ -5776,48 +5819,106 @@
       ].map((item) => String(item || "").toLowerCase()));
     }
 
+    // Word-boundary matching. Bare substring matching had "good" firing on
+    // "goods", "clear" on "clearance" and "slow" on "slowly", which is how a
+    // shop's shipping footer used to become a positive fishing report.
+    function mentionsTerm(text, term) {
+      const escaped = String(term).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      return new RegExp(`(^|[^a-z0-9])${escaped}([^a-z0-9]|$)`, "i").test(text);
+    }
+
+    // Insect and fly names are nouns and reports write them in the plural far
+    // more often than not: "green drakes are on", "the caddis hatches". A
+    // trailing s or es is part of the word here, unlike the condition words
+    // above, where allowing it would put "good" back inside "goods".
+    function mentionsNoun(text, term) {
+      const escaped = String(term).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      return new RegExp(`(^|[^a-z0-9])${escaped}(?:e?s)?([^a-z0-9]|$)`, "i").test(text);
+    }
+
     function cueSignalsFromText(text) {
-      const lower = text.toLowerCase();
       const cues = [];
-      if (lower.includes("clear")) cues.push("clear water");
-      if (lower.includes("off color") || lower.includes("dirty") || lower.includes("stained")) cues.push("color/clarity note");
-      if (lower.includes("good") || lower.includes("fishing well") || lower.includes("productive")) cues.push("positive human report");
-      if (lower.includes("slow") || lower.includes("tough") || lower.includes("poor")) cues.push("technical human report");
-      if (lower.includes("morning")) cues.push("morning window");
-      if (lower.includes("evening")) cues.push("evening window");
+      if (mentionsTerm(text, "clear")) cues.push("clear water");
+      if (["off color", "dirty", "stained"].some((term) => mentionsTerm(text, term))) cues.push("color/clarity note");
+      if (["good", "fishing well", "productive"].some((term) => mentionsTerm(text, term))) cues.push("positive human report");
+      if (["slow", "tough", "poor"].some((term) => mentionsTerm(text, term))) cues.push("technical human report");
+      if (mentionsTerm(text, "morning")) cues.push("morning window");
+      if (mentionsTerm(text, "evening")) cues.push("evening window");
       return uniqueItems(cues);
     }
 
     function scoreBoostFromSignals(text, source, hatches, flies) {
-      const lower = text.toLowerCase();
       let boost = source.type === "shop" || source.type === "guide" ? .18 : .08;
       if (hatches.length) boost += .08;
       if (flies.length) boost += .06;
-      if (lower.includes("fishing well") || lower.includes("good") || lower.includes("productive")) boost += .16;
-      if (lower.includes("slow") || lower.includes("tough") || lower.includes("poor")) boost -= .24;
+      if (["fishing well", "good", "productive"].some((term) => mentionsTerm(text, term))) boost += .16;
+      if (["slow", "tough", "poor"].some((term) => mentionsTerm(text, term))) boost -= .24;
       return Math.max(-.35, Math.min(.45, boost));
     }
 
+    /* ---------------------------------------------------------------------
+       Extraction used to check that a water was named somewhere on the page,
+       then harvest keywords from the entire page - navigation, footer, and
+       every other river's report included. One shop page covering the
+       Metolius, the Crooked and the Deschutes gave all three identical
+       hatches and an identical boost.
+
+       Only the passage that is actually about this water is read now: the
+       sentence naming it, plus the sentence after it when that sentence does
+       not name a different water.
+       --------------------------------------------------------------------- */
+    function passageAboutWater(water, sourceText) {
+      const aliases = aliasesForWater(water).filter((alias) => alias.length > 3);
+      if (!aliases.length) return "";
+      const otherAliases = waters
+        .filter((item) => item.id !== water.id)
+        .flatMap((item) => aliasesForWater(item))
+        .filter((alias) => alias.length > 3 && !aliases.includes(alias));
+
+      const segments = String(sourceText || "").split(/(?<=[.!?])\s+|\s{2,}|\n+/);
+      const passage = [];
+      let carry = 0;
+      segments.forEach((segment) => {
+        const lower = segment.toLowerCase();
+        const namesThisWater = aliases.some((alias) => lower.includes(alias));
+        const namesAnother = otherAliases.some((alias) => lower.includes(alias));
+        if (namesThisWater) {
+          passage.push(segment);
+          carry = 1;
+          return;
+        }
+        if (namesAnother) {
+          carry = 0;
+          return;
+        }
+        if (carry > 0) {
+          passage.push(segment);
+          carry -= 1;
+        }
+      });
+      return passage.join(" ");
+    }
+
     function extractSignalsForWater(water, sourceText, source) {
-      const lower = sourceText.toLowerCase();
-      const aliases = aliasesForWater(water);
-      const mentioned = aliases.some((alias) => alias.length > 3 && lower.includes(alias));
-      if (!mentioned) return null;
+      // A source that could not be read has nothing to say and is named nowhere.
+      if (!source.readable) return null;
+      const passage = passageAboutWater(water, sourceText).toLowerCase();
+      if (!passage) return null;
       const hatches = hatchSignalMap
-        .filter(([needle]) => lower.includes(needle))
+        .filter(([needle]) => mentionsNoun(passage, needle))
         .map(([, hatch]) => hatch)
         .filter((hatch) => hatchAllowedForWater(normalizeHatchForWater(hatch, water), water));
       const flies = flySignalMap
-        .filter(([needle]) => lower.includes(needle))
+        .filter(([needle]) => mentionsNoun(passage, needle))
         .map(([, fly]) => fly)
         .filter((fly) => flyAllowedForWater(fly, water));
-      const cues = cueSignalsFromText(lower);
+      const cues = cueSignalsFromText(passage);
       return {
         hatches: uniqueItems(hatches),
         flies: uniqueItems(flies),
         cues,
         sources: [source.label],
-        scoreBoost: scoreBoostFromSignals(lower, source, hatches, flies)
+        scoreBoost: scoreBoostFromSignals(passage, source, hatches, flies)
       };
     }
 
@@ -5841,16 +5942,18 @@
         try {
           text = textFromHtml(await fetchTextWithTimeout(source.url, source.label));
           readable = text.length > 80;
+          if (!readable) errors.push(`${source.label}: response too short to read`);
         } catch (error) {
           errors.push(`${source.label}: ${error.message}`);
-          text = source.fallback;
+          text = "";
+          readable = false;
         }
         sourceResults.push({
           label: source.label,
           type: source.type,
           url: source.url,
           readable,
-          text: text || source.fallback
+          text: readable ? text : ""
         });
       }
 
@@ -5890,29 +5993,97 @@
         const latest = latestUsgsValue(series);
         if (!latest) return;
         observedAt = latest.dateTime || observedAt;
-        if (code === "00060") flow = `${Number(latest.value).toLocaleString()} cfs`;
+        if (code === "00060") {
+          const cfs = Number(latest.value);
+          if (Number.isFinite(cfs)) flow = `${cfs.toLocaleString()} cfs`;
+        }
         if (code === "00010") {
           const tempF = fahrenheitFromC(latest.value);
           if (tempF) waterTemp = `${tempF} F`;
         }
       });
-      return { site: meta.usgs, flow, waterTemp, observedAt, url };
+      return { site: meta.usgs, flow, waterTemp, observedAt: safeText(observedAt, 40), url };
+    }
+
+    /* ---------------------------------------------------------------------
+       Weather requests.
+
+       One daily open used to fire two api.weather.gov calls for each of the
+       62 waters - a /points lookup and a forecast - in bursts of four. That is
+       roughly 124 requests per user per open at a rate-limited government API,
+       and it earns 429s.
+
+       Three things changed:
+         - /points is a pure function of a coordinate and the coordinates are
+           constants, so the grid it resolves to is cached on the device and
+           never looked up twice.
+         - Waters that resolve to the same NWS grid share one forecast fetch
+           within a sync instead of asking for the same grid repeatedly.
+         - Requests to api.weather.gov are serialised behind a minimum spacing,
+           so nothing bursts.
+       --------------------------------------------------------------------- */
+
+    const NWS_GRID_CACHE_KEY = "riseNwsGrids.v1";
+    const NWS_MIN_REQUEST_SPACING_MS = 350;
+    let nwsGridCache = readStoredObject(NWS_GRID_CACHE_KEY);
+    let nwsRequestChain = Promise.resolve();
+    let nwsForecastInFlight = new Map();
+
+    // Serialises weather requests and spaces them out.
+    function queueWeatherRequest(run) {
+      const queued = nwsRequestChain.then(async () => {
+        const result = await run();
+        await new Promise((resolve) => setTimeout(resolve, NWS_MIN_REQUEST_SPACING_MS));
+        return result;
+      });
+      // The chain must survive a rejected link, or one failure stops the queue.
+      nwsRequestChain = queued.catch(() => {});
+      return queued;
+    }
+
+    function nwsGridKey(lat, lon) {
+      return `${lat.toFixed(4)},${lon.toFixed(4)}`;
+    }
+
+    // Resolves a coordinate to its NWS forecast URL, once, ever.
+    async function nwsForecastUrlFor(lat, lon) {
+      const key = nwsGridKey(lat, lon);
+      const cached = nwsGridCache[key];
+      if (typeof cached === "string" && cached.startsWith("https://api.weather.gov/")) return cached;
+      const pointUrl = `https://api.weather.gov/points/${key}`;
+      const pointJson = await queueWeatherRequest(() => fetchJsonWithTimeout(pointUrl, "NWS points"));
+      const forecastUrl = pointJson?.properties?.forecastHourly || pointJson?.properties?.forecast;
+      if (typeof forecastUrl !== "string" || !forecastUrl.startsWith("https://api.weather.gov/")) {
+        throw new Error("NWS points returned no forecast grid");
+      }
+      nwsGridCache = { ...nwsGridCache, [key]: forecastUrl };
+      writeStoredObject(NWS_GRID_CACHE_KEY, nwsGridCache);
+      return forecastUrl;
+    }
+
+    // Waters sharing an NWS grid share the single forecast fetch for it.
+    function fetchNwsForecast(forecastUrl) {
+      if (nwsForecastInFlight.has(forecastUrl)) return nwsForecastInFlight.get(forecastUrl);
+      const request = queueWeatherRequest(() => fetchJsonWithTimeout(forecastUrl, "NWS forecast"))
+        .finally(() => nwsForecastInFlight.delete(forecastUrl));
+      nwsForecastInFlight.set(forecastUrl, request);
+      return request;
     }
 
     async function fetchNwsReport(meta) {
       if (typeof meta.lat !== "number" || typeof meta.lon !== "number") {
         throw new Error("No mapped coordinates for this water");
       }
-      const pointUrl = `https://api.weather.gov/points/${meta.lat.toFixed(4)},${meta.lon.toFixed(4)}`;
-      const pointJson = await fetchJsonWithTimeout(pointUrl, "NWS points");
-      const forecastUrl = pointJson?.properties?.forecastHourly || pointJson?.properties?.forecast;
-      const forecastJson = await fetchJsonWithTimeout(forecastUrl, "NWS forecast");
+      const pointUrl = `https://api.weather.gov/points/${nwsGridKey(meta.lat, meta.lon)}`;
+      const forecastUrl = await nwsForecastUrlFor(meta.lat, meta.lon);
+      const forecastJson = await fetchNwsForecast(forecastUrl);
       const period = forecastJson?.properties?.periods?.[0];
+      const airTemp = Number(period?.temperature);
       return {
-        air: period?.temperature ? `${period.temperature} F` : null,
-        wind: period?.windSpeed && period?.windDirection ? `${period.windSpeed} ${period.windDirection}` : period?.windSpeed || null,
-        forecast: period?.shortForecast || null,
-        observedAt: period?.startTime || null,
+        air: Number.isFinite(airTemp) ? `${Math.round(airTemp)} F` : null,
+        wind: safeText(period?.windSpeed && period?.windDirection ? `${period.windSpeed} ${period.windDirection}` : period?.windSpeed, 40) || null,
+        forecast: safeText(period?.shortForecast, 80) || null,
+        observedAt: safeText(period?.startTime, 40) || null,
         url: pointUrl
       };
     }
@@ -5956,20 +6127,46 @@
       }
     }
 
+    /* ---------------------------------------------------------------------
+       A sync used to pull all 62 waters whether the angler had ever looked at
+       them or not. It now covers the waters this device actually uses - home,
+       the water on screen, saved, recently opened, and the six with a real
+       gauge - and stops there. Everything else refreshes when its card is
+       opened, which is already how a single water gets its live data.
+       --------------------------------------------------------------------- */
+    const BULK_SYNC_MAX_WATERS = 12;
+
+    function watersForBulkSync() {
+      const ids = validWaterIds([
+        homeWaterId,
+        activeWater,
+        ...savedWaterIds,
+        ...recentWaterIds,
+        ...waters.filter((water) => hasGauge(water)).map((water) => water.id)
+      ]).slice(0, BULK_SYNC_MAX_WATERS);
+      return ids.map((id) => waters.find((water) => water.id === id)).filter(Boolean);
+    }
+
     async function refreshAllWaterReports(mode = "manual") {
       if (liveReports.bulkStatus) return;
       liveReports.bulkStatus = mode;
       renderScreens("today", "waters", "trip");
-      await scrubLocalResources(mode);
       const results = [];
-      for (let index = 0; index < waters.length; index += BULK_SYNC_CONCURRENCY) {
-        const batch = waters.slice(index, index + BULK_SYNC_CONCURRENCY);
-        const batchResults = await Promise.allSettled(batch.map((water) => refreshLiveReport(water.id, { mode, render: false })));
-        results.push(...batchResults);
+      try {
+        await scrubLocalResources(mode);
+        const syncWaters = watersForBulkSync();
+        for (let index = 0; index < syncWaters.length; index += BULK_SYNC_CONCURRENCY) {
+          const batch = syncWaters.slice(index, index + BULK_SYNC_CONCURRENCY);
+          const batchResults = await Promise.allSettled(batch.map((water) => refreshLiveReport(water.id, { mode, render: false })));
+          results.push(...batchResults);
+        }
+        if (mode === "daily-open") markDailyOpenSyncComplete();
+      } finally {
+        // Without this, one thrown quota error left bulkStatus set and killed
+        // every refresh for the rest of the session.
+        liveReports.bulkStatus = "";
+        renderAll();
       }
-      if (mode === "daily-open") markDailyOpenSyncComplete();
-      liveReports.bulkStatus = "";
-      renderAll();
       return results;
     }
 
@@ -6337,7 +6534,7 @@
             <button class="mini-action" data-quick-log="${water.id}">Quick log</button>
           </div>
           <div class="reason-stack">
-            ${memory.lines.slice(0, compact ? 2 : 4).map((line) => `<p>${line}</p>`).join("")}
+            ${memory.lines.slice(0, compact ? 2 : 4).map((line) => `<p>${esc(line)}</p>`).join("")}
           </div>
         </div>
       `;
@@ -6430,7 +6627,7 @@
     function liveRecommendationReason(water) {
       const report = liveReports.byWater[water.id];
       const intel = localIntelForWater(water);
-      if (!report) return "Pull live inputs to compare gauge, forecast, and report context against the demo hatch profile.";
+      if (!report) return "Pull live inputs to compare gauge, forecast, and report context against the seasonal hatch profile.";
       if (report.status === "loading") return "Checking USGS gauge and NWS forecast now.";
       if (report.status === "error") return `Live pull failed: ${report.error}`;
       if (report.refreshing) return "Updating from signal now while keeping the saved local report available.";
@@ -6454,8 +6651,8 @@
           ? `Stored locally on this device. Model blends USGS/NWS data with daily local report signals from ${intel.sources.slice(0, 3).join(", ")}.`
           : "Stored locally on this device. Fishability, hatch window, and fly suggestions are adjusted from USGS gauge values and the NWS forecast; local report pages are scrubbed daily when readable.";
       }
-      if (report?.status === "loading") return "Pulling live USGS/NWS inputs for this prototype model.";
-      return "Demo baseline: refresh live inputs to adjust this water with USGS/NWS data.";
+      if (report?.status === "loading") return "Pulling live USGS and NWS inputs for this water.";
+      return "Seasonal baseline: refresh live inputs to update this water with USGS and NWS data.";
     }
 
     function liveReportPanel(water) {
@@ -7789,7 +7986,6 @@
         }
         logRestoreNotice = `Restored ${logCache.length} saved ${logCache.length === 1 ? "catch" : "catches"} from this device's backup.`;
         renderLog();
-        bindDynamic();
       } catch {
         // A malformed backup must never take down startup.
       }
@@ -7921,7 +8117,7 @@
           <div class="log-summary">
             <div class="log-stat"><strong>${totalFish}</strong><span>Fish</span></div>
             <div class="log-stat"><strong>${trips}</strong><span>Trips</span></div>
-            <div class="log-stat"><strong>${topFly}</strong><span>Top Fly</span></div>
+            <div class="log-stat"><strong>${esc(topFly)}</strong><span>Top Fly</span></div>
           </div>
 
           ${logFormOpen ? `
@@ -7941,25 +8137,25 @@
                   <select name="water">${waters.map((water) => `<option value="${water.id}" ${water.id === selectedWater.id ? "selected" : ""}>${water.name}</option>`).join("")}</select>
                 </label>
                 <label>Native fish
-                  <select name="fish">${nativeFish.map((fish) => `<option value="${fish}" ${fish === (editingEntry?.fish || "Redband Trout") ? "selected" : ""}>${fish}</option>`).join("")}</select>
+                  <select name="fish">${nativeFish.map((fish) => `<option value="${attr(fish)}" ${fish === (editingEntry?.fish || "Redband Trout") ? "selected" : ""}>${esc(fish)}</option>`).join("")}</select>
                 </label>
                 <label>Length
-                  <input name="length" type="number" min="0" step="0.25" value="${editingEntry?.length || "17"}">
+                  <input name="length" type="number" min="0" step="0.25" value="${attr(editingEntry?.length || "17")}">
                 </label>
                 <label>Count
-                  <input name="count" type="number" min="1" value="${editingEntry?.count || "1"}">
+                  <input name="count" type="number" min="1" value="${attr(editingEntry?.count || "1")}">
                 </label>
                 <label>Fly
-                  <input name="fly" value="${editingEntry?.fly || defaultFly}" autocomplete="off">
+                  <input name="fly" value="${attr(editingEntry?.fly || defaultFly)}" autocomplete="off">
                 </label>
                 <label>Time
-                  <input name="time" value="${editingEntry?.time || new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}" autocomplete="off">
+                  <input name="time" value="${attr(editingEntry?.time || new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }))}" autocomplete="off">
                 </label>
                 <label class="span-2">Notes
-                  <textarea name="notes" placeholder="What changed when it worked?">${editingEntry?.notes || ""}</textarea>
+                  <textarea name="notes" placeholder="What changed when it worked?">${esc(editingEntry?.notes || "")}</textarea>
                 </label>
               </div>
-              ${editingEntry?.photo && !editingEntry?.photoId ? `<input type="hidden" name="existingPhoto" value="${editingEntry.photo}">` : ""}
+              ${editingEntry?.photo && !editingEntry?.photoId ? `<input type="hidden" name="existingPhoto" value="${attr(editingEntry.photo)}">` : ""}
               <button class="primary-btn" type="submit">${icon.save}${editingEntry ? "Update Catch" : "Save Catch"}</button>
             </form>
           ` : ""}
@@ -7967,12 +8163,12 @@
           <div class="log-entry-list">
             ${logs.length ? logs.map((entry, index) => `
               <div class="catch-card">
-                <div class="catch-photo">${photoSourceFor(entry) ? `<img src="${photoSourceFor(entry)}" alt="${entry.fish} catch photo" loading="lazy">` : "🐟"}</div>
+                <div class="catch-photo">${photoSourceFor(entry) ? `<img src="${attr(photoSourceFor(entry))}" alt="${attr(entry.fish)} catch photo" loading="lazy">` : "🐟"}</div>
                 <div>
-                  <strong>${entry.fish}${entry.length ? ` - ${entry.length}"` : ""}</strong>
-                  <span>${entry.waterName} - ${entry.fly}</span>
-                  <span>${formatLogDate(entry)} - ${entry.time || "AM"} - ${entry.temp}</span>
-                  ${entry.notes ? `<span>${entry.notes}</span>` : ""}
+                  <strong>${esc(entry.fish)}${entry.length ? ` - ${esc(entry.length)}"` : ""}</strong>
+                  <span>${esc(entry.waterName)} - ${esc(entry.fly)}</span>
+                  <span>${esc(formatLogDate(entry))} - ${esc(entry.time || "AM")} - ${esc(entry.temp)}</span>
+                  ${entry.notes ? `<span>${esc(entry.notes)}</span>` : ""}
                   <div class="catch-actions">
                     <button class="mini-btn" data-edit-log="${index}">Edit</button>
                     <button class="mini-btn danger" data-delete-log="${index}">Delete</button>
@@ -8050,7 +8246,6 @@
         subscriptionLoading = false;
         subscriptionMessage = "Purchases run in the iOS app. This browser mockup is showing the same screen without App Store checkout.";
         renderPro();
-        bindDynamic();
         return false;
       }
       window.webkit.messageHandlers.riseSubscription.postMessage(payload);
@@ -8071,7 +8266,6 @@
         return;
       }
       renderPro();
-      bindDynamic();
     };
 
     /* ---------------------------------------------------------------------
@@ -8113,7 +8307,6 @@
         if (id !== active) dirtyScreens.add(id);
       });
       renderScreen(active);
-      bindDynamic();
     }
 
     // Marks the named screens stale and repaints only the one on screen.
@@ -8126,13 +8319,11 @@
           dirtyScreens.add(id);
         }
       });
-      bindDynamic();
     }
 
     // Used at startup, where every screen must exist before the first paint.
     function renderEverything() {
       Object.keys(screenRenderers).forEach(renderScreen);
-      bindDynamic();
     }
 
     function runInitialDataSync() {
@@ -8160,7 +8351,6 @@
       // Rebuild the screen before revealing it if it went stale while hidden.
       if (dirtyScreens.has(tab)) {
         renderScreen(tab);
-        bindDynamic();
       }
       all(".view").forEach((view) => view.classList.toggle("active", view.id === tab));
       all(".tab").forEach((button) => button.setAttribute("aria-selected", button.dataset.tab === tab ? "true" : "false"));
@@ -8202,425 +8392,353 @@
       });
     }
 
-    function bindDynamic() {
-      all("[data-score-breakdown]").forEach((button) => {
-        button.addEventListener("click", (event) => {
-          event.stopPropagation();
-          scoreBreakdownOpen = !scoreBreakdownOpen;
-          renderToday();
-          bindDynamic();
-        });
-      });
-      all("[data-trip-mode]").forEach((button) => {
-        const openTrip = (event) => {
-          event.stopPropagation();
-          saveActiveWater(button.dataset.tripMode);
-          renderAll();
-          activateTab("trip");
-        };
-        button.addEventListener("click", openTrip);
-        button.addEventListener("keydown", (event) => {
-          if (event.key === "Enter" || event.key === " ") {
-            event.preventDefault();
-            openTrip(event);
-          }
-        });
-      });
-      all("[data-hide-water]").forEach((button) => {
-        button.addEventListener("click", (event) => {
-          event.stopPropagation();
-          toggleHiddenWater(button.dataset.hideWater);
-          renderAll();
-        });
-      });
-      all("[data-show-hidden]").forEach((button) => {
-        button.addEventListener("click", () => {
-          showHiddenWaters = !showHiddenWaters;
-          renderWaters();
-          bindDynamic();
-        });
-      });
-      all("[data-save-water]").forEach((button) => {
-        button.addEventListener("click", (event) => {
-          event.stopPropagation();
-          toggleSavedWater(button.dataset.saveWater);
-          renderScreens("today", "waters");
-        });
-      });
-      all("[data-fly-feedback]").forEach((button) => {
-        button.addEventListener("click", (event) => {
-          event.stopPropagation();
-          setFlyFeedback(button.dataset.flyFeedback, button.dataset.feedbackValue);
-          renderScreens("today", "waters", "bugs");
-        });
-      });
-      all("[data-beginner-mode]").forEach((button) => {
-        button.addEventListener("click", (event) => {
-          event.stopPropagation();
-          setBeginnerMode(!beginnerMode);
-          renderToday();
-          renderBugs();
-          bindDynamic();
-        });
-      });
-      all("[data-skill-mode]").forEach((button) => {
-        button.addEventListener("click", (event) => {
-          event.stopPropagation();
-          setSkillMode(button.dataset.skillMode);
-          renderAll();
-          bindDynamic();
-        });
-      });
-      all("[data-quick-log]").forEach((button) => {
-        button.addEventListener("click", (event) => {
-          event.stopPropagation();
-          const water = waterById(button.dataset.quickLog) || topRecommendedWater();
-          saveActiveWater(water.id);
-          activeWaterFlyByWater[water.id] = liveRecommendedFlies(water)[0];
+    /* ---------------------------------------------------------------------
+       Event binding.
+
+       bindDynamic() used to call addEventListener on every matching element
+       in the document, from 41 call sites, on every render. renderScreen()
+       only replaces one screen's markup, so nodes on the other six survived
+       and collected another copy of the same handler on every pass. One
+       Delete tap deleted several catches; one Save wrote the entry several
+       times; a fresh install was already doubled before the user touched it.
+
+       Handlers are now delegated from the document once, at startup. A
+       repaint replaces markup and nothing else, so no amount of rendering
+       can multiply a handler. Resolution walks up from the event target and
+       takes the first element that matches an action, which gives the inner
+       control priority over the card containing it - the behaviour the old
+       stopPropagation() calls were there to produce.
+       --------------------------------------------------------------------- */
+
+    const clickActions = [
+      ["[data-score-breakdown]", () => {
+        scoreBreakdownOpen = !scoreBreakdownOpen;
+        renderToday();
+      }],
+      ["[data-trip-mode]", (element) => {
+        saveActiveWater(element.dataset.tripMode);
+        renderAll();
+        activateTab("trip");
+      }],
+      ["[data-hide-water]", (element) => {
+        toggleHiddenWater(element.dataset.hideWater);
+        renderAll();
+      }],
+      ["[data-show-hidden]", () => {
+        showHiddenWaters = !showHiddenWaters;
+        renderWaters();
+      }],
+      ["[data-save-water]", (element) => {
+        toggleSavedWater(element.dataset.saveWater);
+        renderScreens("today", "waters");
+      }],
+      ["[data-fly-feedback]", (element) => {
+        setFlyFeedback(element.dataset.flyFeedback, element.dataset.feedbackValue);
+        renderScreens("today", "waters", "bugs");
+      }],
+      ["[data-beginner-mode]", () => {
+        setBeginnerMode(!beginnerMode);
+        renderToday();
+        renderBugs();
+      }],
+      ["[data-skill-mode]", (element) => {
+        setSkillMode(element.dataset.skillMode);
+        renderAll();
+      }],
+      ["[data-quick-log]", (element) => {
+        const water = waterById(element.dataset.quickLog) || topRecommendedWater();
+        saveActiveWater(water.id);
+        activeWaterFlyByWater[water.id] = liveRecommendedFlies(water)[0];
+        editingLogIndex = null;
+        logFormOpen = true;
+        renderLog();
+        activateTab("log");
+        requestAnimationFrame(() => $("#logForm")?.scrollIntoView({ behavior: "smooth", block: "start" }));
+      }],
+      ["[data-water-fly]", (element) => {
+        activeWaterFlyByWater[element.dataset.waterId] = element.dataset.waterFly;
+        renderWaters();
+      }],
+      ["[data-library-fly]", (element) => {
+        const libraryFly = findLibraryFlyByName(element.dataset.libraryFly);
+        if (libraryFly) {
+          activeBug = libraryFly.bugId;
+          activeBugStage = libraryFly.stage;
+          activeFlyName = libraryFly.name;
+        } else {
+          activeFlyName = element.dataset.libraryFly;
+        }
+        renderBugs();
+      }],
+      ["[data-bug-stage]", (element) => {
+        activeBugStage = element.dataset.bugStage;
+        activeFlyName = null;
+        renderBugs();
+      }],
+      ["[data-clear-bug-stage]", () => {
+        activeBugStage = null;
+        activeFlyName = null;
+        renderBugs();
+      }],
+      ["[data-hatch-pick]", (element) => {
+        activeBug = element.dataset.hatchPick;
+        activeBugStage = null;
+        activeFlyName = null;
+        renderBugs();
+        requestAnimationFrame(() => $(".bug-card.active")?.scrollIntoView({ behavior: "smooth", block: "start" }));
+      }],
+      ["[data-hatch-clear]", () => {
+        hatchIdTraits = {};
+        writeStoredObject("riseHatchIdTraits.v1", hatchIdTraits);
+        renderBugs();
+      }],
+      ["[data-bug]", (element, event) => {
+        if (event.target.closest("button, a, input, select, textarea")) return;
+        activeBug = element.dataset.bug;
+        activeBugStage = null;
+        activeFlyName = null;
+        renderBugs();
+      }],
+      ["[data-refresh-live]", (element) => refreshLiveReport(element.dataset.refreshLive, { mode: "manual" })],
+      ["[data-refresh-all]", () => refreshAllWaterReports("manual")],
+      ["[data-use-location]", () => requestUserLocation()],
+      ["[data-water-sort]", (element) => {
+        waterSortMode = element.dataset.waterSort;
+        if (waterSortMode === "Near" && !userLocation) {
+          requestUserLocation();
+          return;
+        }
+        renderScreens("today", "waters");
+      }],
+      ["[data-water-filter]", (element) => {
+        waterFilter = element.dataset.waterFilter;
+        renderWaters();
+      }],
+      ["[data-tab-jump]", (element) => activateTab(element.dataset.tabJump)],
+      ["[data-knot]", (element) => {
+        activeKnot = element.dataset.knot;
+        knotStep = 0;
+        renderKnots();
+      }],
+      ["[data-step]", (element) => {
+        const selected = getKnot();
+        const nextStep = knotStep + Number(element.dataset.step);
+        knotStep = Math.max(0, Math.min(selected.steps.length - 1, nextStep));
+        renderKnots();
+        requestAnimationFrame(() => $(".knot-visual")?.scrollIntoView({ block: "start", behavior: "smooth" }));
+      }],
+      ["[data-knot-step]", (element) => {
+        knotStep = Number(element.dataset.knotStep);
+        renderKnots();
+        requestAnimationFrame(() => $(".knot-visual")?.scrollIntoView({ block: "start", behavior: "smooth" }));
+      }],
+      ["[data-new-log]", () => {
+        logFormOpen = !logFormOpen;
+        logSaveMessage = "";
+        editingLogIndex = null;
+        renderLog();
+        if (logFormOpen) $("#logForm")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }],
+      ["[data-edit-log]", (element) => {
+        logSaveMessage = "";
+        editingLogIndex = Number(element.dataset.editLog);
+        logFormOpen = true;
+        renderLog();
+        $("#logForm")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }],
+      ["[data-export-log]", () => {
+        logSaveMessage = exportLog();
+        renderLog();
+      }],
+      ["[data-delete-log]", (element) => {
+        const index = Number(element.dataset.deleteLog);
+        const logs = getLogs();
+        if (!logs[index]) return;
+        deleteStoredPhoto(logs[index]);
+        setLogs(logs.filter((_, itemIndex) => itemIndex !== index));
+        if (editingLogIndex === index) {
           editingLogIndex = null;
-          logFormOpen = true;
-          renderLog();
-          bindDynamic();
-          activateTab("log");
-          requestAnimationFrame(() => $("#logForm")?.scrollIntoView({ behavior: "smooth", block: "start" }));
-        });
+          logFormOpen = false;
+        }
+        renderLog();
+      }],
+      ["[data-billing]", () => {
+        billing = billing === "annual" ? "monthly" : "annual";
+        renderPro();
+      }],
+      ["[data-subscribe-plan]", (element) => {
+        subscriptionLoading = true;
+        subscriptionMessage = `Starting ${element.dataset.subscribePlan === "annual" ? "annual" : "monthly"} checkout...`;
+        renderPro();
+        postSubscriptionMessage({ action: "purchase", plan: element.dataset.subscribePlan });
+      }],
+      ["[data-restore-purchases]", () => {
+        subscriptionLoading = true;
+        subscriptionMessage = "Checking past purchases...";
+        renderPro();
+        postSubscriptionMessage({ action: "restore" });
+      }],
+      ["[data-refresh-subscription]", () => syncSubscriptionStatus()],
+      ["[data-water]", (element, event) => {
+        const nestedControl = event.target.closest("button, a, input, select, textarea");
+        if (nestedControl && nestedControl !== element) return;
+        const isShortcut = element.classList.contains("water-chip-card");
+        if (isShortcut) {
+          waterQuery = "";
+          waterFilter = "All";
+        }
+        expandedWaterId = expandedWaterId === element.dataset.water ? null : element.dataset.water;
+        saveActiveWater(element.dataset.water);
+        renderAll();
+        if (isShortcut) {
+          requestAnimationFrame(() => {
+            const activeCard = all(".waters-main-list [data-water]").find((item) => item.dataset.water === activeWater);
+            activeCard?.scrollIntoView({ behavior: "smooth", block: "start" });
+          });
+        }
+        if (!liveReports.byWater[activeWater] && navigator.onLine !== false) refreshLiveReport(activeWater, { mode: "manual" });
+        if (element.dataset.go) activateTab(element.dataset.go);
+      }],
+      [".tab", (element) => activateTab(element.dataset.tab)]
+    ];
+
+    // Elements that a keyboard user can activate with Enter or Space. Anything
+    // that is already a <button> gets this from the browser.
+    const keyActivatedSelectors = ["[data-trip-mode]", "[data-library-fly]", "[data-bug]", "[data-water]"];
+
+    // Walks up from the event target and returns the first element that owns an
+    // action, so the innermost control wins over any card wrapping it.
+    function resolveAction(target, selectors) {
+      let node = target instanceof Element ? target : null;
+      while (node && node !== document.documentElement) {
+        for (const entry of clickActions) {
+          if (selectors && !selectors.includes(entry[0])) continue;
+          if (node.matches(entry[0])) return { element: node, handler: entry[1] };
+        }
+        node = node.parentElement;
+      }
+      return null;
+    }
+
+    function bindDelegatedEvents() {
+      document.addEventListener("click", (event) => {
+        const match = resolveAction(event.target, null);
+        if (match) match.handler(match.element, event);
       });
-      all("[data-water-fly]").forEach((button) => {
-        button.addEventListener("click", (event) => {
-          event.stopPropagation();
-          activeWaterFlyByWater[button.dataset.waterId] = button.dataset.waterFly;
-          renderWaters();
-          bindDynamic();
-        });
+
+      document.addEventListener("keydown", (event) => {
+        if (event.key !== "Enter" && event.key !== " ") return;
+        // A real button already fires click on Enter/Space; binding here too
+        // would run the action twice.
+        if (event.target instanceof Element && event.target.closest("button, a, input, select, textarea")) return;
+        const match = resolveAction(event.target, keyActivatedSelectors);
+        if (!match) return;
+        event.preventDefault();
+        match.handler(match.element, event);
       });
-      all("[data-water]").forEach((button) => {
-        button.addEventListener("click", (event) => {
-          const nestedControl = event.target.closest("button, a, input, select, textarea, [data-library-fly]");
-          if (nestedControl && nestedControl !== button) return;
-          const isShortcut = button.classList.contains("water-chip-card");
-          if (isShortcut) {
-            waterQuery = "";
-            waterFilter = "All";
-          }
-          expandedWaterId = expandedWaterId === button.dataset.water ? null : button.dataset.water;
-          saveActiveWater(button.dataset.water);
-          renderAll();
-          if (isShortcut) {
-            requestAnimationFrame(() => {
-              const activeCard = all(".waters-main-list [data-water]").find((item) => item.dataset.water === activeWater);
-              activeCard?.scrollIntoView({ behavior: "smooth", block: "start" });
-            });
-          }
-          if (!liveReports.byWater[activeWater] && navigator.onLine !== false) refreshLiveReport(activeWater, { mode: "manual" });
-          if (button.dataset.go) activateTab(button.dataset.go);
-        });
-      });
-      const homeWaterSelect = $("[data-home-water]");
-      if (homeWaterSelect) {
-        homeWaterSelect.addEventListener("change", () => {
-          saveHomeWater(homeWaterSelect.value);
-          saveActiveWater(homeWaterSelect.value);
+
+      document.addEventListener("change", (event) => {
+        const target = event.target;
+        if (!(target instanceof Element)) return;
+        if (target.matches("[data-home-water]")) {
+          saveHomeWater(target.value);
+          saveActiveWater(target.value);
           renderAll();
           if (!liveReports.byWater[homeWaterId] && navigator.onLine !== false) refreshLiveReport(homeWaterId, { mode: "manual" });
-        });
-      }
-      all("[data-refresh-live]").forEach((button) => {
-        button.addEventListener("click", () => refreshLiveReport(button.dataset.refreshLive, { mode: "manual" }));
-      });
-      all("[data-refresh-all]").forEach((button) => {
-        button.addEventListener("click", () => refreshAllWaterReports("manual"));
-      });
-      all("[data-use-location]").forEach((button) => {
-        button.addEventListener("click", () => requestUserLocation());
-      });
-      all("[data-water-sort]").forEach((button) => {
-        button.addEventListener("click", () => {
-          waterSortMode = button.dataset.waterSort;
-          if (waterSortMode === "Near" && !userLocation) {
-            requestUserLocation();
-            return;
-          }
-          renderScreens("today", "waters");
-        });
-      });
-      all("[data-water-filter]").forEach((button) => {
-        button.addEventListener("click", () => {
-          waterFilter = button.dataset.waterFilter;
-          renderWaters();
-          bindDynamic();
-        });
-      });
-      const waterSearch = $("[data-water-search]");
-      if (waterSearch) {
-        waterSearch.addEventListener("input", () => {
-          waterQuery = waterSearch.value;
-          renderWaters();
-          bindDynamic();
-          const nextSearch = $("[data-water-search]");
-          if (nextSearch) {
-            nextSearch.focus();
-            nextSearch.setSelectionRange(nextSearch.value.length, nextSearch.value.length);
-          }
-        });
-      }
-      all("[data-bug]").forEach((button) => {
-        const openBug = (event) => {
-          if (event.target.closest("button, a, input, select, textarea, [data-library-fly], [data-bug-stage], [data-clear-bug-stage]")) return;
-          activeBug = button.dataset.bug;
-          activeBugStage = null;
-          activeFlyName = null;
-          renderBugs();
-          bindDynamic();
-        };
-        button.addEventListener("click", openBug);
-        button.addEventListener("keydown", (event) => {
-          if (event.target !== button) return;
-          if (event.key === "Enter" || event.key === " ") {
-            event.preventDefault();
-            openBug(event);
-          }
-        });
-      });
-      all("[data-bug-stage]").forEach((button) => {
-        button.addEventListener("click", (event) => {
-          event.stopPropagation();
-          activeBugStage = button.dataset.bugStage;
-          activeFlyName = null;
-          renderBugs();
-          bindDynamic();
-        });
-      });
-      all("[data-clear-bug-stage]").forEach((button) => {
-        button.addEventListener("click", (event) => {
-          event.stopPropagation();
-          activeBugStage = null;
-          activeFlyName = null;
-          renderBugs();
-          bindDynamic();
-        });
-      });
-      all("[data-hatch-trait]").forEach((select) => {
-        select.addEventListener("change", () => {
-          hatchIdTraits[select.dataset.hatchTrait] = select.value;
+          return;
+        }
+        if (target.matches("[data-hatch-trait]")) {
+          hatchIdTraits[target.dataset.hatchTrait] = target.value;
           writeStoredObject("riseHatchIdTraits.v1", hatchIdTraits);
           renderBugs();
-          bindDynamic();
-        });
+        }
       });
-      all("[data-hatch-clear]").forEach((button) => {
-        button.addEventListener("click", () => {
-          hatchIdTraits = {};
-          writeStoredObject("riseHatchIdTraits.v1", hatchIdTraits);
-          renderBugs();
-          bindDynamic();
-        });
+
+      document.addEventListener("input", (event) => {
+        const target = event.target;
+        if (!(target instanceof Element) || !target.matches("[data-water-search]")) return;
+        waterQuery = target.value;
+        renderWaters();
+        // renderWaters() replaced the field, so focus and caret have to be put back.
+        const nextSearch = $("[data-water-search]");
+        if (nextSearch) {
+          nextSearch.focus();
+          nextSearch.setSelectionRange(nextSearch.value.length, nextSearch.value.length);
+        }
       });
-      all("[data-hatch-pick]").forEach((button) => {
-        button.addEventListener("click", () => {
-          activeBug = button.dataset.hatchPick;
-          activeBugStage = null;
-          activeFlyName = null;
-          renderBugs();
-          bindDynamic();
-          requestAnimationFrame(() => $(".bug-card.active")?.scrollIntoView({ behavior: "smooth", block: "start" }));
-        });
+
+      document.addEventListener("submit", (event) => {
+        const form = event.target;
+        if (!(form instanceof Element) || form.id !== "logForm") return;
+        event.preventDefault();
+        saveLogEntry(form);
       });
-      all("[data-library-fly]").forEach((button) => {
-        const openLibraryFly = (event) => {
-          event.stopPropagation();
-          const libraryFly = findLibraryFlyByName(button.dataset.libraryFly);
-          if (libraryFly) {
-            activeBug = libraryFly.bugId;
-            activeBugStage = libraryFly.stage;
-            activeFlyName = libraryFly.name;
-          } else {
-            activeFlyName = button.dataset.libraryFly;
-          }
-          renderBugs();
-          bindDynamic();
+    }
+
+    async function saveLogEntry(logForm) {
+      const form = new FormData(logForm);
+      const water = waters.find((item) => item.id === form.get("water")) || getWater();
+      const existingEntry = editingLogIndex !== null ? getLogs()[editingLogIndex] : null;
+      const capturedPhoto = await readPhotoFile(form.get("photo"));
+      // A new photo replaces the old one; the old file is removed from the container.
+      let photoFields;
+      if (capturedPhoto) {
+        if (existingEntry) deleteStoredPhoto(existingEntry);
+        photoFields = storePhoto(capturedPhoto);
+      } else {
+        photoFields = {
+          photoId: existingEntry?.photoId || "",
+          photo: form.get("existingPhoto") || existingEntry?.photo || ""
         };
-        button.addEventListener("click", openLibraryFly);
-        button.addEventListener("keydown", (event) => {
-          if (event.key === "Enter" || event.key === " ") {
-            event.preventDefault();
-            openLibraryFly(event);
-          }
-        });
-      });
-      all("[data-tab-jump]").forEach((button) => {
-        button.addEventListener("click", () => activateTab(button.dataset.tabJump));
-      });
-      all("[data-knot]").forEach((button) => {
-        button.addEventListener("click", () => {
-          activeKnot = button.dataset.knot;
-          knotStep = 0;
-          renderKnots();
-          bindDynamic();
-        });
-      });
-      all("[data-step]").forEach((button) => {
-        button.addEventListener("click", () => {
-          const selected = getKnot();
-          const nextStep = knotStep + Number(button.dataset.step);
-          knotStep = Math.max(0, Math.min(selected.steps.length - 1, nextStep));
-          renderKnots();
-          bindDynamic();
-          requestAnimationFrame(() => $(".knot-visual")?.scrollIntoView({ block: "start", behavior: "smooth" }));
-        });
-      });
-      all("[data-knot-step]").forEach((button) => {
-        button.addEventListener("click", () => {
-          knotStep = Number(button.dataset.knotStep);
-          renderKnots();
-          bindDynamic();
-          requestAnimationFrame(() => $(".knot-visual")?.scrollIntoView({ block: "start", behavior: "smooth" }));
-        });
-      });
-      all("[data-new-log]").forEach((button) => {
-        button.addEventListener("click", () => {
-          logFormOpen = !logFormOpen;
-          logSaveMessage = "";
-          editingLogIndex = null;
-          renderLog();
-          bindDynamic();
-          if (logFormOpen) {
-            $("#logForm")?.scrollIntoView({ behavior: "smooth", block: "start" });
-          }
-        });
-      });
-      all("[data-edit-log]").forEach((button) => {
-        button.addEventListener("click", () => {
-          logSaveMessage = "";
-          editingLogIndex = Number(button.dataset.editLog);
-          logFormOpen = true;
-          renderLog();
-          bindDynamic();
-          $("#logForm")?.scrollIntoView({ behavior: "smooth", block: "start" });
-        });
-      });
-      const exportButton = $("[data-export-log]");
-      if (exportButton) {
-        exportButton.addEventListener("click", () => {
-          logSaveMessage = exportLog();
-          renderLog();
-          bindDynamic();
-        });
       }
-      all("[data-delete-log]").forEach((button) => {
-        button.addEventListener("click", () => {
-          const index = Number(button.dataset.deleteLog);
-          const logs = getLogs();
-          deleteStoredPhoto(logs[index]);
-          const nextLogs = logs.filter((_, itemIndex) => itemIndex !== index);
-          setLogs(nextLogs);
-          if (editingLogIndex === index) {
-            editingLogIndex = null;
-            logFormOpen = false;
-          }
-          renderLog();
-          bindDynamic();
-        });
-      });
-      const logForm = $("#logForm");
-      if (logForm) {
-        logForm.addEventListener("submit", async (event) => {
-          event.preventDefault();
-          const form = new FormData(logForm);
-          const water = waters.find((item) => item.id === form.get("water")) || getWater();
-          const existingEntry = editingLogIndex !== null ? getLogs()[editingLogIndex] : null;
-          const capturedPhoto = await readPhotoFile(form.get("photo"));
-          // A new photo replaces the old one; the old file is removed from the container.
-          let photoFields;
-          if (capturedPhoto) {
-            if (existingEntry) deleteStoredPhoto(existingEntry);
-            photoFields = storePhoto(capturedPhoto);
-          } else {
-            photoFields = {
-              photoId: existingEntry?.photoId || "",
-              photo: form.get("existingPhoto") || existingEntry?.photo || ""
-            };
-          }
-          const now = new Date();
-          const entry = {
-            // Full timestamp, so entries can be sorted and compared across seasons.
-            loggedAt: now.toISOString(),
-            date: now.toLocaleDateString([], { year: "numeric", month: "short", day: "numeric" }),
-            time: form.get("time"),
-            waterName: water.name,
-            waterId: water.id,
-            fly: form.get("fly"),
-            fish: form.get("fish"),
-            length: form.get("length"),
-            count: form.get("count"),
-            notes: form.get("notes"),
-            // Record what was actually on screen, not the seed value.
-            flow: liveDisplayValue(water, "flow"),
-            flowSource: valueProvenance(water, "flow"),
-            temp: liveDisplayValue(water, "temp"),
-            tempSource: valueProvenance(water, "temp"),
-            ...photoFields
-          };
-          const logs = getLogs();
-          let nextLogs;
-          if (editingLogIndex !== null) {
-            // Editing keeps the original timestamp; only a new catch gets today's.
-            logs[editingLogIndex] = {
-              ...logs[editingLogIndex],
-              ...entry,
-              loggedAt: logs[editingLogIndex].loggedAt || entry.loggedAt,
-              date: logs[editingLogIndex].date || entry.date
-            };
-            nextLogs = [...logs];
-          } else {
-            // No cap. The journal is the user's own record and is never truncated.
-            nextLogs = [entry, ...logs];
-          }
-          if (!setLogs(nextLogs)) {
-            logSaveMessage = "This catch could not be saved to this device. Free up storage and try again.";
-            renderLog();
-            bindDynamic();
-            return;
-          }
-          if (entry.fly && flyFeedback[entry.fly] !== "worked") {
-            flyFeedback[entry.fly] = "worked";
-            writeStoredObject(FLY_FEEDBACK_KEY, flyFeedback);
-          }
-          logSaveMessage = "";
-          logFormOpen = false;
-          editingLogIndex = null;
-          renderLog();
-          bindDynamic();
-        });
+      const now = new Date();
+      const entry = {
+        // Full timestamp, so entries can be sorted and compared across seasons.
+        loggedAt: now.toISOString(),
+        date: now.toLocaleDateString([], { year: "numeric", month: "short", day: "numeric" }),
+        time: form.get("time"),
+        waterName: water.name,
+        waterId: water.id,
+        fly: form.get("fly"),
+        fish: form.get("fish"),
+        length: form.get("length"),
+        count: form.get("count"),
+        notes: form.get("notes"),
+        // Record what was actually on screen, not the seed value.
+        flow: liveDisplayValue(water, "flow"),
+        flowSource: valueProvenance(water, "flow"),
+        temp: liveDisplayValue(water, "temp"),
+        tempSource: valueProvenance(water, "temp"),
+        ...photoFields
+      };
+      const logs = getLogs();
+      let nextLogs;
+      if (editingLogIndex !== null) {
+        // Editing keeps the original timestamp; only a new catch gets today's.
+        logs[editingLogIndex] = {
+          ...logs[editingLogIndex],
+          ...entry,
+          loggedAt: logs[editingLogIndex].loggedAt || entry.loggedAt,
+          date: logs[editingLogIndex].date || entry.date
+        };
+        nextLogs = [...logs];
+      } else {
+        // No cap. The journal is the user's own record and is never truncated.
+        nextLogs = [entry, ...logs];
       }
-      const billingButton = $("[data-billing]");
-      if (billingButton) {
-        billingButton.addEventListener("click", () => {
-          billing = billing === "annual" ? "monthly" : "annual";
-          renderPro();
-          bindDynamic();
-        });
+      if (!setLogs(nextLogs)) {
+        logSaveMessage = "This catch could not be saved to this device. Free up storage and try again.";
+        renderLog();
+        return;
       }
-      all("[data-subscribe-plan]").forEach((button) => {
-        button.addEventListener("click", () => {
-          subscriptionLoading = true;
-          subscriptionMessage = `Starting ${button.dataset.subscribePlan === "annual" ? "annual" : "monthly"} checkout...`;
-          renderPro();
-          bindDynamic();
-          postSubscriptionMessage({ action: "purchase", plan: button.dataset.subscribePlan });
-        });
-      });
-      all("[data-restore-purchases]").forEach((button) => {
-        button.addEventListener("click", () => {
-          subscriptionLoading = true;
-          subscriptionMessage = "Checking past purchases...";
-          renderPro();
-          bindDynamic();
-          postSubscriptionMessage({ action: "restore" });
-        });
-      });
-      all("[data-refresh-subscription]").forEach((button) => {
-        button.addEventListener("click", syncSubscriptionStatus);
-      });
+      if (entry.fly && flyFeedback[entry.fly] !== "worked") {
+        flyFeedback[entry.fly] = "worked";
+        writeStoredObject(FLY_FEEDBACK_KEY, flyFeedback);
+      }
+      logSaveMessage = "";
+      logFormOpen = false;
+      editingLogIndex = null;
+      renderLog();
     }
 
     function syncSubscriptionStatus() {
@@ -8628,20 +8746,17 @@
         subscriptionLoading = false;
         subscriptionMessage = "Localized subscription prices are available in the iOS app.";
         renderPro();
-        bindDynamic();
         return;
       }
       subscriptionPrices = { monthly: null, annual: null };
       subscriptionLoading = true;
       subscriptionMessage = "Loading localized subscription prices from the App Store...";
       renderPro();
-      bindDynamic();
       postSubscriptionMessage({ action: "status" });
     }
 
-    all(".tab").forEach((button) => {
-      button.addEventListener("click", () => activateTab(button.dataset.tab));
-    });
+    // Bound once, for the life of the document.
+    bindDelegatedEvents();
 
     userLocation = readUserLocation();
     hydrateWaterCache();

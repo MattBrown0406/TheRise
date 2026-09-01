@@ -24,3 +24,6 @@ build_hermes_beginner_pdf.py
 build_hermes_pdf.py
 make_soberhelpline_ads.py
 the-rise-*.png
+
+# Test harness only. The app ships as one HTML file with no build step.
+node_modules/

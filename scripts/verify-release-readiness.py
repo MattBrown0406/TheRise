@@ -31,6 +31,7 @@ METADATA_SYNC_SCRIPT = ROOT / "scripts/sync-app-store-metadata.rb"
 SCREENSHOT_SCRIPT = ROOT / "scripts/create-app-store-screenshots.mjs"
 SCREENSHOT_MANIFEST = ROOT / "app-store-screenshots/subscription-review-manifest.json"
 APP_LOGIC_TESTS = ROOT / "scripts/test-app-logic.mjs"
+APP_DOM_TESTS = ROOT / "scripts/test-app-dom.mjs"
 STORE_TESTS = ROOT / "scripts/test-rise-store.sh"
 STORE_SWIFT = ROOT / "ios/TheRise/TheRise/RiseStore.swift"
 
@@ -124,7 +125,7 @@ def main() -> int:
     project = PROJECT.read_text(encoding="utf-8")
     build_numbers = re.findall(r"CURRENT_PROJECT_VERSION = ([^;]+);", project)
     versions = re.findall(r"MARKETING_VERSION = ([^;]+);", project)
-    require(bool(build_numbers) and set(build_numbers) == {"9"}, f"expected build 9, found {build_numbers}")
+    require(bool(build_numbers) and set(build_numbers) == {"10"}, f"expected build 10, found {build_numbers}")
     require(bool(versions) and set(versions) == {"1.0"}, f"expected version 1.0, found {versions}")
 
     review_doc = REVIEW_DOC.read_text(encoding="utf-8")
@@ -149,7 +150,7 @@ def main() -> int:
     require(len(notes.strip()) <= 4000, "App Review notes exceed the 4,000-character limit")
     require(PRIVACY_URL == privacy_metadata, "Privacy Policy metadata URL is incorrect")
     for token in (
-        "Version 1.0 build 9",
+        "Version 1.0 build 10",
         "The Rise Pro Monthly",
         "The Rise Pro Annual",
         "therise_pro_monthly",
@@ -282,6 +283,72 @@ def main() -> int:
         "liveSources holds a second copy of the coordinates it must read from waterCoordinates",
     )
 
+    # --- Shipping language ----------------------------------------------------
+    # An app that calls itself a prototype or a demo is a guideline 2.2
+    # rejection, and every water's Regulations line used to read "Demo only".
+    for label, text in (("app HTML", web), ("bundled app HTML", BUNDLED_WEB.read_text(encoding="utf-8"))):
+        require("prototype" not in text.lower(), f"{label} still calls the app a prototype")
+        require("demo" not in text.lower(), f"{label} still calls the app a demo")
+    require(
+        "<title>The Rise - Central Oregon Fly Fishing</title>" in web,
+        "the window title is not a shipping title",
+    )
+
+    # --- Event binding --------------------------------------------------------
+    # bindDynamic() attached a listener to every matching element on every
+    # render, so one Delete tap deleted several catches. Handlers are delegated
+    # once now, and nothing may reintroduce per-render binding.
+    require(
+        not re.search(r"^\s*bindDynamic\(\);", web, re.MULTILINE),
+        "bindDynamic() is back; handlers must be delegated once, not bound per render",
+    )
+    require("function bindDelegatedEvents()" in web, "the delegated event binder is missing")
+    require(
+        len(re.findall(r"bindDelegatedEvents\(\);", web)) == 1,
+        "the delegated event binder must be called exactly once",
+    )
+
+    # --- Escaping -------------------------------------------------------------
+    # Catch-log text reached innerHTML raw: a quote truncated a fly name, a "<"
+    # swallowed a note, and script in a note ran inside the WebView.
+    require("function esc(value)" in web, "the HTML escaping helper is missing")
+    require("function safeText(value" in web, "the network-text sanitiser is missing")
+    for field in ("entry.notes", "entry.fly", "entry.fish", "entry.waterName"):
+        require(
+            f"esc({field})" in web,
+            f"catch-log field {field} is interpolated into innerHTML without escaping",
+        )
+    require("forecast: safeText(" in web, "the NWS forecast string reaches the app unsanitised")
+
+    # --- Third-party reports --------------------------------------------------
+    # Reselling a fly shop's read inside a paid subscription is their terms of
+    # service and Apple 5.2. The shops are linked, never fetched.
+    intel_block = web[web.index("const localIntelSources = ["): web.index("const referenceLinks = [")]
+    for host in ("confluenceflyshop", "flyfishersplace", "deschutescamp", "deschutesriveralliance"):
+        require(
+            host not in intel_block,
+            f"{host} is being scraped again; commercial and third-party reports are link-only",
+        )
+    require("fallback:" not in intel_block, "fallback prose is back; an unreadable source must contribute nothing")
+    require(
+        "if (!source.readable) return null;" in web,
+        "extraction no longer refuses unreadable sources",
+    )
+    allowed_hosts_block = SWIFT.read_text(encoding="utf-8")
+    require(
+        "allowedFetchHosts" in allowed_hosts_block,
+        "the native fetch bridge has no host allowlist",
+    )
+    require(
+        "RiseScriptMessageProxy" in allowed_hosts_block,
+        "script message handlers are registered without the weak proxy; deinit will never run",
+    )
+
+    # --- Request volume -------------------------------------------------------
+    require("NWS_GRID_CACHE_KEY" in web, "the NWS grid lookup is not cached")
+    require("nwsRequestChain" in web, "weather requests are not serialised")
+    require("function watersForBulkSync()" in web, "a sync still covers every water")
+
     # --- Behaviour suite ------------------------------------------------------
     require(APP_LOGIC_TESTS.is_file(), "app behaviour tests are missing")
     result = subprocess.run(
@@ -295,6 +362,19 @@ def main() -> int:
         sys.stderr.write(result.stderr)
     require(result.returncode == 0, "app behaviour tests failed")
     logic_summary = result.stdout.strip().splitlines()[-1] if result.stdout.strip() else "no output"
+
+    require(APP_DOM_TESTS.is_file(), "real-DOM tests are missing")
+    dom_result = subprocess.run(
+        ["node", str(APP_DOM_TESTS)],
+        capture_output=True,
+        text=True,
+        cwd=ROOT,
+    )
+    if dom_result.returncode != 0:
+        sys.stdout.write(dom_result.stdout)
+        sys.stderr.write(dom_result.stderr)
+    require(dom_result.returncode == 0, "real-DOM tests failed")
+    dom_summary = dom_result.stdout.strip().splitlines()[-1] if dom_result.stdout.strip() else "no output"
 
     require(STORE_TESTS.is_file(), "native storage tests are missing")
     store_result = subprocess.run(
@@ -319,13 +399,19 @@ def main() -> int:
     print("PASS: subscription disclosure, legal links, and localized-price bridge")
     if not args.skip_screenshots:
         print("PASS: regenerated Pro and IAP review screenshots")
-    print("PASS: version 1.0 build 9 and RevenueCat product identifiers")
+    print("PASS: version 1.0 build 10 and RevenueCat product identifiers")
     print("PASS: App Store metadata/IAP submission checklist")
     print("PASS: catch-log durability, export, and native container storage")
     print("PASS: subscription claims match shipped functionality")
     print("PASS: data provenance labelling and single-source coordinates")
     print("PASS: season, time-of-day, and flow inputs wired into the score")
+    print("PASS: no prototype or demo language in a shipping build")
+    print("PASS: delegated event binding, no per-render listener attachment")
+    print("PASS: catch-log and network text escaped before rendering")
+    print("PASS: agency-only report parsing, commercial reports link-only")
+    print("PASS: bounded weather request volume and cached NWS grid lookups")
     print(f"PASS: app behaviour tests ({logic_summary})")
+    print(f"PASS: real-DOM tests ({dom_summary})")
     print(f"PASS: native storage tests ({store_summary})")
     if args.online:
         print("PASS: public Privacy Policy and Apple Standard EULA URLs")

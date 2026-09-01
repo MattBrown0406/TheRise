@@ -141,6 +141,9 @@ vm.runInContext(`${scriptBody}\n;globalThis.__app = {
   valueProvenance, liveDisplayValue, hasLiveSource, hasGauge, clarityFor,
   predictedHatches, waterAppropriateHatches,
   getLogs, setLogs, logCsv, formatLogDate, normalizeLogEntry,
+  esc, attr, safeText, mentionsTerm, mentionsNoun,
+  passageAboutWater, extractSignalsForWater, watersForBulkSync,
+  localIntelSources, referenceLinks, reportLinks, clickActions,
   liveReports, PRO_FEATURES, screenRenderers
 };`, context);
 
@@ -280,6 +283,87 @@ for (const [id, render] of Object.entries(app.screenRenderers)) {
   assert(!markup.includes("undefined"), `${id} markup contains no undefined values`);
   assert(!markup.includes("[object Object]"), `${id} markup contains no stringified objects`);
 }
+
+group("HTML escaping (#3 round two)");
+assert(app.esc('<img src=x onerror="alert(1)">') === "&lt;img src=x onerror=&quot;alert(1)&quot;&gt;",
+  "esc neutralises tags and quotes");
+assert(app.esc('PMD "Sparkle" Dun #16') === "PMD &quot;Sparkle&quot; Dun #16", "esc keeps the whole string, quotes and all");
+assert(app.esc("Tom & Jerry") === "Tom &amp; Jerry", "esc escapes the ampersand first, not twice");
+assert(app.esc(null) === "" && app.esc(undefined) === "", "esc renders null and undefined as empty, never as text");
+assert(app.attr("a'b") === "a&#39;b", "attr escapes the single quote a value could break out of");
+assert(!/escapeHtmlMissing/.test(html) && /function esc\(/.test(html), "the app defines an escaping helper");
+assert(/\$\{esc\(entry\.notes\)\}/.test(html), "catch-log notes are escaped at the render site");
+assert(/\$\{esc\(entry\.fly\)\}/.test(html), "catch-log fly names are escaped at the render site");
+assert(/value="\$\{attr\(editingEntry\?\.fly \|\| defaultFly\)\}"/.test(html), "the edit form escapes the fly value");
+
+group("Network text is sanitised where it enters (#3 round two)");
+assert(app.safeText('<b>Sunny</b>') === "b Sunny /b", "safeText strips the characters that build markup");
+assert(app.safeText("Sunny then breezy") === "Sunny then breezy", "safeText leaves ordinary forecast text alone");
+assert(app.safeText("x".repeat(300)).length === 120, "safeText bounds the length it will accept");
+assert(/forecast: safeText\(/.test(html), "the NWS forecast string is sanitised at ingestion");
+
+group("Event handlers are bound once (#1 round two)");
+assert(!/^\s*bindDynamic\(\);/m.test(html), "bindDynamic and its 41 call sites are gone");
+assert(/function bindDelegatedEvents\(\)/.test(html), "a single delegated binder replaces it");
+assert((html.match(/bindDelegatedEvents\(\);/g) || []).length === 1, "the binder is called exactly once");
+assert(Array.isArray(app.clickActions) && app.clickActions.length > 20, "every click action is registered in one table");
+assert(app.clickActions.every(([selector, handler]) => typeof selector === "string" && typeof handler === "function"),
+  "every action is a selector paired with a handler");
+assert(new Set(app.clickActions.map(([selector]) => selector)).size === app.clickActions.length,
+  "no selector is registered twice");
+
+group("Local reports: agency only, no fallback prose (#2 and #6 round two)");
+assert(app.localIntelSources.every((source) => /^https:\/\/(www\.)?myodfw\.com\//.test(source.url)),
+  "only ODFW pages are fetched and parsed");
+assert(app.localIntelSources.every((source) => !("fallback" in source)),
+  "no source carries hand-written fallback prose any more");
+assert(!/confluenceflyshop|flyfishersplace|deschutescamp|deschutesriveralliance/.test(
+  JSON.stringify(app.localIntelSources)), "no commercial shop, guide or conservation page is scraped");
+assert(app.referenceLinks.some((link) => /confluenceflyshop/.test(link.url)), "the shops are still linked for the angler");
+assert(app.reportLinks.length === app.localIntelSources.length + app.referenceLinks.length,
+  "the Reports panel lists parsed sources and linked sources together");
+const unreadable = app.extractSignalsForWater(crooked, "Crooked River is fishing well with caddis.",
+  { label: "ODFW Central Zone", type: "agency", readable: false });
+assert(unreadable === null, "a source that could not be read yields no signals at all");
+
+group("Word-boundary matching (#2 round two)");
+assert(app.mentionsTerm("shop clearance goods", "clear") === false, "'clearance' is not a clarity report");
+assert(app.mentionsTerm("shop clearance goods", "good") === false, "'goods' is not a positive report");
+assert(app.mentionsTerm("the fish moved slowly", "slow") === false, "'slowly' is not a slow-fishing report");
+assert(app.mentionsTerm("fishing has been slow", "slow") === true, "an actual slow report still reads as one");
+assert(app.mentionsNoun("green drakes are on", "green drake") === true, "a plural hatch name is still the hatch");
+assert(app.mentionsNoun("caddis hatches at dusk", "caddis") === true, "caddis reads with or without a plural");
+
+group("Passage scoping (#2 round two)");
+const shopPage = "Metolius River: green drakes and caddis. Crooked River: flows are up and fishing is slow.";
+const metoliusWater = app.waters.find((water) => water.id === "metolius");
+const metoliusPassage = app.passageAboutWater(metoliusWater, shopPage);
+const crookedPassage = app.passageAboutWater(crooked, shopPage);
+assert(/green drake/i.test(metoliusPassage), "the Metolius passage holds the Metolius report");
+assert(!/green drake/i.test(crookedPassage), "the Crooked passage does not");
+assert(/flows are up/i.test(crookedPassage), "the Crooked passage holds the Crooked report");
+assert(app.passageAboutWater(crooked, "A page that names no water at all.") === "",
+  "a page that never names the water yields nothing");
+
+group("Sync scope (#5 round two)");
+const syncWaters = app.watersForBulkSync();
+assert(syncWaters.length <= 12, `a sync covers at most 12 waters (covers ${syncWaters.length})`);
+assert(syncWaters.length < app.waters.length, `a sync no longer pulls all ${app.waters.length} waters`);
+assert(app.waters.filter((water) => app.hasGauge(water)).every((water) => syncWaters.some((item) => item.id === water.id)),
+  "every gauged water is still covered by a sync");
+assert(/NWS_GRID_CACHE_KEY/.test(html), "the NWS grid a coordinate resolves to is cached on the device");
+assert(/nwsRequestChain/.test(html), "weather requests are serialised behind a queue");
+
+group("Shipping language (#4 round two)");
+assert(!/\bprototype\b/i.test(html), "the word prototype appears nowhere in the shipped file");
+assert(!/\bdemo\b/i.test(html), "the word demo appears nowhere in the shipped file");
+assert(/<title>The Rise - Central Oregon Fly Fishing<\/title>/.test(html), "the window title is a shipping title");
+
+group("Storage failures cannot wedge the app");
+assert(/function writeWaterCache\(cache\) \{\n      liveReports\.cache = cache;\n      try \{/.test(html),
+  "the water cache write is wrapped against a full quota");
+assert(/\} finally \{\n        \/\/ Without this, one thrown quota error left bulkStatus set/.test(html),
+  "a failed sync always clears bulkStatus");
 
 console.log(`\n${checks - failures}/${checks} checks passed`);
 process.exit(failures ? 1 : 0);

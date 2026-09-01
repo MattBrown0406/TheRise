@@ -2,15 +2,32 @@ import UIKit
 import WebKit
 import RevenueCat
 
+/// WKUserContentController holds its message handlers strongly. Registering the
+/// view controller directly made it own itself through the web view's
+/// configuration, so deinit never ran and the handlers were never removed. This
+/// proxy holds the real handler weakly and breaks that cycle.
+final class RiseScriptMessageProxy: NSObject, WKScriptMessageHandler {
+    private weak var target: WKScriptMessageHandler?
+
+    init(target: WKScriptMessageHandler) {
+        self.target = target
+    }
+
+    func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+        target?.userContentController(userContentController, didReceive: message)
+    }
+}
+
 final class RiseViewController: UIViewController, WKNavigationDelegate, WKScriptMessageHandler {
     private let photoSchemeHandler = RisePhotoSchemeHandler()
 
     private lazy var webView: WKWebView = {
         let configuration = WKWebViewConfiguration()
         configuration.defaultWebpagePreferences.allowsContentJavaScript = true
-        configuration.userContentController.add(self, name: "riseSubscription")
-        configuration.userContentController.add(self, name: "riseData")
-        configuration.userContentController.add(self, name: "riseStore")
+        let messageProxy = RiseScriptMessageProxy(target: self)
+        configuration.userContentController.add(messageProxy, name: "riseSubscription")
+        configuration.userContentController.add(messageProxy, name: "riseData")
+        configuration.userContentController.add(messageProxy, name: "riseStore")
         configuration.setURLSchemeHandler(photoSchemeHandler, forURLScheme: RisePhotoSchemeHandler.scheme)
 
         let webView = WKWebView(frame: .zero, configuration: configuration)
@@ -246,13 +263,30 @@ final class RiseViewController: UIViewController, WKNavigationDelegate, WKScript
         webView.evaluateJavaScript("window.riseLogRestore && window.riseLogRestore(\(encoded));")
     }
 
+    /// The only hosts the web layer may ask the container to fetch. The bridge
+    /// used to relay any http(s) URL the page handed it, which made it a general
+    /// purpose proxy sitting inside the app.
+    private static let allowedFetchHosts: Set<String> = [
+        "waterservices.usgs.gov",
+        "api.weather.gov",
+        "myodfw.com",
+        "www.myodfw.com"
+    ]
+
     private func handleDataFetchMessage(_ message: WKScriptMessage) {
         guard let payload = message.body as? [String: Any],
               let requestId = payload["id"] as? String,
               let urlString = payload["url"] as? String,
               let url = URL(string: urlString),
-              ["https", "http"].contains(url.scheme?.lowercased() ?? "") else {
-            sendDataFetchResult(id: (message.body as? [String: Any])?["id"] as? String ?? "", statusCode: 0, body: "", error: "Invalid data request.")
+              url.scheme?.lowercased() == "https",
+              let host = url.host?.lowercased(),
+              Self.allowedFetchHosts.contains(host) else {
+            sendDataFetchResult(
+                id: (message.body as? [String: Any])?["id"] as? String ?? "",
+                statusCode: 0,
+                body: "",
+                error: "Blocked data request."
+            )
             return
         }
 
