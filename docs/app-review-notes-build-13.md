@@ -71,10 +71,11 @@ An ODFW report URL in a note is a single unbreakable hundred-character word, and
 - The catch form no longer pre-fills a length of 17 inches, so the journal records a measurement only when the angler enters one.
 - A shipping build no longer describes itself as a "browser mockup" when the purchase bridge is unavailable.
 - `the-rise-river.png` is referenced nowhere. It has never been in the repository and is excluded by `.gitignore`, so every launch fired a 404 for it; the hero gradient is the design.
+- `PrivacyInfo.xcprivacy` is now in the app target and in the Resources build phase. The Rise does not track, collects nothing, transmits no user data, and the app target calls no required-reason API; catch photos, the journal and the last saved location stay in the app container.
 
 ## Verification
 
-`python3 scripts/verify-release-readiness.py --online` runs 31 release checks, including three test suites:
+`python3 scripts/verify-release-readiness.py --online` runs 33 release checks, including three test suites:
 
 - `scripts/test-app-logic.mjs` — 180 checks against the app script.
 - `scripts/test-app-dom.mjs` — 154 checks in real Chromium against the real file, including three device time zones, a 320pt viewport, every Pro price state, and a check that every asset the app references exists.

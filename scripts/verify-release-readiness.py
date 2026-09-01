@@ -632,6 +632,22 @@ def main() -> int:
         "the catch form pre-fills a length the angler never measured",
     )
 
+    # A privacy manifest is required for App Store submission. The app target
+    # tracks nothing, collects nothing, and calls no required-reason API, but
+    # the declaration has to be in the bundle and in the Resources build phase
+    # for App Store Connect to see it.
+    privacy_manifest = ROOT / "ios/TheRise/TheRise/PrivacyInfo.xcprivacy"
+    require(privacy_manifest.is_file(), "PrivacyInfo.xcprivacy is missing from the app target")
+    with privacy_manifest.open("rb") as handle:
+        manifest = plistlib.load(handle)
+    require(manifest.get("NSPrivacyTracking") is False, "the privacy manifest does not declare tracking as false")
+    for key in ("NSPrivacyTrackingDomains", "NSPrivacyCollectedDataTypes", "NSPrivacyAccessedAPITypes"):
+        require(key in manifest, f"the privacy manifest is missing {key}")
+    require(
+        "PrivacyInfo.xcprivacy in Resources" in project,
+        "the privacy manifest is not in the Resources build phase, so it will not ship",
+    )
+
     # --- Behaviour suite ------------------------------------------------------
     require(APP_LOGIC_TESTS.is_file(), "app behaviour tests are missing")
     result = subprocess.run(
@@ -705,6 +721,7 @@ def main() -> int:
     print("PASS: the Pro card fits every price state, search keeps the selection, a failed write changes nothing")
     print("PASS: Oregon time drives the score, nothing clips at 320pt, and every referenced asset exists")
     print("PASS: the rating breakdown is labelled, flow history shows real readings, no mockup language")
+    print("PASS: privacy manifest present, declared, and in the Resources build phase")
     print(f"PASS: app behaviour tests ({logic_summary})")
     print(f"PASS: real-DOM tests ({dom_summary})")
     print(f"PASS: native storage tests ({store_summary})")

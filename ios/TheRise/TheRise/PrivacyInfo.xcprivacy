@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!--
+	  The Rise does not track, does not collect, and does not transmit user data.
+	  Catch photos, the catch journal and the last saved location stay in the
+	  app container on the device. The only network traffic is anonymous reads
+	  of public USGS, NWS and ODFW endpoints, which carry no user data.
+
+	  The app target itself calls no required-reason APIs. Third-party SDKs
+	  (RevenueCat) ship their own signed privacy manifests, which Xcode
+	  aggregates into the app's privacy report at build time.
+	-->
+	<key>NSPrivacyTracking</key>
+	<false/>
+	<key>NSPrivacyTrackingDomains</key>
+	<array/>
+	<key>NSPrivacyCollectedDataTypes</key>
+	<array/>
+	<key>NSPrivacyAccessedAPITypes</key>
+	<array/>
+</dict>
+</plist>
