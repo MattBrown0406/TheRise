@@ -3928,10 +3928,39 @@
       visibility: hidden;
       pointer-events: none;
     }
+
+    /* The web view paints the whole window now, so the scroller runs underneath
+       the status bar and its glyphs land on whatever happens to be passing. On
+       the simulator the first frame of a fresh install put the clock on top of
+       the words "practical fly change" - legible colour, unreadable result.
+
+       The same treatment the tab bar already uses at the other end: content
+       slides under a blur instead of colliding with it. No tint, because this
+       strip is teal on two screens and paper on four, and a tint that suits one
+       ruins the other - blurring flat colour returns the same flat colour, so
+       at rest this is invisible on every screen.
+
+       Not hit-tested, which is load-bearing rather than tidy: elementFromPoint
+       skips pointer-events:none, so the chrome sampler keeps reading the colour
+       of what is actually behind the strip rather than of the strip itself. */
+    .status-bar-scrim {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      /* A phone with no notch reports no inset and still spends 20px of the
+         screen on glyphs. */
+      height: max(env(safe-area-inset-top), 20px);
+      pointer-events: none;
+      z-index: 30;
+      -webkit-backdrop-filter: blur(18px);
+      backdrop-filter: blur(18px);
+    }
   </style>
 </head>
 <body>
   <span class="safe-area-probe" aria-hidden="true"></span>
+  <div class="status-bar-scrim" aria-hidden="true"></div>
   <div class="app-shell">
     <main>
       <section id="today" class="view active"></section>

@@ -710,6 +710,18 @@ def main() -> int:
         not re.search(r"lightStatusBarScreens|darkTopBlocks", web),
         "the glyph colour is chosen from a list of screens again instead of being measured",
     )
+    # A legible glyph colour is not the same as a legible status bar: the
+    # scroller runs under it, and on the simulator the first frame of a fresh
+    # install put the clock across a Pro card's body text. The scrim has to stay
+    # unhittable or the sampler above reads the scrim instead of the screen.
+    scrim = re.search(r"\.status-bar-scrim\s*\{[^}]*\}", web)
+    require(scrim is not None, "nothing covers the status bar strip; scrolled content collides with the glyphs")
+    for token in ("position: fixed", "pointer-events: none", "backdrop-filter: blur", "max(env(safe-area-inset-top)"):
+        require(token in scrim.group(0), f"the status bar scrim no longer {token}")
+    require(
+        'class="status-bar-scrim"' in web,
+        "the status bar scrim is styled but never rendered",
+    )
 
     # --- Touch targets --------------------------------------------------------
     # 44x44pt is Apple's minimum, and this app is used standing in a river with

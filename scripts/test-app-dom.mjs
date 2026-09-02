@@ -1387,6 +1387,57 @@ try {
       `and the panel it scrolls to clears the notch ("${parked.skipLabel}" at ${parked.skipTop}px, ` +
       `eyebrow at ${parked.eyebrowTop}px, inset ${SAFE_AREA_TOP}px)`);
 
+    /* The panel clearing the notch does not mean the strip above it is empty.
+       The scroller runs the full height of the window, so whatever precedes the
+       panel passes under the glyphs - on the simulator, a Pro card's body text
+       with the clock printed across it. */
+    const scrim = await page.evaluate((inset) => {
+      const element = document.querySelector(".status-bar-scrim");
+      if (!element) return { missing: true };
+      const box = element.getBoundingClientRect();
+      const style = getComputedStyle(element);
+      // Something from the scroller really is passing through the strip here.
+      let intruding = null;
+      for (const node of document.querySelectorAll("#today *")) {
+        const text = (node.textContent || "").trim();
+        if (!text || node.children.length) continue;
+        const rect = node.getBoundingClientRect();
+        if (rect.top < inset && rect.bottom > 0 && rect.height > 0) {
+          intruding = text.slice(0, 40);
+          break;
+        }
+      }
+      /* pointer-events:none is what keeps the sampler honest: elementFromPoint
+         has to reach past the scrim to the thing whose colour decides the
+         glyphs, at both zones and both heights it samples. */
+      const sampled = [];
+      for (const x of [0.1, 0.9]) {
+        for (const fraction of [0.4, 0.6]) {
+          const hit = document.elementFromPoint(Math.round(window.innerWidth * x), Math.round(inset * fraction));
+          sampled.push(hit ? hit.className || hit.tagName : "none");
+        }
+      }
+      return {
+        left: Math.round(box.left),
+        width: Math.round(box.width),
+        screenWidth: window.innerWidth,
+        height: Math.round(box.height),
+        blurred: (style.backdropFilter || style.webkitBackdropFilter || "").includes("blur"),
+        zIndex: Number(style.zIndex),
+        contentZ: Number(getComputedStyle(document.querySelector("main")).zIndex) || 0,
+        hitsScrim: sampled.some((name) => String(name).includes("status-bar-scrim")),
+        intruding
+      };
+    }, SAFE_AREA_TOP);
+    assert(!scrim.missing && scrim.left === 0 && scrim.width === scrim.screenWidth && scrim.height >= SAFE_AREA_TOP,
+      `and the strip above it is covered edge to edge (${scrim.width}x${scrim.height}px at x=${scrim.left}, inset ${SAFE_AREA_TOP}px)`);
+    assert(scrim.blurred && scrim.zIndex > scrim.contentZ,
+      `by a blur that paints over the scroller (z-index ${scrim.zIndex} over ${scrim.contentZ})`);
+    assert(scrim.intruding !== null,
+      `which is not hypothetical - "${scrim.intruding}" is inside the strip at that scroll position`);
+    assert(!scrim.hitsScrim,
+      "and the scrim is never hit-tested, so the glyph colour is still read off what is behind it");
+
     // The scroll listener, not just the function: a finger scroll has to reach
     // the container without anything else being called.
     const live = await page.evaluate(() => new Promise((done) => {
