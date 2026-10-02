@@ -155,10 +155,12 @@ const screenshotClock = `
 <script id="app-store-screenshot-clock">
   // The app now scores on the real month and hour, so screenshots would change
   // depending on when they were generated. Pin the clock to a June morning so
-  // captures are deterministic. June evening is inside the prime window for the
-  // waters shown, so the screenshots depict a real, representative state.
+  // captures are deterministic. Mid-June the Lower Deschutes has caddis and PMD
+  // in season, which puts its prime window at 8-11 AM, so 9:15 AM shows the
+  // window open. The offset is explicit: a bare local time moved with the
+  // timezone of whichever machine ran the generator.
   (function () {
-    var FIXED = new Date("2026-06-15T19:15:00").getTime();
+    var FIXED = new Date("2026-06-15T09:15:00-07:00").getTime();
     var RealDate = Date;
     function PinnedDate() {
       if (arguments.length === 0) return new RealDate(FIXED);
@@ -270,7 +272,10 @@ const screenshotJs = `
       } else if (shot === "pro") {
         subscriptionPrices = fixturePrices;
         subscriptionLoading = false;
-        subscriptionMessage = "Purchases are ready in the iOS app build.";
+        // What the app itself shows a non-subscriber once the store answers.
+        // The review screenshot is checked against the device, so it must not
+        // carry a line the reviewer will never see.
+        subscriptionMessage = "The Rise Pro is not active yet.";
         billing = params.get("billing") === "monthly" ? "monthly" : "annual";
         if (typeof renderPro === "function") renderPro();
         setTab("pro");

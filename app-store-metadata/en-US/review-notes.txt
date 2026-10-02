@@ -39,7 +39,7 @@ To verify the catch-photo flow:
 2. Tap New Entry.
 3. Tap Choose File in the Photo field.
 4. Choose Camera or Photo Library and grant the requested permission.
-5. Select a photo and tap Save Entry. Water, species, fly and time are pre-filled from the current conditions; length, count and notes are optional.
+5. Select a photo and tap Save Catch. Water, species, fly and time are pre-filled from the current conditions; length, count and notes are optional.
 
 This build includes NSCameraUsageDescription, NSPhotoLibraryUsageDescription, and NSLocationWhenInUseUsageDescription.
 
