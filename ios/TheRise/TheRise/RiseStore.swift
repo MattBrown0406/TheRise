@@ -13,7 +13,7 @@ enum RiseStore {
     private static let logFileName = "catch-log.json"
 
     private static var baseDirectory: URL? {
-        guard let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else {
+        guard let support = supportDirectory else {
             return nil
         }
         let directory = support.appendingPathComponent(directoryName, isDirectory: true)
@@ -21,6 +21,17 @@ enum RiseStore {
             try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         }
         return directory
+    }
+
+    private static var supportDirectory: URL? {
+        #if !os(iOS)
+        // The behaviour tests run on a Mac, where FileManager ignores $HOME and
+        // the suite used to write into the developer's own Application Support.
+        if let root = ProcessInfo.processInfo.environment["RISE_STORE_ROOT"], !root.isEmpty {
+            return URL(fileURLWithPath: root, isDirectory: true)
+        }
+        #endif
+        return FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
     }
 
     private static var photosDirectory: URL? {

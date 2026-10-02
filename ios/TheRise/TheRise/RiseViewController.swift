@@ -168,7 +168,14 @@ final class RiseViewController: UIViewController, WKNavigationDelegate, WKScript
                 message: hasProAccess(result.customerInfo) ? "The Rise Pro is active." : "Purchase finished, but Pro access was not confirmed yet."
             )
         } catch {
-            sendSubscriptionResult(status: "error", message: "Purchase failed. Please try again.")
+            // The async purchase API reports a dismissed payment sheet by
+            // throwing purchaseCancelledError, not through userCancelled, so
+            // closing the sheet used to read "Purchase failed. Please try again."
+            if let code = error as? ErrorCode, code == .purchaseCancelledError {
+                sendSubscriptionResult(status: "cancelled", message: "Purchase cancelled.")
+            } else {
+                sendSubscriptionResult(status: "error", message: "Purchase failed. Please try again.")
+            }
         }
     }
 
@@ -356,7 +363,10 @@ final class RiseViewController: UIViewController, WKNavigationDelegate, WKScript
 
                 let (data, response) = try await URLSession.shared.data(for: request)
                 let statusCode = (response as? HTTPURLResponse)?.statusCode ?? 200
-                let body = String(data: data, encoding: .utf8) ?? ""
+                // Lossy, not optional: a page with one byte that is not UTF-8
+                // (a Windows-1252 apostrophe pasted into ODFW's CMS) used to
+                // arrive as an empty body reported as a success.
+                let body = String(decoding: data, as: UTF8.self)
                 let error = (200..<300).contains(statusCode) ? "" : "HTTP \(statusCode)"
                 sendDataFetchResult(id: requestId, statusCode: statusCode, body: body, error: error)
             } catch {
@@ -386,6 +396,15 @@ final class RiseViewController: UIViewController, WKNavigationDelegate, WKScript
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         restoreLogIfAvailable()
+    }
+
+    /// iOS kills the WebContent process under memory pressure - a journal full
+    /// of photos while the camera is open is enough. WebKit does not recover on
+    /// its own, so without this the app sat on a blank teal screen until it was
+    /// force-quit. Reloading restores the page, and didFinish then hands the
+    /// container's journal back to it.
+    func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
+        loadRiseApp()
     }
 
     func webView(

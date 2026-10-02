@@ -155,7 +155,9 @@ vm.runInContext(`${scriptBody}\n;globalThis.__app = {
   hoursSince, ageLabel, formatSavedTime, hydrateWaterCache, cacheReport,
   readUserLocation, saveUserLocation, watersSearchState, watersResultsMarkup,
   readingProvenanceWord, loggedReadingLabel, scoreSourceLabel,
-  READING_FRESH_HOURS, READING_EXPIRY_HOURS, LOCATION_EXPIRY_HOURS
+  READING_FRESH_HOURS, READING_EXPIRY_HOURS, LOCATION_EXPIRY_HOURS,
+  hatchSeasonMonths, hatchProfileFor, hatchProfiles, textFromHtml,
+  fetchUsgsReport, localIntelForWater
 };`, context);
 
 const app = context.__app;
@@ -607,6 +609,60 @@ assert(wrote === false, "a write with nowhere to go reports failure");
 assert(JSON.stringify(app.getLogs()) === beforeFailedWrite,
   `and the journal is unchanged in memory too (${app.getLogs().map((entry) => entry.fly).join(", ")})`);
 localStorage.removeItem("riseLogs");
+
+/* ------------------------------------------------------------------ */
+group("Caddis is in season from April, not just in the fall (#1 round six)");
+
+assert(app.hatchSeasonMonths("Caddis").join(",") === "4,5,6,7,8,9,10",
+  `"Caddis" keeps the Tan Caddis season (${app.hatchSeasonMonths("Caddis")})`);
+assert(app.hatchSeasonMonths("October Caddis").join(",") === "9,10,11",
+  `"October Caddis" keeps its own (${app.hatchSeasonMonths("October Caddis")})`);
+assert(app.hatchProfileFor("Dragonfly") === app.hatchProfiles.damsel, "a dragonfly hatch is not given the caddis box");
+
+/* ------------------------------------------------------------------ */
+group("ODFW is credited only with what it said (#2 round six)");
+
+assert(app.waterAppropriateHatches([], app.waters[0], { fallback: false }).length === 0,
+  "an empty source list gets no year-round filler");
+const intelWater = app.waters.find((water) => water.type !== "Lake");
+app.liveReports.cache = { localIntel: { byWater: { [intelWater.id]: { hatches: [], flies: [], cues: ["clear water"], sources: ["ODFW Central Zone"], scoreBoost: 0 } } } };
+assert(app.localIntelForWater(intelWater).hatches.length === 0,
+  `a cues-only passage credits ODFW with no hatches (${app.localIntelForWater(intelWater).hatches.join(", ")})`);
+app.liveReports.cache = null;
+
+/* ------------------------------------------------------------------ */
+group("A gauge with no data is not a measurement (#3 round six)");
+
+{
+  const series = (code, value, dateTime) => ({
+    variable: { variableCode: [{ value: code }], noDataValue: -999999 },
+    values: [{ value: [{ value, dateTime }] }]
+  });
+  const now = new Date().toISOString();
+  const weeksAgo = new Date(Date.now() - 21 * 86400000).toISOString();
+  const realFetch = context.fetchJsonWithTimeout;
+  context.fetchJsonWithTimeout = async () => ({ value: { timeSeries: [series("00060", "-999999", now), series("00010", "-999999", now)] } });
+  const iced = await app.fetchUsgsReport({ usgs: "14087400" });
+  assert(iced.flow === null && iced.waterTemp === null, `an iced gauge reports nothing (${iced.flow} / ${iced.waterTemp})`);
+  context.fetchJsonWithTimeout = async () => ({ value: { timeSeries: [series("00060", "4160", now), series("00010", "12", weeksAgo)] } });
+  const mixed = await app.fetchUsgsReport({ usgs: "14087400" });
+  assert(mixed.flow === "4,160 cfs" && app.flowFromText(mixed.flow) === 4160, `flow round-trips in any locale (${mixed.flow})`);
+  assert(mixed.waterTemp === null, `a three-week-old temperature is not current (${mixed.waterTemp})`);
+  context.fetchJsonWithTimeout = realFetch;
+}
+
+/* ------------------------------------------------------------------ */
+group("Report text is read the way it was written (#4 round six)");
+
+{
+  const decoded = app.textFromHtml("<p>Fishing has not been&nbsp;good. It isn&rsquo;t fishing well &amp; there is no&nbsp;caddis yet.</p>");
+  assert(!/&\w+;/.test(decoded), `entities are decoded (${decoded})`);
+  const clauses = app.passageClauses(decoded);
+  assert(clauses.every((clause) => clause.negated), `an entity does not split a negated clause (${JSON.stringify(clauses)})`);
+  assert(!app.passageClauses("fishing has been good with a few larger fish caught.")[0].negated, "\"a few\" is not a negation");
+  assert(app.passageClauses("few fish caught this week.")[0].negated, "\"few\" still is");
+  assert(app.mentionsNoun("stoneflies are out", "stonefly"), "stoneflies is the plural of stonefly");
+}
 
 console.log(`\n${checks - failures}/${checks} checks passed`);
 process.exit(failures ? 1 : 0);

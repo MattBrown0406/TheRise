@@ -22,8 +22,9 @@ swiftc -o "$build_dir/rise-store-tests" \
   "$root/ios/TheRise/TheRise/RiseStore.swift" \
   "$build_dir/main.swift"
 
-# Keep the test's writes out of the real Application Support directory.
+# Keep the test's writes out of the real Application Support directory. On
+# macOS FileManager ignores $HOME, so RiseStore takes RISE_STORE_ROOT there.
+mkdir -p "$build_dir/data" "$build_dir/tmp" "$build_dir/support"
 HOME="$build_dir" XDG_DATA_HOME="$build_dir/data" TMPDIR="$build_dir/tmp" \
-  mkdir -p "$build_dir/data" "$build_dir/tmp"
-HOME="$build_dir" XDG_DATA_HOME="$build_dir/data" TMPDIR="$build_dir/tmp" \
+  RISE_STORE_ROOT="$build_dir/support" \
   "$build_dir/rise-store-tests"

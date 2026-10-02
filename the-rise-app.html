@@ -3956,6 +3956,17 @@
       -webkit-backdrop-filter: blur(18px);
       backdrop-filter: blur(18px);
     }
+
+    /* iOS zooms the whole page into any text field set under 16px when it
+       takes focus, and WKWebView never zooms back out: searching the waters or
+       logging a catch left the app magnified, panning sideways, with the tab
+       bar adrift. The fields inherit 12-13px from their labels and toolbars,
+       so the floor is set here, over every component rule. */
+    input,
+    select,
+    textarea {
+      font-size: max(16px, 1em) !important;
+    }
   </style>
 </head>
 <body>
@@ -5268,7 +5279,11 @@
 
     function saveUserLocation(location) {
       userLocation = location;
-      localStorage.setItem(USER_LOCATION_KEY, JSON.stringify(location));
+      try {
+        localStorage.setItem(USER_LOCATION_KEY, JSON.stringify(location));
+      } catch {
+        // Full storage costs the next launch its location, not this one.
+      }
     }
 
     function waterCoords(water) {
@@ -5374,7 +5389,7 @@
       const report = liveReports.byWater[water.id];
       const live = flowFromText(report?.usgs?.flow);
       const reference = flowFromText(water.flow);
-      if (live === null || reference === null || reference <= 0) return null;
+      if (live === null || live < 0 || reference === null || reference <= 0) return null;
       return live / reference;
     }
 
@@ -5419,8 +5434,12 @@
       score += (seasonFitFor(water) - .5) * 1.4;
       score += (timeOfDayFit(water) - .5) * .8;
 
-      if (report?.status === "ready") {
-        const waterTemp = numberFromText(report.usgs?.waterTemp || water.temp);
+      // Expired readings are only purged at load, so an app left open past the
+      // limit kept scoring on them while the label said "seasonal reference".
+      if (report?.status === "ready" && reportFreshness(report) !== "expired") {
+        // Only a measured temperature moves the score. Falling back to the seed
+        // value scored every lake on a number nobody measured.
+        const waterTemp = numberFromText(report.usgs?.waterTemp);
         const wind = numberFromText(report.nws?.wind || water.wind);
         const forecast = `${report.nws?.forecast || ""}`.toLowerCase();
         score += flowScoreAdjustment(water);
@@ -5493,6 +5512,7 @@
       ["midge", "Chironomid"],
       ["callibaetis", "Callibaetis"],
       ["damsel", "Damsel"],
+      ["damselfly", "Damsel"],
       ["terrestrial", "Terrestrial"],
       ["hopper", "Terrestrial"],
       ["ant", "Terrestrial"],
@@ -5641,9 +5661,17 @@
         if (!months) return;
         register(bug.id, months);
         register(bug.name, months);
-        // "Tan Caddis" also answers to "Caddis"; "Terrestrials & Hoppers" to "Terrestrial".
+      });
+      // "Tan Caddis" also answers to "Caddis"; "Terrestrials & Hoppers" to
+      // "Terrestrial". A word never overwrites a key that is already taken:
+      // "October Caddis" used to re-register "caddis" as Sep-Nov, so every
+      // water listing Caddis lost its caddis hatch from April to August.
+      bugs.forEach((bug) => {
+        const months = parseSeasonMonths(bug.season);
+        if (!months) return;
         String(bug.name).split(/[\s&]+/).forEach((word) => {
-          if (word.length > 3) register(word, months);
+          const key = word.toLowerCase().replace(/[^a-z]/g, "");
+          if (word.length > 3 && !index[key]) register(word, months);
         });
       });
       register("terrestrial", parseSeasonMonths("Jul-Sep"));
@@ -5761,7 +5789,7 @@
     }
 
     function waterAppropriateHatches(hatches, water, options = {}) {
-      const { month = currentMonth() } = options;
+      const { month = currentMonth(), fallback = true } = options;
       const allowed = uniqueItems(
         hatches.map((hatch) => normalizeHatchForWater(hatch, water)).filter((hatch) => hatchAllowedForWater(hatch, water))
       );
@@ -5770,6 +5798,9 @@
         // Full-season hatches sort ahead of shoulder-season ones.
         return inSeason.sort((a, b) => hatchSeasonFit(b, month) - hatchSeasonFit(a, month));
       }
+      // A source's own list has no fallback: padding an empty ODFW passage with
+      // Midge/Leech/Baitfish credited ODFW with hatches it never mentioned.
+      if (!fallback) return [];
       // Nothing on this water is in season. Fall back to the patterns that always
       // work rather than showing an empty plan or an out-of-season hatch.
       const yearRound = ["Midge", "Leech", "Baitfish"]
@@ -5787,7 +5818,7 @@
       if (!intel) return { hatches: [], flies: [], sources: [], cues: [], scoreBoost: 0 };
       return {
         ...intel,
-        hatches: waterAppropriateHatches(intel.hatches || [], water),
+        hatches: waterAppropriateHatches(intel.hatches || [], water, { fallback: false }),
         flies: waterAppropriateFlies(intel.flies || [], water)
       };
     }
@@ -5802,13 +5833,13 @@
 
     function predictedHatches(water) {
       const report = liveReports.byWater[water.id];
-      const waterTemp = numberFromText(report?.usgs?.waterTemp || water.temp);
+      const waterTemp = numberFromText(report?.usgs?.waterTemp);
       const wind = numberFromText(report?.nws?.wind || water.wind);
       const forecast = `${report?.nws?.forecast || ""}`.toLowerCase();
       const hatches = [...water.hatch];
       const intel = localIntelForWater(water);
       hatches.unshift(...intel.hatches);
-      if (report?.status === "ready") {
+      if (report?.status === "ready" && reportFreshness(report) !== "expired") {
         if (water.type === "Lake") {
           if (waterTemp !== null && waterTemp >= 54) hatches.unshift("Damsel", "Callibaetis");
           if (wind !== null && wind <= 8) hatches.unshift("Chironomid");
@@ -6342,6 +6373,16 @@
         .replace(/<script[\s\S]*?<\/script>/gi, " ")
         .replace(/<style[\s\S]*?<\/style>/gi, " ")
         .replace(/<[^>]+>/g, " ")
+        // Entities are decoded before the text is split into clauses. The ";"
+        // that ends "&nbsp;" or "&rsquo;" counts as a full stop, so "has not
+        // been&nbsp;good" was read as a negation followed by a separate,
+        // positive "good", and "isn&rsquo;t" was not a contraction at all.
+        .replace(/&(?:nbsp|#0*160|#x0*a0);/gi, " ")
+        .replace(/&(?:rsquo|lsquo|apos|#0*39|#0*8217|#0*8216|#x0*27|#x0*2019|#x0*2018);/gi, "'")
+        .replace(/&(?:ldquo|rdquo|quot|#0*34|#0*8220|#0*8221|#x0*22|#x0*201c|#x0*201d);/gi, '"')
+        .replace(/&(?:ndash|mdash|#0*8211|#0*8212|#x0*2013|#x0*2014);/gi, " - ")
+        .replace(/&amp;/gi, "&")
+        .replace(/&#?[a-z0-9]+;/gi, " ")
         .replace(/\s+/g, " ")
         .trim();
     }
@@ -6392,7 +6433,9 @@
     // above, where allowing it would put "good" back inside "goods".
     function mentionsNoun(text, term) {
       const escaped = String(term).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      return new RegExp(`(^|[^a-z0-9])${escaped}(?:e?s)?([^a-z0-9]|$)`, "i").test(text);
+      // "stonefly" pluralises to "stoneflies", not "stoneflys".
+      const noun = /[^aeiou]y$/i.test(term) ? `${escaped.slice(0, -1)}(?:y|ies)` : `${escaped}(?:e?s)?`;
+      return new RegExp(`(^|[^a-z0-9])${noun}([^a-z0-9]|$)`, "i").test(text);
     }
 
     /* ---------------------------------------------------------------------
@@ -6463,8 +6506,11 @@
         }
         const clause = part.trim();
         if (!clause) continue;
+        // "few" denies ("few fish caught"); "a few" affirms ("a few larger
+        // fish caught"), and used to turn a good report into a bad one.
+        const negationText = clause.replace(/\b(?:quite )?a few\b/gi, " ");
         const ownNegation = NEGATION_CONTRACTION.test(clause)
-          || NEGATION_TERMS.some((term) => mentionsTerm(clause, term));
+          || NEGATION_TERMS.some((term) => mentionsTerm(negationText, term));
         // "There is no caddis, mayfly, or stonefly activity" splits on the
         // commas, and only the first fragment carries the "no". The tail
         // fragments have no verb of their own, so they are the rest of the
@@ -6653,6 +6699,16 @@
         });
       }
 
+      const cache = liveReports.cache || readWaterCache();
+      // No source could be read - no signal in the canyon. That says nothing
+      // about the water, so the last good intel stands until it expires rather
+      // than being replaced with an empty read stamped as current.
+      if (!sourceResults.some((result) => result.readable) && cache.localIntel?.updatedAt) {
+        cache.localIntel = { ...cache.localIntel, errors };
+        writeWaterCache(cache);
+        return cache.localIntel;
+      }
+
       const byWater = {};
       waters.forEach((water) => {
         let intel = { hatches: [], flies: [], cues: [], sources: [], scoreBoost: 0 };
@@ -6663,7 +6719,6 @@
         if (intel.sources.length || intel.hatches.length || intel.flies.length) byWater[water.id] = intel;
       });
 
-      const cache = liveReports.cache || readWaterCache();
       cache.localIntel = {
         byWater,
         sources: sourceResults.map(({ label, type, url, readable }) => ({ label, type, url, readable })),
@@ -6675,6 +6730,8 @@
       writeWaterCache(cache);
       return cache.localIntel;
     }
+
+    const USGS_MAX_READING_AGE_HOURS = 24;
 
     async function fetchUsgsReport(meta) {
       if (!meta.usgs) return null;
@@ -6688,14 +6745,25 @@
         const code = series?.variable?.variableCode?.[0]?.value;
         const latest = latestUsgsValue(series);
         if (!latest) return;
-        observedAt = latest.dateTime || observedAt;
-        if (code === "00060") {
-          const cfs = Number(latest.value);
-          if (Number.isFinite(cfs)) flow = `${cfs.toLocaleString()} cfs`;
+        // An iced, broken or seasonally retired sensor reports USGS's no-data
+        // value (-999999), which used to show as "-999,999 cfs" and a water
+        // temperature of -1799966 F, both labelled measured.
+        const raw = Number(latest.value);
+        const noData = Number(series?.variable?.noDataValue ?? -999999);
+        if (!Number.isFinite(raw) || raw === noData || raw <= -999) return;
+        // siteStatus=all returns a sensor's last value however old it is. A
+        // reading from weeks ago is not a current measurement.
+        const age = hoursSince(latest.dateTime);
+        if (age === null || age > USGS_MAX_READING_AGE_HOURS) return;
+        if (code === "00060" && raw >= 0) {
+          // Formatted en-US so flowFromText can read it back: a German-region
+          // phone wrote 4160 as "4.160" and parsed it as 4.16 cfs.
+          flow = `${raw.toLocaleString("en-US")} cfs`;
+          observedAt = latest.dateTime;
         }
-        if (code === "00010") {
-          const tempF = fahrenheitFromC(latest.value);
-          if (tempF) waterTemp = `${tempF} F`;
+        if (code === "00010" && raw > -5 && raw < 40) {
+          waterTemp = `${fahrenheitFromC(raw)} F`;
+          observedAt = latest.dateTime;
         }
       });
       return { site: meta.usgs, flow, waterTemp, observedAt: safeText(observedAt, 40), url };
@@ -6772,7 +6840,19 @@
       }
       const pointUrl = `https://api.weather.gov/points/${nwsGridKey(meta.lat, meta.lon)}`;
       const forecastUrl = await nwsForecastUrlFor(meta.lat, meta.lon);
-      const forecastJson = await fetchNwsForecast(forecastUrl);
+      let forecastJson;
+      try {
+        forecastJson = await fetchNwsForecast(forecastUrl);
+      } catch (error) {
+        // The grid is cached forever, so a grid NWS has since moved would 404
+        // on every request for good. A 404 drops it to be looked up again.
+        if (/\b404\b/.test(error?.message || "")) {
+          const { [nwsGridKey(meta.lat, meta.lon)]: _dropped, ...rest } = nwsGridCache;
+          nwsGridCache = rest;
+          writeStoredObject(NWS_GRID_CACHE_KEY, nwsGridCache);
+        }
+        throw error;
+      }
       const period = forecastJson?.properties?.periods?.[0];
       const airTemp = Number(period?.temperature);
       return {
@@ -6784,9 +6864,35 @@
       };
     }
 
-    async function refreshLiveReport(waterId, options = {}) {
-      const { mode = "manual", render = true } = options;
+    const liveRefreshInFlight = new Map();
+
+    /* One refresh per water at a time. A card opened while the bulk sync had
+       the same water in a later batch ran two refreshes side by side, and the
+       one that failed last wrote its error - or the report it had captured
+       before either started - over the one that had just succeeded. */
+    function refreshLiveReport(waterId, options = {}) {
       const water = waters.find((item) => item.id === waterId) || getWater();
+      // A water with no feed has nothing live to fetch. Asking NWS anyway put
+      // live air and wind on screen tagged "reference", beside a notice saying
+      // no forecast feed was mapped, and fed them into the score.
+      if (!hasLiveSource(water)) return Promise.resolve(false);
+      const running = liveRefreshInFlight.get(water.id);
+      if (running) {
+        return options.render === false
+          ? running
+          : running.then((result) => {
+            renderScreens("today", "waters", "trip");
+            return result;
+          });
+      }
+      const run = refreshLiveReportOnce(water, options)
+        .finally(() => liveRefreshInFlight.delete(water.id));
+      liveRefreshInFlight.set(water.id, run);
+      return run;
+    }
+
+    async function refreshLiveReportOnce(water, options = {}) {
+      const { mode = "manual", render = true } = options;
       const meta = liveMetaFor(water);
       const previous = liveReports.byWater[water.id];
       liveReports.byWater[water.id] = previous?.status === "ready"
@@ -6822,12 +6928,19 @@
           return false;
         }
 
+        /* Half a refresh is not a reason to forget the other half. A USGS
+           timeout while NWS answered used to cache usgs: null over a gauge
+           reading taken an hour earlier, and the flow fell back to its
+           reference value. The missing half is carried over - but only while
+           it is still fresh, because the report is re-stamped as current when
+           it is cached. */
+        const carryOver = previous?.status === "ready" && reportFreshness(previous) === "fresh";
         cacheReport(water.id, {
           status: "ready",
           meta,
           updatedAt: zonedTimeLabel(),
-          usgs,
-          nws,
+          usgs: usgs || (carryOver && meta.usgs ? previous.usgs || null : null),
+          nws: nws || (carryOver ? previous.nws || null : null),
           errors
         }, mode);
       } catch (error) {
@@ -6859,7 +6972,10 @@
         ...savedWaterIds,
         ...recentWaterIds,
         ...waters.filter((water) => hasGauge(water)).map((water) => water.id)
-      ]).slice(0, BULK_SYNC_MAX_WATERS);
+      ].filter((id) => {
+        const water = waterById(id);
+        return Boolean(water && hasLiveSource(water));
+      })).slice(0, BULK_SYNC_MAX_WATERS);
       return ids.map((id) => waters.find((water) => water.id === id)).filter(Boolean);
     }
 
@@ -7538,8 +7654,8 @@
         <div class="line-row"><span>Gauge</span><b>${usgsLabel}${report.usgs?.flow ? ` - ${report.usgs.flow}` : ""}${report.usgs?.waterTemp ? ` - ${report.usgs.waterTemp}` : ""}</b></div>
         <div class="line-row"><span>Forecast</span><b>${report.nws?.air || "Air n/a"} - ${report.nws?.wind || "Wind n/a"}${report.nws?.forecast ? ` - ${report.nws.forecast}` : ""}</b></div>
         <div class="line-row"><span>Local intel</span><b>${intel.sources?.length ? `${intel.sources.join(" + ")} - ${uniqueItems([...intel.hatches, ...intel.flies]).slice(0, 4).join(", ")}` : `Daily scrub saved ${intelUpdated}`}</b></div>
-        ${(report.errors || []).length ? `<div class="line-row"><span>Gaps</span><b>${report.errors.join(" / ")}</b></div>` : ""}
-        ${report.refreshError ? `<div class="line-row"><span>Last update</span><b>${report.refreshError}</b></div>` : ""}
+        ${(report.errors || []).length ? `<div class="line-row"><span>Gaps</span><b>${esc(report.errors.join(" / "))}</b></div>` : ""}
+        ${report.refreshError ? `<div class="line-row"><span>Last update</span><b>${esc(report.refreshError)}</b></div>` : ""}
       ` : `
         <div class="line-row"><span>Gauge</span><b>${usgsLabel}</b></div>
         <div class="line-row"><span>Forecast point</span><b>${meta.lat.toFixed(2)}, ${meta.lon.toFixed(2)}</b></div>
@@ -7549,7 +7665,7 @@
           <div class="panel-head">
             <div>
               <h3>Saved Report Inputs</h3>
-              <p class="subtle">${updated} - ${status === "loading" ? "Loading live sources..." : liveRecommendationReason(water)}</p>
+              <p class="subtle">${updated} - ${status === "loading" ? "Loading live sources..." : esc(liveRecommendationReason(water))}</p>
             </div>
             <button class="ghost-btn" data-refresh-live="${water.id}">${status === "loading" || status === "refreshing" ? "Updating..." : "Update"}</button>
           </div>
@@ -7573,7 +7689,8 @@
       if (key.includes("october")) return hatchProfiles.octoberCaddis;
       if (key.includes("sally")) return hatchProfiles.yellowSally;
       if (key.includes("caddis") || key.includes("sedge")) return hatchProfiles.caddis;
-      if (key.includes("damsel")) return hatchProfiles.damsel;
+      // Odonata: dragonfly nymphs fish like damsels, not like caddis on a lake.
+      if (key.includes("damsel") || key.includes("dragonfly")) return hatchProfiles.damsel;
       if (key.includes("terrestrial") || key.includes("hopper") || key.includes("ant") || key.includes("beetle") || key.includes("cricket")) return hatchProfiles.terrestrial;
       if (key.includes("baitfish") || key.includes("minnow") || key.includes("sculpin") || key.includes("streamer") || key.includes("clouser") || key.includes("muddler") || key.includes("zonker") || key.includes("kreelex")) return hatchProfiles.baitfish;
       if (key.includes("leech") || key.includes("bugger")) return hatchProfiles.leech;
@@ -7705,7 +7822,7 @@
             <div class="line-row"><span>Source</span><b>${liveSource}</b></div>
           </div>
           <div>
-            <div class="compact-note"><b>Why this set:</b> ${liveRecommendationReason(water)}</div>
+            <div class="compact-note"><b>Why this set:</b> ${esc(liveRecommendationReason(water))}</div>
             <div class="compact-fly-row">${flies.slice(0, 4).map((fly) => flyCard(fly, hatches.join(" / "), flyRecommendationReason(water, fly), water)).join("")}</div>
           </div>
         </div>
@@ -8095,7 +8212,7 @@
           </section>
 
           <div class="trip-action-row">
-            <button class="primary-btn" data-refresh-live="${water.id}">Update</button>
+            ${hasLiveSource(water) ? `<button class="primary-btn" data-refresh-live="${attr(water.id)}">Update</button>` : ""}
             <button class="ghost-btn" data-quick-log="${water.id}">Log Catch</button>
             <button class="ghost-btn" data-tab-jump="waters">All Waters</button>
           </div>
@@ -8527,7 +8644,14 @@
         readingProvenanceWord(entry, "temp"),
         entry.notes || ""
       ]);
-      const escape = (value) => `"${String(value).replace(/"/g, '""')}"`;
+      // Spreadsheets evaluate a quoted field that starts with = + - @ as a
+      // formula, so a note like "- fished the seam" exported as #NAME? and
+      // "=HYPERLINK(...)" became a live link. A leading apostrophe keeps it text.
+      const escape = (value) => {
+        let text = String(value);
+        if (/^[=+\-@\t\r]/.test(text)) text = `'${text}`;
+        return `"${text.replace(/"/g, '""')}"`;
+      };
       return [columns, ...rows].map((row) => row.map(escape).join(",")).join("\r\n");
     }
 
@@ -8582,7 +8706,17 @@
       // No catches means no top fly. It used to read "Caddis" on an empty journal.
       const topFly = topFlyEntry ? flyFamilyName(topFlyEntry) : "-";
       const editingEntry = editingLogIndex !== null ? logs[editingLogIndex] : null;
-      const selectedWater = editingEntry?.waterId ? (waters.find((water) => water.id === editingEntry.waterId) || getWater()) : getWater();
+      // An entry keyed only by name (older builds, restored backups) or by a
+      // water that no longer exists must keep its water through an edit. The
+      // select used to fall back to the active water, so adding a note moved
+      // the catch to whichever river was last tapped.
+      const editingWater = editingEntry
+        ? (waterById(editingEntry.waterId) || waters.find((water) => water.name === editingEntry.waterName) || null)
+        : null;
+      const keepEditingWater = Boolean(editingEntry) && !editingWater;
+      const selectedWater = editingWater || getWater();
+      const editingFish = editingEntry?.fish || "";
+      const keepEditingFish = Boolean(editingFish) && !nativeFish.includes(editingFish);
       const defaultFly = selectedWaterFly(selectedWater) || selectedWater.flies[0];
       $("#log").innerHTML = `
         <div class="log-screen">
@@ -8615,15 +8749,15 @@
                 </div>
               </div>
               <label class="photo-input">Photo
-                <input name="photo" type="file" accept="image/*" capture="environment">
+                <input name="photo" type="file" accept="image/*">
               </label>
               ${logSaveMessage ? `<p class="subtle" role="alert" style="color:#8b2c20">${logSaveMessage}</p>` : ""}
               <div class="form-grid">
                 <label>Water
-                  <select name="water">${waters.map((water) => `<option value="${water.id}" ${water.id === selectedWater.id ? "selected" : ""}>${water.name}</option>`).join("")}</select>
+                  <select name="water">${keepEditingWater ? `<option value="" selected>${esc(editingEntry.waterName || "Unknown water")}</option>` : ""}${waters.map((water) => `<option value="${attr(water.id)}" ${!keepEditingWater && water.id === selectedWater.id ? "selected" : ""}>${esc(water.name)}</option>`).join("")}</select>
                 </label>
                 <label>Native fish
-                  <select name="fish">${nativeFish.map((fish) => `<option value="${attr(fish)}" ${fish === (editingEntry?.fish || "Redband Trout") ? "selected" : ""}>${esc(fish)}</option>`).join("")}</select>
+                  <select name="fish">${keepEditingFish ? `<option value="${attr(editingFish)}" selected>${esc(editingFish)}</option>` : ""}${nativeFish.map((fish) => `<option value="${attr(fish)}" ${!keepEditingFish && fish === (editingFish || "Redband Trout") ? "selected" : ""}>${esc(fish)}</option>`).join("")}</select>
                 </label>
                 <label>Length
                   <input name="length" type="number" min="0" step="0.25" inputmode="decimal" placeholder="Optional" value="${attr(editingEntry?.length || "")}">
@@ -8769,7 +8903,13 @@
       // Every reply ends whatever action was in flight, including a cancel and
       // an error, so a failed purchase cannot arm the welcome panel later.
       subscriptionActionPending = null;
-      proAccessActive = Boolean(result?.active);
+      // Only a definite answer changes access. An error or a cancelled sheet
+      // says nothing about the subscription, and treating it as "inactive"
+      // locked an active subscriber out of Pro after a Restore tapped with no
+      // signal on the river.
+      if (result?.status === "active" || result?.status === "inactive") {
+        proAccessActive = Boolean(result.active);
+      }
       subscriptionLoading = false;
       if (result?.prices?.monthly) subscriptionPrices.monthly = result.prices.monthly;
       if (result?.prices?.annual) subscriptionPrices.annual = result.prices.annual;
@@ -8891,7 +9031,14 @@
 
     function startDailyOpenSyncWatcher() {
       document.addEventListener("visibilitychange", () => {
-        if (!document.hidden) checkDailyOpenSync();
+        if (document.hidden) return;
+        checkDailyOpenSync();
+        // A subscription can lapse, renew, or be bought on another device while
+        // the app sits in memory. Re-ask quietly on the way back in, unless a
+        // purchase or restore is already waiting on its own reply.
+        if (hasSubscriptionBridge() && !subscriptionLoading && !subscriptionActionPending) {
+          postSubscriptionMessage({ action: "status" });
+        }
       });
       window.addEventListener("online", checkDailyOpenSync);
     }
@@ -9149,6 +9296,7 @@
         activeWaterFlyByWater[water.id] = liveRecommendedFlies(water)[0];
         editingLogIndex = null;
         logFormOpen = true;
+        logSaveMessage = "";
         renderLog();
         activateTab("log");
         requestAnimationFrame(() => $("#logForm")?.scrollIntoView({ behavior: "smooth", block: "start" }));
@@ -9235,11 +9383,21 @@
         const index = Number(element.dataset.deleteLog);
         const logs = getLogs();
         if (!logs[index]) return;
+        // The photo goes only once the journal no longer points at it, and the
+        // edit form's index only moves if the entry actually left the journal.
+        if (!setLogs(logs.filter((_, itemIndex) => itemIndex !== index))) {
+          logSaveMessage = "That catch could not be deleted on this device. Free up storage and try again.";
+          renderLog();
+          return;
+        }
         deleteStoredPhoto(logs[index]);
-        setLogs(logs.filter((_, itemIndex) => itemIndex !== index));
         if (editingLogIndex === index) {
           editingLogIndex = null;
           logFormOpen = false;
+        } else if (editingLogIndex !== null && editingLogIndex > index) {
+          // Every entry after the deleted one moves up a place. An open edit
+          // form left on the old index would save onto the next catch.
+          editingLogIndex -= 1;
         }
         renderLog();
       }],
@@ -9395,9 +9553,29 @@
 
     async function writeLogEntry(logForm) {
       const form = new FormData(logForm);
-      const water = waters.find((item) => item.id === form.get("water")) || getWater();
-      const existingEntry = editingLogIndex !== null ? getLogs()[editingLogIndex] : null;
+      const waterField = form.get("water");
+      const water = waters.find((item) => item.id === waterField) || getWater();
+      const existingEntry = editingLogIndex !== null ? getLogs()[editingLogIndex] || null : null;
+      if (editingLogIndex !== null && !existingEntry) {
+        editingLogIndex = null;
+        logFormOpen = false;
+        logSaveMessage = "The catch you were editing is no longer in the journal. Nothing was saved.";
+        renderLog();
+        return;
+      }
       const capturedPhoto = await readPhotoFile(form.get("photo"));
+      // Reading the photo yields, and a Delete or a restore can move every
+      // index while it does. The entry is found again by identity - setLogs
+      // keeps the same objects - so an edit can never land on another catch.
+      const logs = getLogs();
+      const editIndex = existingEntry ? logs.indexOf(existingEntry) : -1;
+      if (existingEntry && editIndex === -1) {
+        editingLogIndex = null;
+        logFormOpen = false;
+        logSaveMessage = "That catch changed while it was being saved. Nothing was overwritten.";
+        renderLog();
+        return;
+      }
       // A new photo replaces the old one, but the old file is not removed until
       // the journal write has actually succeeded. Deleting first meant a quota
       // failure destroyed the photo while the entry still pointed at it.
@@ -9432,29 +9610,36 @@
         tempSource: valueProvenance(water, "temp"),
         ...photoFields
       };
-      const logs = getLogs();
       let nextLogs;
-      if (editingLogIndex !== null) {
+      if (existingEntry) {
         // An edit changes what the angler typed. It must never restate the
         // conditions: the readings belong to the moment the fish was caught,
         // and rewriting them with today's numbers silently converted a real
         // measurement into whatever the app happens to be showing now.
-        const original = logs[editingLogIndex];
+        const original = existingEntry;
         const preservedReadings = {};
+        // An entry saved without readings keeps none: stamping today's numbers
+        // (from whichever water is selected) onto an old catch is the same lie.
         for (const key of ["flow", "flowSource", "temp", "tempSource"]) {
-          if (original[key] !== undefined) preservedReadings[key] = original[key];
+          preservedReadings[key] = original[key];
         }
         const edited = {
           ...original,
           ...entry,
           ...preservedReadings,
-          loggedAt: original.loggedAt || entry.loggedAt,
+          // The edit form offers an entry's unresolvable water as a blank
+          // value; leaving it selected keeps the water the catch was logged on.
+          ...(waterField ? {} : { waterName: original.waterName, waterId: original.waterId }),
+          // An entry from before dates carried a year has loggedAt "" and is
+          // marked approximate. Filling it with the edit time would replace
+          // the day it was caught with the day the note was added.
+          loggedAt: original.loggedAt,
           date: original.date || entry.date
         };
         // Built as a new array rather than written into the one getLogs handed
         // back: that array *is* the live cache, so editing it in place applied
         // the edit before the write was attempted and survived a failure.
-        nextLogs = logs.map((item, itemIndex) => (itemIndex === editingLogIndex ? edited : item));
+        nextLogs = logs.map((item, itemIndex) => (itemIndex === editIndex ? edited : item));
       } else {
         // No cap. The journal is the user's own record and is never truncated.
         nextLogs = [entry, ...logs];
