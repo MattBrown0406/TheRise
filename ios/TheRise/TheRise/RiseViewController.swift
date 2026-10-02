@@ -257,7 +257,12 @@ final class RiseViewController: UIViewController, WKNavigationDelegate, WKScript
         switch action {
         case "savePhoto":
             guard let identifier = payload["id"] as? String, let body = payload["body"] as? String else { return }
-            RiseStore.savePhoto(identifier: identifier, dataURL: body)
+            let ok = RiseStore.savePhoto(identifier: identifier, dataURL: body)
+            let result: [String: Any] = ["id": identifier, "ok": ok]
+            if let data = try? JSONSerialization.data(withJSONObject: result),
+               let json = String(data: data, encoding: .utf8) {
+                webView.evaluateJavaScript("window.risePhotoSaveResult && window.risePhotoSaveResult(\(json));")
+            }
         case "deletePhoto":
             guard let identifier = payload["id"] as? String else { return }
             RiseStore.deletePhoto(identifier: identifier)
@@ -299,7 +304,12 @@ final class RiseViewController: UIViewController, WKNavigationDelegate, WKScript
     }
 
     private func presentExport(csv: String) {
-        guard let url = RiseStore.exportURL(csv: csv) else { return }
+        guard let url = RiseStore.exportURL(csv: csv) else {
+            let alert = UIAlertController(title: "Export failed", message: "The catch log could not be written. Free up device storage and try again.", preferredStyle: .alert)
+            alert.addAction(UIAlertAction(title: "OK", style: .default))
+            present(alert, animated: true)
+            return
+        }
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
             let controller = UIActivityViewController(activityItems: [url], applicationActivities: nil)

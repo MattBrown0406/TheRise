@@ -1756,6 +1756,271 @@ try {
     await page.close();
   }
 
+  group("Launch and storage failure audit");
+  {
+    const page = await openApp(browser, { before: () => {
+      window.__launchErrors = [];
+      window.addEventListener("error", event => window.__launchErrors.push(event.message));
+      window.webkit = { messageHandlers: { riseSubscription: { postMessage() { throw new Error("bridge disconnected"); } } } };
+    } });
+    const state = await page.evaluate(() => ({ errors: window.__launchErrors, loading: subscriptionLoading, requests: window.__requests.length }));
+    assert(state.errors.length === 0 && !state.loading && state.requests > 0,
+      `a throwing subscription bridge cannot abort startup or wedge checkout (${JSON.stringify(state)})`);
+    await page.close();
+  }
+  {
+    const page = await openApp(browser);
+    const state = await page.evaluate(() => {
+      riseSubscriptionResult({ status: "error", message: '<img id="bridge-injection" src=x onerror="window.__injected=1">' });
+      return { injected: !!document.querySelector("#bridge-injection"), text: document.querySelector(".pro-status").textContent };
+    });
+    assert(!state.injected && state.text.includes("<img"), "subscription error messages render as text, never markup");
+    const failed = await page.evaluate(() => {
+      setLogs([{ fly: "KEEP" }]);
+      const set = Storage.prototype.setItem;
+      Storage.prototype.setItem = () => { throw new Error("quota"); };
+      window.webkit = { messageHandlers: { riseStore: { postMessage() { throw new Error("disconnected"); } } } };
+      const saved = setLogs([{ fly: "LOST" }]);
+      Storage.prototype.setItem = set;
+      return { saved, fly: getLogs()[0].fly };
+    });
+    assert(!failed.saved && failed.fly === "KEEP", "a throwing storage bridge plus full quota does not claim a durable save");
+    const bridgeFailures = await page.evaluate(async () => {
+      let photoRejected = false;
+      try { await storePhoto("data:image/jpeg;base64,AA=="); } catch { photoRejected = true; }
+      return { photoRejected, exportMessage: exportLog() };
+    });
+    assert(bridgeFailures.photoRejected && /failed/i.test(bridgeFailures.exportMessage),
+      "throwing native photo/export bridges do not report success");
+    await page.close();
+  }
+  {
+    const page = await openApp(browser, { before: () => {
+      window.__launchErrors = [];
+      window.addEventListener("error", event => window.__launchErrors.push(event.message));
+      localStorage.setItem("riseWaterReports.v1", JSON.stringify({ byWater: { "lower-deschutes": { errors: "broken", nws: { wind: {} } } }, localIntel: { byWater: { "lower-deschutes": { hatches: {}, flies: {}, sources: {} } } } }));
+    } });
+    const state = await page.evaluate(() => {
+      let navigationError = "";
+      try { for (const tab of ["today", "waters", "trip", "bugs", "log", "pro"]) activateTab(tab); }
+      catch (error) { navigationError = error.message; }
+      return { errors: window.__launchErrors, navigationError };
+    });
+    assert(!state.errors.length && !state.navigationError, `malformed cached reports cannot break startup/navigation (${JSON.stringify(state)})`);
+    const flow = await page.evaluate(() => {
+      localStorage.setItem(FLOW_HISTORY_KEY, JSON.stringify({ "lower-deschutes": [null, { f: {} }, { d: "2026-06-21", f: 235 }] }));
+      proAccessActive = true;
+      try { return { html: flowHistoryPanel(waterById("lower-deschutes")) }; }
+      catch (error) { return { error: error.message }; }
+    });
+    assert(!flow.error && flow.html.includes("235 cfs"), `malformed flow samples do not hide valid readings (${flow.error || "rendered"})`);
+    const cacheMarkup = await page.evaluate(() => {
+      const bad = '<img data-cache-injection src=x onerror="window.__cacheInjected=1">';
+      localStorage.setItem(WATER_REPORT_CACHE_KEY, JSON.stringify({ byWater: { crooked: { nws: { forecast: bad, air: "60 F", wind: "5 mph" }, errors: [] } } }));
+      hydrateWaterCache();
+      saveActiveWater("crooked");
+      renderEverything();
+      return !!document.querySelector("[data-cache-injection]");
+    });
+    assert(!cacheMarkup, "cached remote report text cannot inject markup into any screen");
+    const cacheType = await page.evaluate(() => {
+      localStorage.setItem(WATER_REPORT_CACHE_KEY, JSON.stringify({ byWater: { crooked: { nws: { forecast: 123 }, errors: [] } } }));
+      hydrateWaterCache();
+      try { renderEverything(); return ""; } catch (error) { return error.message; }
+    });
+    assert(!cacheType, `cached forecast types are validated before string operations (${cacheType || "rendered"})`);
+    await page.close();
+  }
+  {
+    const page = await openApp(browser);
+    const state = await page.evaluate(async () => {
+      activateTab("log");
+      document.querySelector("[data-new-log]").click();
+      const form = document.querySelector("#logForm");
+      form.elements.fly.value = "DRAFT FLY";
+      form.elements.notes.value = "Do not lose this note";
+      const set = Storage.prototype.setItem;
+      Storage.prototype.setItem = () => { throw new Error("quota"); };
+      await saveLogEntry(form);
+      Storage.prototype.setItem = set;
+      return { fly: document.querySelector('#logForm [name="fly"]').value,
+        notes: document.querySelector('#logForm [name="notes"]').value,
+        message: document.querySelector('#logForm [role="alert"]')?.textContent || "", count: getLogs().length };
+    });
+    assert(state.fly === "DRAFT FLY" && state.notes === "Do not lose this note" && state.message && state.count === 0,
+      `failed journal saves keep the exact draft for retry (${JSON.stringify(state)})`);
+    const rejected = await page.evaluate(async () => {
+      const form = document.querySelector("#logForm");
+      form.elements.notes.value = "Photo error draft";
+      const read = readPhotoFile;
+      readPhotoFile = () => Promise.reject(new Error("decode failed"));
+      let rejected = false;
+      try { await saveLogEntry(form); } catch { rejected = true; }
+      readPhotoFile = read;
+      return { rejected, note: document.querySelector('#logForm [name="notes"]').value,
+        busy: logSaveInFlight, message: document.querySelector('#logForm [role="alert"]')?.textContent || "" };
+    });
+    assert(!rejected.rejected && !rejected.busy && rejected.note === "Photo error draft" && rejected.message,
+      "unexpected asynchronous save failures are shown without throwing or losing the draft");
+    await page.close();
+  }
+
+  group("Journal recovery and asynchronous draft lifetimes");
+  {
+    const page = await openApp(browser);
+    const recovery = await page.evaluate(() => {
+      setLogs([{ fly: "deleted on native" }]);
+      localStorage.setItem(LOG_SAVED_AT_KEY, "2026-01-01T00:00:00.000Z");
+      riseLogRestore({ body: JSON.stringify({ savedAt: "2026-02-01T00:00:00.000Z", logs: [] }) });
+      return getLogs().length;
+    });
+    assert(recovery === 0, "a provably newer empty native journal restores deletions too");
+    const invalidDate = await page.evaluate(() => {
+      setLogs([{ fly: "KEEP" }]);
+      riseLogRestore({ body: JSON.stringify({ savedAt: "zzz-invalid", logs: [{ fly: "WRONG" }] }) });
+      return getLogs()[0].fly;
+    });
+    assert(invalidDate === "KEEP", "an invalid backup timestamp cannot overwrite the current journal");
+    const metadata = await page.evaluate(() => {
+      const real = Storage.prototype.setItem;
+      Storage.prototype.setItem = function(key, value) {
+        if (key === LOG_SAVED_AT_KEY) throw new Error("metadata quota");
+        return real.call(this, key, value);
+      };
+      const saved = setLogs([{ fly: "PERSISTED" }]);
+      Storage.prototype.setItem = real;
+      return { saved, memory: getLogs()[0].fly, stored: JSON.parse(localStorage.getItem(LOG_STORAGE_KEY))[0].fly };
+    });
+    assert(metadata.saved && metadata.memory === metadata.stored, "a metadata-only failure does not disagree with the journal write that already landed");
+    await page.close();
+  }
+  {
+    const page = await openApp(browser);
+    const draft = await page.evaluate(async () => {
+      activateTab("log");
+      document.querySelector("[data-new-log]").click();
+      const form = document.querySelector("#logForm");
+      form.elements.notes.value = "Photo draft";
+      const transfer = new DataTransfer();
+      transfer.items.add(new File(["not an image"], "bad.jpg", { type: "image/jpeg" }));
+      form.elements.photo.files = transfer.files;
+      renderAll();
+      const retained = document.querySelector("#logForm") === form && form.elements.photo.files.length === 1;
+      await saveLogEntry(form);
+      return { retained, count: getLogs().length, formPresent: !!document.querySelector("#logForm"),
+        message: document.querySelector('[data-log-save-error]')?.textContent || "" };
+    });
+    assert(draft.retained, "background repaint keeps the real form and its selected photo");
+    assert(draft.count === 0 && draft.formPresent && draft.message, "an unreadable selected photo fails visibly instead of silently saving without it");
+    const canceled = await page.evaluate(async () => {
+      logFormOpen = true;
+      renderLog();
+      const form = document.querySelector("#logForm");
+      form.elements.notes.value = "Canceled photo save";
+      let finish;
+      const read = readPhotoFile;
+      readPhotoFile = () => new Promise(resolve => { finish = resolve; });
+      const saving = saveLogEntry(form);
+      logFormOpen = false;
+      renderLog();
+      logFormOpen = true;
+      renderLog();
+      document.querySelector('#logForm [name="notes"]').value = "New draft";
+      finish("");
+      await saving;
+      readPhotoFile = read;
+      return { count: getLogs().length, notes: document.querySelector('#logForm [name="notes"]')?.value };
+    });
+    assert(canceled.count === 0 && canceled.notes === "New draft", "closing a pending save cancels that form's continuation without closing a later draft");
+    await page.close();
+  }
+
+  group("Native disk acknowledgment boundaries");
+  {
+    const page = await openApp(browser);
+    const result = await page.evaluate(async () => {
+      setLogs([{ fly: "KEEP" }]);
+      const real = Storage.prototype.setItem;
+      Storage.prototype.setItem = () => { throw new Error("quota"); };
+      const sent = [];
+      window.webkit = { messageHandlers: { riseStore: { postMessage: payload => sent.push(payload) } } };
+      const saved = setLogs([{ fly: "UNCONFIRMED" }]);
+      Storage.prototype.setItem = real;
+      return { saved, fly: getLogs()[0].fly, writes: sent.length };
+    });
+    assert(!result.saved && result.fly === "KEEP" && result.writes === 0,
+      "unacknowledged native delivery cannot substitute for a failed journal write");
+    const photo = await page.evaluate(async () => {
+      window.webkit.messageHandlers.riseStore.postMessage = payload => {
+        if (payload.action === "savePhoto") setTimeout(() => window.risePhotoSaveResult?.({ id: payload.id, ok: false }), 0);
+      };
+      try { await storePhoto("data:image/jpeg;base64,/9j/AA=="); return false; } catch { return true; }
+    });
+    assert(photo, "a native disk-write failure rejects the photo rather than saving a missing file reference");
+    const ack = await page.evaluate(async () => {
+      window.webkit.messageHandlers.riseStore.postMessage = payload => {
+        if (payload.action === "savePhoto") setTimeout(() => risePhotoSaveResult({ id: payload.id, ok: true }), 0);
+      };
+      const fields = await storePhoto("data:image/jpeg;base64,/9j/AA==");
+      return fields.photoId.startsWith("catch-") && fields.photo === "" && pendingPhotoSaves.size === 0;
+    });
+    assert(ack, "a positive native disk acknowledgment releases a photo reference and cleans the pending request");
+    const timeout = await page.evaluate(async () => {
+      window.webkit.messageHandlers.riseStore.postMessage = () => {};
+      try { await storePhoto("data:image/jpeg;base64,/9j/AA=="); return false; }
+      catch { return pendingPhotoSaves.size === 0; }
+    });
+    assert(timeout, "a dropped native photo acknowledgment times out without claiming success");
+    const race = await page.evaluate(async () => {
+      activateTab("log");
+      document.querySelector("[data-new-log]").click();
+      const form = document.querySelector("#logForm");
+      const read = readPhotoFile;
+      readPhotoFile = async () => "data:image/jpeg;base64,/9j/AA==";
+      let pendingId;
+      const removed = [];
+      window.webkit.messageHandlers.riseStore.postMessage = p => {
+        if (p.action === "savePhoto") pendingId = p.id;
+        if (p.action === "deletePhoto") removed.push(p.id);
+      };
+      const save = saveLogEntry(form);
+      await new Promise(resolve => setTimeout(resolve, 0));
+      setLogs([{ fly: "CONCURRENT" }]);
+      risePhotoSaveResult({ id: pendingId, ok: true });
+      await save;
+      readPhotoFile = read;
+      return getLogs()[0].fly === "CONCURRENT" && getLogs().length === 1 && removed.includes(pendingId) && form.isConnected;
+    });
+    assert(race, "a journal change during native photo IO preserves the newer journal and draft, removing only the new orphan");
+    await page.close();
+  }
+
+  group("Corrupt journals are preserved, not treated as empty");
+  {
+    const page = await openApp(browser, { before: () => {
+      localStorage.setItem("riseLogs", '{"unsupported":"journal payload"}');
+    } });
+    const state = await page.evaluate(() => {
+      activateTab("log");
+      const original = localStorage.getItem(LOG_STORAGE_KEY);
+      const saved = setLogs([{ fly: "would erase original" }]);
+      return { saved, unchanged: original === localStorage.getItem(LOG_STORAGE_KEY), notice: document.querySelector("#log").textContent };
+    });
+    assert(!state.saved && state.unchanged && /could not be read/i.test(state.notice),
+      "unsupported journal storage blocks overwrites and explains recovery without erasing the original");
+    await page.close();
+  }
+  {
+    const page = await openApp(browser);
+    const state = await page.evaluate(() => {
+      setLogs([{ fly: "KEEP" }]);
+      riseLogRestore({ body: JSON.stringify({ savedAt: "2099-01-01T00:00:00.000Z", logs: [null, "bad"] }) });
+      return getLogs()[0]?.fly;
+    });
+    assert(state === "KEEP", "an invalid backup cannot become an empty journal and erase catches");
+    await page.close();
+  }
+
 } finally {
   for (const context of openContexts) {
     await context.close().catch(() => {});

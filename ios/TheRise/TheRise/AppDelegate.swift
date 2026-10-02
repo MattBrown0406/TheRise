@@ -3,8 +3,6 @@ import RevenueCat
 
 @main
 final class AppDelegate: UIResponder, UIApplicationDelegate {
-    var window: UIWindow?
-
     func application(
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
@@ -18,10 +16,25 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
         #endif
         Purchases.configure(withAPIKey: SubscriptionConfig.RevenueCat.publicSDKKey)
 
-        let window = UIWindow(frame: UIScreen.main.bounds)
-        window.rootViewController = RiseViewController()
-        window.makeKeyAndVisible()
-        self.window = window
         return true
+    }
+}
+
+/// Window ownership belongs to the scene lifecycle. UIKit terminates apps
+/// linked with the iOS 27 SDK at launch if they use only the legacy app delegate.
+/// Kept in this compilation unit so existing Xcode source membership is intact.
+final class RiseSceneDelegate: UIResponder, UIWindowSceneDelegate {
+    var window: UIWindow?
+
+    func scene(
+        _ scene: UIScene,
+        willConnectTo session: UISceneSession,
+        options connectionOptions: UIScene.ConnectionOptions
+    ) {
+        guard let windowScene = scene as? UIWindowScene else { return }
+        let window = UIWindow(windowScene: windowScene)
+        window.rootViewController = RiseViewController()
+        self.window = window
+        window.makeKeyAndVisible()
     }
 }

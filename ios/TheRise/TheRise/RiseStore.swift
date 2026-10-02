@@ -57,13 +57,21 @@ enum RiseStore {
     }
 
     /// Accepts a `data:image/jpeg;base64,...` URL as produced by the web layer.
-    static func savePhoto(identifier: String, dataURL: String) {
-        guard let url = photoURL(for: identifier),
-              let range = dataURL.range(of: ","),
-              let data = Data(base64Encoded: String(dataURL[range.upperBound...])) else {
-            return
+    @discardableResult
+    static func savePhoto(identifier: String, dataURL: String) -> Bool {
+        let prefix = "data:image/jpeg;base64,"
+        guard dataURL.hasPrefix(prefix),
+              let data = Data(base64Encoded: String(dataURL.dropFirst(prefix.count))),
+              data.starts(with: [0xFF, 0xD8, 0xFF]),
+              let url = photoURL(for: identifier) else {
+            return false
         }
-        try? data.write(to: url, options: .atomic)
+        do {
+            try data.write(to: url, options: .atomic)
+            return true
+        } catch {
+            return false
+        }
     }
 
     static func deletePhoto(identifier: String) {
@@ -91,11 +99,16 @@ enum RiseStore {
 
     /// Writes the CSV to a temporary file so the share sheet offers a real
     /// document rather than a wall of text.
-    static func exportURL(csv: String) -> URL? {
+    static func exportURL(csv: String, directory: URL = FileManager.default.temporaryDirectory) -> URL? {
         let filename = "the-rise-catch-log.csv"
-        let url = FileManager.default.temporaryDirectory.appendingPathComponent(filename)
+        let url = directory.appendingPathComponent(filename)
         guard let data = csv.data(using: .utf8) else { return nil }
-        try? data.write(to: url, options: .atomic)
-        return url
+        do {
+            try data.write(to: url, options: .atomic)
+            return url
+        } catch {
+            // Never present a missing/stale file as a successful export.
+            return nil
+        }
     }
 }

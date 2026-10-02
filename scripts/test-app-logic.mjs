@@ -664,5 +664,28 @@ group("Report text is read the way it was written (#4 round six)");
   assert(app.mentionsNoun("stoneflies are out", "stonefly"), "stoneflies is the plural of stonefly");
 }
 
+group("Stored payload validation preserves valid legacy data");
+{
+  const waterId = app.waters[0].id;
+  const cachedAt = new Date().toISOString();
+  localStorage.setItem("riseWaterReports.v1", JSON.stringify({
+    byWater: { [waterId]: { cachedAt, usgs: { flow: "235 cfs", waterTemp: "54 F" }, nws: { forecast: "Sunny", wind: "5 mph" }, errors: [] }, broken: null },
+    localIntel: { byWater: { [waterId]: { hatches: ["Caddis"], sources: ["ODFW"], scoreBoost: .2 } }, sources: [], errors: [], updatedAt: cachedAt }
+  }));
+  const cache = context.readWaterCache();
+  assert(cache.byWater[waterId].usgs.flow === "235 cfs" && cache.byWater[waterId].cachedAt === cachedAt,
+    "valid cached measurements retain their value and original age");
+  assert(cache.localIntel.byWater[waterId].hatches[0] === "Caddis" && cache.localIntel.byWater[waterId].flies.length === 0,
+    "older optional intel fields receive safe defaults without discarding real signals");
+  assert(!cache.byWater.broken, "unknown malformed water records are not hydrated");
+  assert(context.parseLogPayload(JSON.stringify([{ fly: "legacy" }])).logs[0].dateApproximate,
+    "valid legacy journal arrays remain restorable without inventing dates");
+  assert(context.parseLogPayload(JSON.stringify({ savedAt: cachedAt, logs: [] })).logs.length === 0,
+    "a legitimate empty journal envelope is not corruption");
+  assert(context.parseLogPayload(JSON.stringify({ savedAt: cachedAt, logs: [null] })) === null,
+    "invalid backup rows reject the payload rather than silently deleting records");
+  localStorage.removeItem("riseWaterReports.v1");
+}
+
 console.log(`\n${checks - failures}/${checks} checks passed`);
 process.exit(failures ? 1 : 0);

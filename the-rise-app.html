@@ -5968,7 +5968,50 @@
       try {
         const saved = localStorage.getItem(WATER_REPORT_CACHE_KEY);
         if (!saved) return emptyWaterCache();
-        return { ...emptyWaterCache(), ...JSON.parse(saved) };
+        const parsed = JSON.parse(saved);
+        const record = (value) => value && typeof value === "object" && !Array.isArray(value);
+        const strings = (value) => Array.isArray(value) && value.every((item) => typeof item === "string");
+        const cache = emptyWaterCache();
+        if (!record(parsed)) return cache;
+        for (const key of ["lastSavedAt", "lastDailyOpen"]) {
+          if (typeof parsed[key] === "string") cache[key] = parsed[key];
+        }
+        // Cached network data is disposable, unlike the journal. Reject invalid
+        // records before any renderer/scorer trusts their nested field types.
+        for (const [id, report] of Object.entries(record(parsed.byWater) ? parsed.byWater : {})) {
+          if (!waterById(id) || !record(report)) continue;
+          if (report.errors !== undefined && !strings(report.errors)) continue;
+          if (["usgs", "nws"].some((key) => report[key] != null &&
+            (!record(report[key]) || Object.values(report[key]).some((value) =>
+              value != null && typeof value !== "string" && !(typeof value === "number" && Number.isFinite(value)))))) continue;
+          if (report.cachedAt !== undefined && typeof report.cachedAt !== "string") continue;
+          const normalized = { ...report };
+          for (const key of ["usgs", "nws"]) {
+            if (report[key]) normalized[key] = Object.fromEntries(Object.entries(report[key]).map(([field, value]) =>
+              [field, value == null || field === "url" ? value : safeText(value)]));
+          }
+          if (normalized.updatedAt) normalized.updatedAt = safeText(normalized.updatedAt);
+          cache.byWater[id] = normalized;
+        }
+        const intel = parsed.localIntel;
+        if (record(intel)) {
+          if (typeof intel.updatedAt === "string") cache.localIntel.updatedAt = intel.updatedAt;
+          if (strings(intel.errors)) cache.localIntel.errors = intel.errors;
+          if (Array.isArray(intel.sources)) cache.localIntel.sources = intel.sources.filter((source) =>
+            record(source) && ["label", "type", "url"].every((key) => typeof source[key] === "string") && typeof source.readable === "boolean");
+          for (const [id, signal] of Object.entries(record(intel.byWater) ? intel.byWater : {})) {
+            if (!waterById(id) || !record(signal)) continue;
+            if (!["hatches", "flies", "sources", "cues"].every((key) => signal[key] === undefined || strings(signal[key]))) continue;
+            cache.localIntel.byWater[id] = {
+              hatches: [], flies: [], sources: [], cues: [], ...signal,
+              scoreBoost: Number.isFinite(signal.scoreBoost) ? signal.scoreBoost : 0
+            };
+            for (const key of ["hatches", "flies", "sources", "cues"]) {
+              cache.localIntel.byWater[id][key] = (signal[key] || []).map((value) => safeText(value));
+            }
+          }
+        }
+        return cache;
       } catch {
         return emptyWaterCache();
       }
@@ -6077,7 +6120,11 @@
 
     function readFlowHistory() {
       const stored = readStoredObject(FLOW_HISTORY_KEY);
-      return stored && typeof stored === "object" ? stored : {};
+      return Object.fromEntries(Object.entries(stored).filter(([id]) => waterById(id)).map(([id, samples]) => [id,
+        Array.isArray(samples) ? samples.filter((sample) => sample && typeof sample === "object" &&
+          Number.isFinite(sample.f) && sample.f >= 0 && typeof sample.d === "string" &&
+          (sample.t === undefined || typeof sample.t === "string")) : []
+      ]));
     }
 
     function recordFlowSample(waterId, report) {
@@ -8425,22 +8472,25 @@
     const LOG_SAVED_AT_KEY = "riseLogsSavedAt";
     let logCache = null;
     let logRestoreNotice = "";
+    let logStorageUnreadable = false;
 
     function hasNativeStoreBridge() {
       return Boolean(window.webkit?.messageHandlers?.riseStore);
     }
 
     function postStoreMessage(payload) {
-      if (!hasNativeStoreBridge()) return;
+      if (!hasNativeStoreBridge()) return false;
       try {
         window.webkit.messageHandlers.riseStore.postMessage(payload);
+        return true;
       } catch {
         // The native store is a durability mirror; localStorage still holds the log.
+        return false;
       }
     }
 
     function normalizeLogEntry(entry) {
-      if (!entry || typeof entry !== "object") return null;
+      if (!entry || typeof entry !== "object" || Array.isArray(entry)) return null;
       const normalized = { ...entry };
       // Entries written before dates carried a year are kept and marked, rather
       // than discarded or silently attributed to the current year.
@@ -8451,13 +8501,24 @@
       return normalized;
     }
 
+    function normalizeLogEntries(entries) {
+      if (!Array.isArray(entries)) return null;
+      const normalized = entries.map(normalizeLogEntry);
+      return normalized.every(Boolean) ? normalized : null;
+    }
+
     function readLogsFromStorage() {
       try {
         const saved = localStorage.getItem(LOG_STORAGE_KEY);
-        if (saved === null) return null;
-        const parsed = JSON.parse(saved);
-        return Array.isArray(parsed) ? parsed.map(normalizeLogEntry).filter(Boolean) : null;
+        if (saved === null) {
+          logStorageUnreadable = false;
+          return null;
+        }
+        const logs = normalizeLogEntries(JSON.parse(saved));
+        logStorageUnreadable = logs === null;
+        return logs;
       } catch (error) {
+        logStorageUnreadable = true;
         return null;
       }
     }
@@ -8477,22 +8538,34 @@
       }
     }
 
-    // Returns false only when the log could not be persisted anywhere.
+    // Returns true only after the synchronous local journal write succeeds.
+    // Native mirroring is best-effort and cannot stand in for that confirmation.
     function setLogs(logs) {
+      getLogs();
+      // Missing and unreadable are different. Never turn an unreadable
+      // journal into a new empty baseline and overwrite the only original.
+      if (logStorageUnreadable) return false;
       const savedAt = new Date().toISOString();
       let localOk = false;
       try {
         localStorage.setItem(LOG_STORAGE_KEY, JSON.stringify(logs));
-        localStorage.setItem(LOG_SAVED_AT_KEY, savedAt);
         localOk = true;
+        localStorage.setItem(LOG_SAVED_AT_KEY, savedAt);
       } catch (error) {
-        localOk = false;
+        // The journal write may already have succeeded. Do not report it as
+        // lost merely because its optional freshness marker hit the quota.
+        // An older marker must not let a stale mirror overwrite that new log.
+        if (localOk) {
+          try { localStorage.removeItem(LOG_SAVED_AT_KEY); } catch {}
+        }
       }
       // Mirror to the app container. This is what survives a localStorage purge.
       // The envelope carries the write time so a restore can tell which copy is
       // newer instead of guessing from row counts.
-      postStoreMessage({ action: "saveLog", body: JSON.stringify({ version: 2, savedAt, logs }) });
-      const persisted = localOk || hasNativeStoreBridge();
+      // A posted message is not a disk-write acknowledgment. Fail closed when
+      // localStorage failed, and do not mirror a mutation we report as failed.
+      if (localOk) postStoreMessage({ action: "saveLog", body: JSON.stringify({ version: 2, savedAt, logs }) });
+      const persisted = localOk;
       // The in-memory journal is only advanced when the write landed somewhere.
       // Assigning it first meant a catch the app had just told the user it
       // could not save stayed in the list for the rest of the session and then
@@ -8505,9 +8578,13 @@
     function parseLogPayload(body) {
       try {
         const parsed = JSON.parse(body || "null");
-        if (Array.isArray(parsed)) return { savedAt: "", logs: parsed.map(normalizeLogEntry).filter(Boolean) };
+        if (Array.isArray(parsed)) {
+          const logs = normalizeLogEntries(parsed);
+          return logs ? { savedAt: "", logs } : null;
+        }
         if (parsed && Array.isArray(parsed.logs)) {
-          return { savedAt: String(parsed.savedAt || ""), logs: parsed.logs.map(normalizeLogEntry).filter(Boolean) };
+          const logs = normalizeLogEntries(parsed.logs);
+          return logs ? { savedAt: String(parsed.savedAt || ""), logs } : null;
         }
         return null;
       } catch {
@@ -8528,19 +8605,22 @@
        newer by write time. It never merges on count. */
     window.riseLogRestore = function(payload) {
       const restored = parseLogPayload(payload?.body);
-      if (!restored || !restored.logs.length) return;
+      if (!restored) return;
       const current = readLogsFromStorage();
       if (current !== null) {
         // Both timestamps are required. A journal written by a build that did
         // not record one cannot be proved older than anything, and an
         // unprovable claim must not cost the angler a real catch.
         const localSavedAt = readLogsSavedAt();
-        const containerIsNewer = Boolean(restored.savedAt) && Boolean(localSavedAt) && restored.savedAt > localSavedAt;
+        const containerTime = Date.parse(restored.savedAt);
+        const localTime = Date.parse(localSavedAt);
+        const containerIsNewer = Number.isFinite(containerTime) && Number.isFinite(localTime) && containerTime > localTime;
         if (!containerIsNewer) return;
       }
       // Hold on to what is being edited before the indexes move under it.
       const editingLoggedAt = editingLogIndex !== null ? getLogs()[editingLogIndex]?.loggedAt : null;
       logCache = restored.logs;
+      logStorageUnreadable = false;
       try {
         localStorage.setItem(LOG_STORAGE_KEY, JSON.stringify(logCache));
         localStorage.setItem(LOG_SAVED_AT_KEY, restored.savedAt || new Date().toISOString());
@@ -8573,13 +8653,32 @@
       return `catch-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     }
 
-    // Writes the photo into the app container and returns the id to store on the
-    // entry. Falls back to the inline data URL when running outside the app.
-    function storePhoto(dataUrl) {
+    const pendingPhotoSaves = new Map();
+    window.risePhotoSaveResult = function(result) {
+      const finish = pendingPhotoSaves.get(result?.id);
+      if (finish) finish(result.ok === true);
+    };
+
+    // Only reference a native photo after its atomic disk write succeeds.
+    // A bounded timeout preserves the draft if the container stops responding.
+    async function storePhoto(dataUrl) {
       if (!dataUrl) return { photoId: "", photo: "" };
       if (!hasNativeStoreBridge()) return { photoId: "", photo: dataUrl };
       const photoId = newPhotoId();
-      postStoreMessage({ action: "savePhoto", id: photoId, body: dataUrl });
+      await new Promise((resolve, reject) => {
+        const finish = (ok) => {
+          clearTimeout(timer);
+          pendingPhotoSaves.delete(photoId);
+          if (ok) resolve();
+          else {
+            postStoreMessage({ action: "deletePhoto", id: photoId });
+            reject(new Error("Photo storage is unavailable"));
+          }
+        };
+        const timer = setTimeout(() => finish(false), 5000);
+        pendingPhotoSaves.set(photoId, finish);
+        if (!postStoreMessage({ action: "savePhoto", id: photoId, body: dataUrl })) finish(false);
+      });
       return { photoId, photo: "" };
     }
 
@@ -8658,8 +8757,8 @@
     function exportLog() {
       const csv = logCsv();
       if (hasNativeStoreBridge()) {
-        postStoreMessage({ action: "exportLog", body: csv });
-        return "Export sheet opened.";
+        return postStoreMessage({ action: "exportLog", body: csv })
+          ? "Export requested." : "Export failed on this device.";
       }
       try {
         const blob = new Blob([csv], { type: "text/csv" });
@@ -8706,6 +8805,10 @@
       // No catches means no top fly. It used to read "Caddis" on an empty journal.
       const topFly = topFlyEntry ? flyFamilyName(topFlyEntry) : "-";
       const editingEntry = editingLogIndex !== null ? logs[editingLogIndex] : null;
+      // Keep the actual form (including its FileList) through background
+      // refreshes and failed saves. Only a different editing target replaces it.
+      const previousForm = document.querySelector("#logForm");
+      const keepForm = logFormOpen && previousForm && previousForm._editingEntry === editingEntry;
       // An entry keyed only by name (older builds, restored backups) or by a
       // water that no longer exists must keep its water through an edit. The
       // select used to fall back to the active water, so adding a note moved
@@ -8732,6 +8835,7 @@
             </div>
           </div>
           ${logRestoreNotice ? `<div class="data-provenance-notice">${logRestoreNotice}</div>` : ""}
+          ${logStorageUnreadable ? `<div class="data-provenance-notice" role="alert">Your saved journal could not be read. The original data has been kept; new saves are blocked to avoid overwriting it. Reopen the app to retry the device backup, or contact support before clearing any app data.</div>` : ""}
           ${!logFormOpen && logSaveMessage ? `<div class="data-provenance-notice" role="status">${logSaveMessage}</div>` : ""}
 
           <div class="log-summary">
@@ -8751,7 +8855,7 @@
               <label class="photo-input">Photo
                 <input name="photo" type="file" accept="image/*">
               </label>
-              ${logSaveMessage ? `<p class="subtle" role="alert" style="color:#8b2c20">${logSaveMessage}</p>` : ""}
+              <p class="subtle" data-log-save-error role="alert" style="color:#8b2c20" ${logSaveMessage ? "" : "hidden"}>${esc(logSaveMessage)}</p>
               <div class="form-grid">
                 <label>Water
                   <select name="water">${keepEditingWater ? `<option value="" selected>${esc(editingEntry.waterName || "Unknown water")}</option>` : ""}${waters.map((water) => `<option value="${attr(water.id)}" ${!keepEditingWater && water.id === selectedWater.id ? "selected" : ""}>${esc(water.name)}</option>`).join("")}</select>
@@ -8823,6 +8927,19 @@
             </div>
         </div>
       `;
+      let currentForm = document.querySelector("#logForm");
+      if (keepForm && currentForm && currentForm !== previousForm) {
+        currentForm.replaceWith(previousForm);
+        currentForm = previousForm;
+      }
+      if (currentForm) {
+        currentForm._editingEntry = editingEntry;
+        const error = currentForm.querySelector("[data-log-save-error]");
+        if (error) {
+          error.textContent = logSaveMessage;
+          error.hidden = !logSaveMessage;
+        }
+      }
     }
 
     function renderPro() {
@@ -8855,7 +8972,7 @@
               <button class="ghost-btn" data-restore-purchases ${subscriptionLoading ? "disabled" : ""}>Restore Purchases</button>
               ${!priceReady && !subscriptionLoading ? `<button class="ghost-btn" data-refresh-subscription>Retry App Store Price</button>` : ""}
             </div>
-            <p class="subtle pro-status">${subscriptionMessage}</p>
+            <p class="subtle pro-status">${esc(subscriptionMessage)}</p>
             <div class="subscription-disclosure" aria-label="Subscription terms">
               <p>${priceReady ? `The Rise Pro ${planLabel} is an auto-renewable subscription at ${esc(displayPrice)} per ${renewalPeriod}. Payment is charged to your Apple Account when you confirm the purchase. The subscription renews automatically unless auto-renew is turned off at least 24 hours before the end of the current period. Your account is charged for renewal within 24 hours before the current period ends. Manage or cancel your subscription in your Apple Account settings.` : "Subscription pricing is loaded directly from the App Store for your region. Purchase remains unavailable until the localized price is displayed."}</p>
               <div class="subscription-legal-links">
@@ -8893,8 +9010,16 @@
         renderPro();
         return false;
       }
-      window.webkit.messageHandlers.riseSubscription.postMessage(payload);
-      return true;
+      try {
+        window.webkit.messageHandlers.riseSubscription.postMessage(payload);
+        return true;
+      } catch {
+        subscriptionLoading = false;
+        subscriptionActionPending = null;
+        subscriptionMessage = "The App Store connection is unavailable. Please try again.";
+        renderPro();
+        return false;
+      }
     }
 
     window.riseSubscriptionResult = function(result) {
@@ -9203,8 +9328,8 @@
     }
 
     function readPhotoFile(file) {
-      return new Promise((resolve) => {
-        if (!file) {
+      return new Promise((resolve, reject) => {
+        if (!file || (!file.size && !file.name)) {
           resolve("");
           return;
         }
@@ -9220,19 +9345,20 @@
               canvas.height = Math.max(1, Math.round(image.height * scale));
               const context = canvas.getContext("2d");
               if (!context) {
-                resolve("");
+                reject(new Error("Photo processing unavailable"));
                 return;
               }
               context.drawImage(image, 0, 0, canvas.width, canvas.height);
               resolve(canvas.toDataURL("image/jpeg", .82));
             } catch (error) {
-              resolve("");
+              reject(error);
             }
           };
-          image.onerror = () => resolve("");
+          image.onerror = () => reject(new Error("The selected photo could not be decoded"));
           image.src = String(reader.result || "");
         };
-        reader.onerror = () => resolve("");
+        reader.onerror = () => reject(new Error("The selected photo could not be read"));
+        reader.onabort = () => reject(new Error("Photo reading was canceled"));
         reader.readAsDataURL(file);
       });
     }
@@ -9545,6 +9671,10 @@
       if (submitButton) submitButton.disabled = true;
       try {
         await writeLogEntry(logForm);
+      } catch {
+        if (!logForm.isConnected) return;
+        logSaveMessage = "This catch could not be saved. Please try again or choose another photo.";
+        renderLog();
       } finally {
         logSaveInFlight = false;
         if (submitButton && submitButton.isConnected) submitButton.disabled = false;
@@ -9564,6 +9694,9 @@
         return;
       }
       const capturedPhoto = await readPhotoFile(form.get("photo"));
+      // Closing or switching the form while photo decoding is pending cancels
+      // that draft. A late continuation must not save it or close a newer form.
+      if (!logForm.isConnected) return;
       // Reading the photo yields, and a Delete or a restore can move every
       // index while it does. The entry is found again by identity - setLogs
       // keeps the same objects - so an edit can never land on another catch.
@@ -9583,7 +9716,17 @@
       let photoToDelete = null;
       if (capturedPhoto) {
         if (existingEntry) photoToDelete = existingEntry;
-        photoFields = storePhoto(capturedPhoto);
+        photoFields = await storePhoto(capturedPhoto);
+        // The native acknowledgment yields too: never resurrect a canceled
+        // draft, overwrite a concurrent journal change, or target a moved row.
+        if (!logForm.isConnected || getLogs() !== logs) {
+          deleteStoredPhoto(photoFields);
+          if (logForm.isConnected) {
+            logSaveMessage = "The journal changed while the photo was saving. Please retry.";
+            renderLog();
+          }
+          return;
+        }
       } else {
         photoFields = {
           photoId: existingEntry?.photoId || "",
