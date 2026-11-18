@@ -77,10 +77,11 @@ Chromium is confined — it has a private `/tmp` and no access to dot-directorie
 so the file under test is staged in a plain directory inside `$HOME`. Override
 with `RISE_DOM_TEST_WORKDIR`.
 
-Native storage and alert decisions, compiled and run with any Swift toolchain.
-`RiseStore` and `RiseAlerts` import only Foundation for exactly this reason; keep
-it that way. `RisePhotoSchemeHandler` and `RiseNotifications` hold the WebKit,
-UserNotifications and BackgroundTasks halves:
+Native storage, alert and Apple Watch decisions, compiled and run with any Swift
+toolchain. `RiseStore`, `RiseAlerts` and `RiseWatchModels` import only Foundation
+for exactly this reason; keep it that way. `RisePhotoSchemeHandler`,
+`RiseNotifications` and `RiseWatchBridge` hold the WebKit, UserNotifications,
+BackgroundTasks and WatchConnectivity halves:
 
 ```bash
 scripts/test-rise-store.sh
@@ -368,6 +369,30 @@ mapped water within 2 miles, else it says it could not tell).
   plan, message contract and uncompiled Swift sources are in
   [`docs/on-the-water-native.md`](docs/on-the-water-native.md) and
   `ios/pending/LiveActivity/`. Nothing there is in `project.pbxproj`.
+
+## Apple Watch
+
+For anglers who leave the phone in the truck. The page builds a **trip pack**
+(home, saved and top-pick waters: score and its source label, prime-window
+hours, flow and temperature with provenance and age, flies, hatches, planner
+days) and posts it over the `riseWatch` handler only when it changed;
+`RiseWatchBridge.swift` sends it with `updateApplicationContext` and the Watch
+keeps it on disk, so it works with no phone and no signal. **Fish on!** on the
+Watch writes the catch to a queue file there and sends it with
+`transferUserInfo`; the iPhone writes it to Application Support before handing
+it to `window.riseWatchCatches`, and deletes it only when the page answers
+`catchesSaved` - which it does only after `setLogs` returned true. The merge is
+idempotent on `watchId`, keeps the journal's index semantics, and re-dates each
+catch with the journal's own Pacific formatters.
+
+The Watch re-applies the provenance rules at catch time (`measured` becomes
+`stale` past 12 hours; nothing is ever upgraded). Those rules, Oregon's clock,
+the queue, nearest water and USGS parsing are in `RiseWatchModels.swift`, which
+is Foundation-only, compiled into both targets and tested by
+`scripts/test-rise-store.sh`. The Watch target is **not** in `project.pbxproj`:
+its sources are in `ios/TheRiseWatch/TheRiseWatch Watch App/` and
+[`docs/watch-app.md`](docs/watch-app.md) has the Xcode steps, the message
+contract and the device test checklist. None of the Swift has been compiled.
 
 ## What Pro unlocks
 

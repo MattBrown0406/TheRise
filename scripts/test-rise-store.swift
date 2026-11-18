@@ -1,5 +1,7 @@
-// Behaviour tests for RiseStore, the durable catch-journal storage, and for
-// RiseAlerts, the decisions behind alerts for saved waters.
+// Behaviour tests for RiseStore, the durable catch-journal storage, for
+// RiseAlerts, the decisions behind alerts for saved waters, and for
+// RiseWatchModels, everything the Apple Watch link decides: provenance at the
+// moment of a catch, Oregon's clock, the catch queue, nearest water and USGS.
 //
 // RiseStore deliberately imports only Foundation, so it compiles and runs on
 // any Swift toolchain rather than requiring Xcode and a device. The photo
@@ -243,6 +245,250 @@ assert(RiseAlerts.greatDayNotifications(plan: plans[0], threshold: 8, now: eveni
        "an evening that has already passed is not scheduled")
 assert(RiseAlerts.greatDayNotifications(plan: plans[0], threshold: 9.5, now: afternoon).isEmpty, "a threshold nothing reaches schedules nothing")
 assert(scheduled.allSatisfy { $0.identifier.hasPrefix(RiseAlerts.greatDayPrefix(waterId: "metolius")) }, "every identifier carries the water's prefix, so a new plan replaces it")
+
+// MARK: - Apple Watch (RiseWatchModels)
+
+func iso(_ text: String) -> Date {
+    RisePacific.parseISO(text)!
+}
+
+let watchRoot = URL(fileURLWithPath: ProcessInfo.processInfo.environment["RISE_STORE_ROOT"]!).appendingPathComponent("watch", isDirectory: true)
+
+func packReading(_ value: String, _ source: RiseProvenance, observed: String? = nil, cached: String? = nil, reference: String? = nil) -> RiseWatchReading {
+    RiseWatchReading(value: value, source: source, observedAt: observed, cachedAt: cached, reference: reference)
+}
+
+group("Watch: a reading is aged again at the moment of a catch, never upgraded")
+let catchTime = iso("2026-11-18T20:00:00.000Z")
+let packTime = iso("2026-11-18T14:00:00.000Z")
+let twoHours = RiseReadingRules.stamp(packReading("4,160 cfs", .measured, observed: "2026-11-18T18:00:00.000Z", cached: "2026-11-18T18:10:00.000Z", reference: "4,000 cfs"), packGeneratedAt: packTime, now: catchTime)
+assert(twoHours.source == .measured && twoHours.value == "4,160 cfs", "a two-hour-old measurement is still measured")
+assert(RiseReadingRules.label(twoHours, now: catchTime) == "measured 2h ago", "and says how old it is (\(RiseReadingRules.label(twoHours, now: catchTime)))")
+let thirteen = RiseReadingRules.stamp(packReading("4,160 cfs", .measured, observed: "2026-11-18T07:00:00.000Z", cached: "2026-11-18T07:05:00.000Z"), packGeneratedAt: packTime, now: catchTime)
+assert(thirteen.source == .stale && thirteen.value == "4,160 cfs", "past the 12-hour fresh window it becomes stale")
+assert(RiseReadingRules.label(thirteen, now: catchTime) == "measured 13h ago", "with its age (\(RiseReadingRules.label(thirteen, now: catchTime)))")
+let cachedOlder = RiseReadingRules.stamp(packReading("53 F", .measured, observed: "2026-11-18T19:00:00.000Z", cached: "2026-11-18T06:00:00.000Z"), packGeneratedAt: packTime, now: catchTime)
+assert(cachedOlder.source == .stale, "the older of the two times decides")
+let exactlyTwelve = RiseReadingRules.stamp(packReading("53 F", .measured, observed: "2026-11-18T08:00:00.000Z"), packGeneratedAt: packTime, now: catchTime)
+assert(exactlyTwelve.source == .stale, "twelve hours to the minute is no longer fresh, as on the page")
+let staleFresh = RiseReadingRules.stamp(packReading("53 F", .stale, observed: "2026-11-18T19:30:00.000Z"), packGeneratedAt: packTime, now: catchTime)
+assert(staleFresh.source == .stale, "a reading the phone called stale is never upgraded")
+let referenceStamp = RiseReadingRules.stamp(packReading("235 cfs", .reference, reference: "235 cfs"), packGeneratedAt: catchTime, now: catchTime)
+assert(referenceStamp.source == .reference && referenceStamp.takenAt == nil && RiseReadingRules.label(referenceStamp, now: catchTime) == "reference", "a reference value stays reference, however new the pack")
+let unavailableStamp = RiseReadingRules.stamp(packReading("No live gauge", .unavailable), packGeneratedAt: packTime, now: catchTime)
+assert(unavailableStamp.source == .unavailable && RiseReadingRules.label(unavailableStamp, now: catchTime) == "", "unavailable stays unavailable and prints no provenance")
+let expiredStamp = RiseReadingRules.stamp(packReading("4,160 cfs", .measured, observed: "2026-11-10T12:00:00.000Z", reference: "4,000 cfs"), packGeneratedAt: packTime, now: catchTime)
+assert(expiredStamp == RiseStampedReading(value: "4,000 cfs", source: .reference, takenAt: nil), "past seven days it falls back to the seasonal value, labelled reference")
+let expiredNoReference = RiseReadingRules.stamp(packReading("4,160 cfs", .stale, observed: "2026-11-01T12:00:00.000Z", reference: ""), packGeneratedAt: packTime, now: catchTime)
+assert(expiredNoReference.source == .unavailable && expiredNoReference.value == "", "or to nothing when there is no seasonal value")
+let untimed = RiseReadingRules.stamp(packReading("4,160 cfs", .measured), packGeneratedAt: nil, now: catchTime)
+assert(untimed.source == .stale && RiseReadingRules.label(untimed, now: catchTime) == "measured earlier", "a measurement with no time at all is not called current")
+let packAnchored = RiseReadingRules.stamp(packReading("4,160 cfs", .measured), packGeneratedAt: iso("2026-11-18T19:00:00.000Z"), now: catchTime)
+assert(packAnchored.source == .measured, "with only the pack's time, the pack's time is used")
+let oddSource = try JSONDecoder().decode(RiseWatchReading.self, from: #"{"value":"4,160 cfs","source":"live!"}"#.data(using: .utf8)!)
+assert(oddSource.source == .unavailable, "an unknown provenance word decodes as unavailable")
+
+group("Watch: dates and times are Oregon's, written the way the journal writes them")
+assert(RisePacific.dateLabel(iso("2026-06-21T18:00:00.000Z")) == "Jun 21, 2026" && RisePacific.timeLabel(iso("2026-06-21T18:00:00.000Z")) == "11:00 AM", "summer is Pacific daylight time")
+assert(RisePacific.dateLabel(iso("2026-11-19T07:30:00.000Z")) == "Nov 18, 2026" && RisePacific.timeLabel(iso("2026-11-19T07:30:00.000Z")) == "11:30 PM", "a late-evening catch is filed under Oregon's date, not UTC's")
+assert(RisePacific.timeLabel(iso("2026-03-08T09:59:00.000Z")) == "1:59 AM" && RisePacific.timeLabel(iso("2026-03-08T10:00:00.000Z")) == "3:00 AM", "the March clock change skips 2 AM")
+assert(RisePacific.timeLabel(iso("2026-11-01T08:30:00.000Z")) == "1:30 AM" && RisePacific.timeLabel(iso("2026-11-01T09:30:00.000Z")) == "1:30 AM", "the November clock change repeats 1 AM")
+assert(RisePacific.dayKey(iso("2026-11-01T09:30:00.000Z")) == "2026-11-01" && RisePacific.dayKey(iso("2026-11-02T07:59:00.000Z")) == "2026-11-01", "and the day key follows Oregon across it")
+assert(RisePacific.timeLabel(iso("2026-07-04T19:05:00.000Z")) == "12:05 PM" && RisePacific.timeLabel(iso("2026-07-04T07:05:00.000Z")) == "12:05 AM", "noon and midnight read as the page reads them")
+assert(RisePacific.dateLabel(iso("2026-09-03T18:00:00.000Z")) == "Sep 3, 2026", "a single-digit day is not padded")
+assert(RisePacific.isoString(iso("2026-11-18T16:05:00Z")) == "2026-11-18T16:05:00.000Z", "loggedAt is written like toISOString")
+assert(RisePacific.asOfLabel(iso("2026-11-18T14:40:00.000Z"), now: catchTime) == "as of 6:40 AM", "a pack from today says when")
+assert(RisePacific.asOfLabel(iso("2026-11-17T02:40:00.000Z"), now: catchTime) == "as of Mon 6:40 PM", "an older pack says which day")
+assert(RisePacific.ageLabel(hours: 0.4) == "just now" && RisePacific.ageLabel(hours: 26) == "1 day ago", "ages read like the page's")
+
+group("Watch: the prime window counts down on Oregon's clock")
+let eveningWindow = RiseWatchWindow(startHour: 18, endHour: 21)
+let beforeWindow = RisePrimeWindow.status(eveningWindow, now: iso("2026-06-21T23:20:00Z"))
+assert(beforeWindow.state == .before && beforeWindow.text == "Prime window starts in 1h 40m", "before the window (\(beforeWindow.text))")
+let duringWindow = RisePrimeWindow.status(eveningWindow, now: iso("2026-06-22T02:40:00Z"))
+assert(duringWindow.state == .during && duringWindow.text == "Prime window ends in 1h 20m", "inside the window (\(duringWindow.text))")
+assert(RisePrimeWindow.status(eveningWindow, now: iso("2026-06-22T04:30:00Z")).state == .after, "after the window")
+assert(RisePrimeWindow.status(eveningWindow, now: iso("2026-06-22T03:59:30Z")).text == "Prime window ends in 1m", "the last seconds read as a minute, never zero")
+assert(RisePrimeWindow.status(RiseWatchWindow(startHour: 11, endHour: 15), now: iso("2026-12-01T18:00:00Z")).range == "11 AM-3 PM Pacific", "the range is printed on Oregon's clock")
+assert(RisePrimeWindow.status(nil, now: catchTime).state == .unknown, "a wind-decided window says so instead of counting down")
+
+group("Watch: which water am I on?")
+func packWater(_ id: String, lat: Double?, lon: Double?) -> RiseWatchWater {
+    RiseWatchWater(id: id, name: id, type: "River", home: false, saved: true, topPick: false, lat: lat, lon: lon, usgsSite: nil, score: 7, scoreSource: "Live-adjusted score",
+                   primeWindow: nil, flow: .none, temp: .none, flies: [], hatches: [], planner: nil)
+}
+let packWaters = [packWater("metolius", lat: 44.55, lon: -121.63), packWater("crooked", lat: 44.12, lon: -120.79), packWater("unmapped", lat: nil, lon: nil)]
+let nearMetolius = RiseWatchGeo.nearestWater(in: packWaters, lat: 44.554, lon: -121.626)
+assert(nearMetolius?.water.id == "metolius" && (nearMetolius?.miles ?? 9) < 0.5, "a fix beside a water picks it")
+assert(RiseWatchGeo.nearestWater(in: packWaters, lat: 44.55 + 0.025, lon: -121.63)?.water.id == "metolius", "1.7 miles away is inside two miles")
+assert(RiseWatchGeo.nearestWater(in: packWaters, lat: 44.55 + 0.05, lon: -121.63) == nil, "3.5 miles away matches nothing")
+assert(abs(RiseWatchGeo.miles(fromLat: 44.55, fromLon: -121.63, toLat: 44.12, toLon: -120.79) - 51.05) < 0.05, "distances agree with milesBetween() on the page")
+assert(RiseWatchGeo.nearestWater(in: [packWater("a", lat: 44.0, lon: -121.0), packWater("b", lat: 44.01, lon: -121.0)], lat: 44.008, lon: -121.0)?.water.id == "b", "the nearer of two waters wins")
+assert(RiseWatchGeo.nearestWater(in: [packWater("unmapped", lat: nil, lon: nil)], lat: 44.0, lon: -121.0) == nil, "a water with no coordinates is never matched")
+
+group("Watch: USGS on the Watch's own network, read exactly as the page reads it")
+let watchNow = iso("2026-11-18T20:00:00.000Z")
+func usgsSeries(_ code: String, _ value: String, _ dateTime: String, noData: String = "-999999.0") -> String {
+    #"{"variable":{"variableCode":[{"value":"\#(code)"}],"noDataValue":\#(noData)},"values":[{"value":[{"value":"1","dateTime":"2026-11-18T00:00:00.000-08:00"},{"value":"\#(value)","dateTime":"\#(dateTime)"}]}]}"#
+}
+func usgsResponse(_ series: [String]) -> Data {
+    #"{"value":{"timeSeries":[\#(series.joined(separator: ","))]}}"#.data(using: .utf8)!
+}
+let bothReadings = RiseUsgs.parse(usgsResponse([usgsSeries("00060", "4160", "2026-11-18T11:45:00.000-08:00"), usgsSeries("00010", "11.5", "2026-11-18T11:30:00.000-08:00")]), site: "14103000", now: watchNow)
+assert(bothReadings?.flow == "4,160 cfs" && bothReadings?.temp == "53 F", "flow and temperature are read and formatted as the page formats them (\(String(describing: bothReadings)))")
+assert(bothReadings?.observedAt == iso("2026-11-18T11:30:00.000-08:00"), "the reading is as old as its older half")
+let noDataFlow = RiseUsgs.parse(usgsResponse([usgsSeries("00060", "-999999", "2026-11-18T11:45:00.000-08:00"), usgsSeries("00010", "11.5", "2026-11-18T11:30:00.000-08:00")]), site: "14103000", now: watchNow)
+assert(noDataFlow?.flow == nil && noDataFlow?.temp == "53 F", "the no-data value is not a flow, and the other half survives")
+let iced = RiseUsgs.parse(usgsResponse([usgsSeries("00060", "-999999", "2026-11-18T11:45:00.000-08:00"), usgsSeries("00010", "-999999", "2026-11-18T11:30:00.000-08:00")]), site: "14103000", now: watchNow)
+assert(iced == nil, "a gauge reporting no data everywhere is no reading at all")
+let oldReading = RiseUsgs.parse(usgsResponse([usgsSeries("00060", "4160", "2026-11-17T10:00:00.000-08:00")]), site: "14103000", now: watchNow)
+assert(oldReading == nil, "a reading older than 24 hours is not current")
+let dayOld = RiseUsgs.parse(usgsResponse([usgsSeries("00060", "4160", "2026-11-17T13:00:00.000-08:00")]), site: "14103000", now: watchNow)
+assert(dayOld?.flow == "4,160 cfs", "23 hours old is still read, and then aged as stale by the provenance rules")
+let warmGlitch = RiseUsgs.parse(usgsResponse([usgsSeries("00010", "45", "2026-11-18T11:30:00.000-08:00")]), site: "14103000", now: watchNow)
+assert(warmGlitch == nil, "a water temperature outside -5 to 40 C is dropped")
+assert(RiseUsgs.parse(usgsResponse([usgsSeries("00060", "235.5", "2026-11-18T11:45:00.000-08:00")]), site: "14080500", now: watchNow)?.flow == "235.5 cfs", "a fractional flow keeps its fraction")
+assert(RiseUsgs.parse("<html>busy</html>".data(using: .utf8)!, site: "14103000", now: watchNow) == nil, "a garbage body is no reading")
+assert(RiseUsgs.url(site: "14103000")?.absoluteString == "https://waterservices.usgs.gov/nwis/iv/?format=json&sites=14103000&parameterCd=00060,00010&siteStatus=all", "the request is the page's own")
+assert(RiseUsgs.url(site: "14103000&x=1") == nil, "an invalid site never becomes a URL")
+if let bothReadings = bothReadings {
+    let gauged = RiseWatchWater(id: "lower-deschutes", name: "Lower Deschutes", type: "River", home: true, saved: false, topPick: false, lat: 45.21, lon: -121.05,
+                                usgsSite: "14103000", score: 7.5, scoreSource: "Cached live score", primeWindow: nil,
+                                flow: packReading("4,000 cfs", .stale, observed: "2026-11-17T10:00:00.000Z", reference: "4,160 cfs"), temp: packReading("52 F", .reference, reference: "52 F"),
+                                flies: [], hatches: [], planner: nil)
+    let own = RiseUsgs.readings(bothReadings, for: gauged)
+    assert(own.flow?.source == .measured && own.flow?.reference == "4,160 cfs", "the Watch's own reading is measured, and keeps the seasonal fallback")
+    let ownFlowNow = RiseReadingRules.stamp(own.flow!, packGeneratedAt: nil, now: watchNow)
+    assert(ownFlowNow.source == .measured, "and is current when the catch is logged")
+}
+
+group("Watch: a catch carries the journal's own fields")
+let crookedPack = RiseWatchWater(id: "crooked", name: "Crooked River", type: "River", home: true, saved: true, topPick: false, lat: 44.12, lon: -120.79,
+                                 usgsSite: "14080500", score: 8.1, scoreSource: "Live-adjusted score", primeWindow: RiseWatchWindow(startHour: 11, endHour: 15),
+                                 flow: packReading("240 cfs", .measured, observed: "2026-11-18T05:00:00.000Z", cached: "2026-11-18T05:10:00.000Z", reference: "235 cfs"),
+                                 temp: packReading("47 F", .reference, reference: "47 F"), flies: ["Zebra Midge #20"], hatches: ["Midge"], planner: nil)
+let made = RiseWatchCatch.make(watchId: "6F1C2A3B-0000-4000-8000-00000000AAAA", water: crookedPack, fly: "Zebra Midge #20", flow: crookedPack.flow, temp: crookedPack.temp,
+                               packGeneratedAt: packTime, now: iso("2026-11-18T19:05:00.000Z"))
+assert(made.date == "Nov 18, 2026" && made.time == "11:05 AM" && made.loggedAt == "2026-11-18T19:05:00.000Z", "dated on Oregon's clock")
+assert(made.flowSource == "stale" && made.flow == "240 cfs", "a pack reading 14 hours old is stamped stale")
+assert(made.tempSource == "reference" && made.temp == "47 F", "a reference value is stamped reference")
+assert(made.fish == "" && made.length == "" && made.count == "1" && made.notes == "", "species and length are left for the angler, never guessed")
+assert(RiseWatchCatch.lengthText(14) == "14" && RiseWatchCatch.lengthText(14.5) == "14.5" && RiseWatchCatch.lengthText(0) == "", "length is written as typed on the phone")
+let encodedCatch = String(data: try JSONEncoder().encode(made), encoding: .utf8)!
+for key in ["watchId", "loggedAt", "date", "time", "waterId", "waterName", "fly", "fish", "length", "count", "notes", "flow", "flowSource", "temp", "tempSource"] {
+    assert(encodedCatch.contains("\"\(key)\""), "the catch JSON carries \(key)")
+}
+
+group("Watch: ids dedupe everywhere a catch can repeat")
+var dedupeQueue = RiseCatchQueue()
+assert(dedupeQueue.add(made), "a catch is queued")
+assert(!dedupeQueue.add(made), "the same id is refused, not duplicated")
+var badId = made
+badId.watchId = "../../x"
+assert(!dedupeQueue.add(badId), "a malformed id is refused")
+let earlierCatch = RiseWatchCatch.make(watchId: "6F1C2A3B-0000-4000-8000-00000000BBBB", water: crookedPack, fly: "", flow: crookedPack.flow, temp: crookedPack.temp,
+                                 packGeneratedAt: packTime, now: iso("2026-11-18T18:00:00.000Z"))
+let inbox = RiseWatchInbox.merged([made], with: [earlierCatch, made, earlierCatch])
+assert(inbox.map { $0.watchId } == [earlierCatch.watchId, made.watchId], "the iPhone holds each catch once, oldest first")
+assert(RiseWatchInbox.removing([made.watchId], from: inbox).map { $0.watchId } == [earlierCatch.watchId], "and lets go of exactly the acknowledged ones")
+let catchInfo = RiseWatchTransfer.userInfo(for: made)!
+assert(RiseWatchTransfer.catches(fromUserInfo: catchInfo) == [made], "a catch survives the userInfo round trip")
+assert(RiseWatchTransfer.watchId(inUserInfo: catchInfo) == made.watchId, "and names its id for the outstanding-transfer check")
+assert(RiseWatchTransfer.catches(fromUserInfo: ["kind": "catch", "catch": "nope".data(using: .utf8)!]).isEmpty, "a garbled transfer is no catch")
+assert(RiseWatchTransfer.savedIds(fromUserInfo: RiseWatchTransfer.savedAck(ids: [made.watchId, "bad id"])) == [made.watchId], "the saved acknowledgement round-trips, valid ids only")
+let pageCall = RiseWatchTransfer.pageScript(for: inbox)!
+assert(pageCall.hasPrefix("window.riseWatchCatches && window.riseWatchCatches({\"catches\":[") && pageCall.contains(made.watchId), "held catches reach the page as one call")
+assert(RiseWatchTransfer.pageScript(for: []) == nil, "and nothing is called with nothing to give")
+
+group("Watch: the queue moves forward, survives a restart, and keeps what is unconfirmed")
+var watchQueue = RiseCatchQueue()
+watchQueue.add(made)
+watchQueue.add(earlierCatch)
+assert(watchQueue.editDraft(made.watchId) { entry in entry.fish = "Redband Trout"; entry.length = "15.5"; entry.watchId = "changed-id-00" }, "a draft takes length and species")
+assert(watchQueue.item(made.watchId)?.entry.fish == "Redband Trout" && watchQueue.item("changed-id-00") == nil, "and keeps its id")
+assert(watchQueue.seal([made.watchId]) == [made.watchId] && watchQueue.toSend.map { $0.watchId } == [made.watchId], "sealing one queues only that one")
+assert(!watchQueue.editDraft(made.watchId) { $0.fish = "Bull Trout" } && !watchQueue.removeDraft(made.watchId), "a sealed catch can no longer be edited or undone")
+assert(watchQueue.removeDraft(earlierCatch.watchId) && !watchQueue.contains(earlierCatch.watchId), "Undo removes a draft")
+watchQueue.add(earlierCatch)
+watchQueue.seal()
+watchQueue.advance([made.watchId, earlierCatch.watchId], to: .sent)
+watchQueue.advance([made.watchId], to: .delivered)
+watchQueue.advance([made.watchId], to: .sent)
+assert(watchQueue.item(made.watchId)?.state == .delivered, "a state never moves backwards")
+assert(watchQueue.requeueSent(notIn: []) == [earlierCatch.watchId] && watchQueue.item(earlierCatch.watchId)?.state == .queued, "a sent catch the system no longer carries is sent again")
+watchQueue.advance([earlierCatch.watchId], to: .sent)
+assert(watchQueue.requeueSent(notIn: [earlierCatch.watchId]).isEmpty, "one it still carries is left alone")
+assert(watchQueue.unsyncedCount == 2 && watchQueue.waitingOnPhoneCount == 1, "unsynced counts everything not yet in the journal")
+assert(watchQueue.fishToday(now: iso("2026-11-19T06:00:00.000Z")) == 2 && watchQueue.fishToday(now: iso("2026-11-19T09:00:00.000Z")) == 0, "today is Oregon's today")
+let queueURL = watchRoot.appendingPathComponent("catch-watchQueue.json")
+assert(watchQueue.save(to: queueURL), "the queue is written")
+assert(RiseCatchQueue.load(from: queueURL) == watchQueue, "and read back unchanged")
+watchQueue.advance([made.watchId, earlierCatch.watchId], to: .saved)
+watchQueue.prune(now: iso("2026-11-20T20:00:00.000Z"))
+assert(watchQueue.items.count == 2, "a saved catch is kept for a few days")
+var unconfirmed = watchQueue
+unconfirmed.add(RiseWatchCatch.make(watchId: "6F1C2A3B-0000-4000-8000-00000000CCCC", water: crookedPack, fly: "", flow: .none, temp: .none, packGeneratedAt: nil, now: iso("2026-11-01T18:00:00.000Z")), state: .queued)
+unconfirmed.prune(now: iso("2026-11-30T20:00:00.000Z"))
+assert(unconfirmed.items.map { $0.entry.watchId } == ["6F1C2A3B-0000-4000-8000-00000000CCCC"], "old confirmed catches are pruned, an unconfirmed one never is")
+try "{ not json".data(using: .utf8)!.write(to: queueURL)
+assert(RiseCatchQueue.load(from: queueURL).items.isEmpty, "an unreadable queue file starts a fresh queue")
+let setAside = (try? FileManager.default.contentsOfDirectory(atPath: watchRoot.path)) ?? []
+assert(setAside.contains { $0.hasPrefix("catch-watchQueue.unreadable-") }, "after setting the unreadable file aside, not overwriting it (\(setAside))")
+assert(RiseCatchQueue.load(from: watchRoot.appendingPathComponent("missing.json")).items.isEmpty, "a missing file is an empty queue")
+let stateJSON = #"{"items":[{"entry":\#(encodedCatch),"state":"teleported"}]}"#
+let oddState = try JSONDecoder().decode(RiseCatchQueue.self, from: stateJSON.data(using: .utf8)!)
+assert(oddState.items.first?.state == .queued, "an unknown state is resent rather than lost")
+let inboxURL = watchRoot.appendingPathComponent("watch-pending-catches.json")
+assert(RiseWatchInbox.save(inbox, to: inboxURL), "the iPhone's held catches are written")
+if case .loaded(let held) = RiseWatchInbox.load(from: inboxURL) {
+    assert(held == inbox, "and read back unchanged")
+} else {
+    assert(false, "and read back")
+}
+
+group("Watch: the trip pack the page sends is decoded, validated and kept small")
+let pageJSON = """
+{"version":1,"generatedAt":"2026-11-18T14:00:00.000Z","pacificDate":"2026-11-18","homeWaterId":"crooked",
+ "species":["Redband Trout","Bull Trout"],
+ "waters":[
+  {"id":"crooked","name":"Crooked River","type":"River","home":true,"saved":true,"topPick":false,"lat":44.12,"lon":-120.79,"usgsSite":"14080500",
+   "score":8.1,"scoreSource":"Live-adjusted score","primeWindow":{"startHour":11,"endHour":15},
+   "flow":{"value":"240 cfs","source":"measured","observedAt":"2026-11-18T13:00:00.000Z","cachedAt":"2026-11-18T13:10:00.000Z","reference":"235 cfs"},
+   "temp":{"value":"47 F","source":"reference","observedAt":null,"cachedAt":null,"reference":"47 F"},
+   "flies":["Zebra Midge #20","BWO Emerger #18"],"hatches":["Midge","BWO"],
+   "planner":{"fetchedAt":"2026-11-18T13:00:00.000Z","days":[{"date":"2026-11-19","label":"Thu","score":8.4,"reason":"cloudy"},{"date":"2026-11-20","label":"Fri","score":null,"reason":"Typically snowed in"}],"best":{"date":"2026-11-19","label":"Thu","score":8.4,"reason":"cloudy"}}},
+  {"id":"hosmer","name":"Hosmer Lake","type":"Lake","home":false,"saved":true,"topPick":true,"lat":43.96,"lon":-121.79,"usgsSite":null,
+   "score":6.2,"scoreSource":"Seasonal reference score - no live feed","primeWindow":null,
+   "flow":{"value":"Stillwater","source":"reference","observedAt":null,"cachedAt":null,"reference":"Stillwater"},
+   "temp":{"value":"48 F","source":"reference","observedAt":null,"cachedAt":null,"reference":"48 F"},
+   "flies":[],"hatches":[],"planner":null},
+  {"id":"../escape","name":"Bad","type":"River"},
+  {"id":"crooked","name":"Duplicate","type":"River"}
+ ]}
+"""
+let decodedPack = RiseWatchPack.decode(pageJSON.data(using: .utf8)!)
+assert(decodedPack?.waters.map { $0.id } == ["crooked", "hosmer"], "the page's pack decodes; a bad or repeated water is dropped (\(decodedPack?.waters.map { $0.id } ?? []))")
+assert(decodedPack?.waters.first?.planner?.days.last?.score == nil && decodedPack?.waters.first?.planner?.best?.score == 8.4, "a snowed-in day stays unscored")
+assert(decodedPack?.waters.last?.primeWindow == nil && decodedPack?.waters.last?.usgsSite == nil, "a lake's wind-decided window and missing gauge survive as nil")
+assert(RiseWatchPack.decode(#"{"version":9,"generatedAt":"2026-11-18T14:00:00.000Z","waters":[]}"#.data(using: .utf8)!) == nil, "a pack from a newer, unknown version is refused")
+assert(RiseWatchPack.decode("nonsense".data(using: .utf8)!) == nil, "garbage is no pack")
+let packContext = RiseWatchTransfer.applicationContext(packJSON: pageJSON)
+assert(packContext?["kind"] as? String == "pack" && (packContext?["pack"] as? Data) != nil, "the iPhone sends it as an application context")
+assert(RiseWatchTransfer.pack(fromApplicationContext: packContext ?? [:])?.pack == decodedPack, "and the Watch reads back the same pack")
+assert(RiseWatchTransfer.applicationContext(packJSON: "{}") == nil, "garbage from the page never reaches the Watch")
+if var big = decodedPack {
+    let template = big.waters[0]
+    big.waters = (0..<12).map { index -> RiseWatchWater in
+        var copy = template
+        copy.id = "water-\(index)"
+        copy.planner = RiseWatchPlanner(fetchedAt: nil, days: (0..<7).map { _ in RiseWatchPlannerDay(date: "2026-11-19", label: "Thu", score: 8, reason: String(repeating: "x", count: 1200)) }, best: nil)
+        return copy
+    }
+    let trimmed = big.encodedForTransfer()
+    let trimmedPack = trimmed.flatMap { RiseWatchPack.decode($0) }
+    assert((trimmed?.count ?? .max) <= RiseWatchPack.maxEncodedBytes && trimmedPack?.waters.first?.id == "water-0", "an oversized pack is trimmed to fit, first water kept")
+    assert(trimmedPack?.waters.allSatisfy { $0.planner == nil } == true, "planner days are the first thing dropped")
+}
 
 print("\n\(checks - failures)/\(checks) checks passed")
 exit(failures == 0 ? 0 : 1)

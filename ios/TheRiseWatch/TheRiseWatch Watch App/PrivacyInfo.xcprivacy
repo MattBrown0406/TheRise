@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!--
+	  The Rise for Apple Watch does not track, does not collect, and does not
+	  transmit user data to anyone. The trip pack and the catches logged on the
+	  Watch are JSON files in the Watch app's Application Support directory;
+	  catches move only between the user's own Watch and iPhone over Apple's
+	  WatchConnectivity. Location is read once when the angler taps "Which
+	  water am I on?", compared with the trip pack's waters and discarded - it
+	  is never stored, never put on a catch and never sent. The only network
+	  traffic is an optional anonymous read of the public USGS
+	  instantaneous-values endpoint, which carries no user data.
+
+	  No required-reason APIs: no UserDefaults, no file timestamps, no
+	  disk-space or boot-time queries.
+	-->
+	<key>NSPrivacyTracking</key>
+	<false/>
+	<key>NSPrivacyTrackingDomains</key>
+	<array/>
+	<key>NSPrivacyCollectedDataTypes</key>
+	<array/>
+	<key>NSPrivacyAccessedAPITypes</key>
+	<array/>
+</dict>
+</plist>

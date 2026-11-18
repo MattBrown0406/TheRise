@@ -2810,6 +2810,14 @@
       line-height: 1.3;
     }
 
+    .catch-card .watch-tag {
+      color: #155a6b;
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: .02em;
+      text-transform: uppercase;
+    }
+
     .log-form-panel {
       border: 1px solid rgba(31, 125, 149, .24);
       border-radius: 24px;
@@ -11853,6 +11861,295 @@
       renderScreens("today", "waters", "trip");
     };
 
+    /* ---------------------------------------------------------------------
+       Apple Watch.
+
+       Some anglers leave the phone in the truck. The Watch app works from a
+       "trip pack" this page builds: home, saved and top-pick waters with
+       their score, prime window, readings (each with its provenance and
+       age), flies, hatches and the week's planner days. The container hands
+       it to the Watch with WCSession.updateApplicationContext - latest wins -
+       and the Watch keeps it on disk, so it still has today's waters with no
+       phone and no signal.
+
+       Catches logged on the Watch come back the other way. The container
+       writes each one to a file in Application Support before it hands them
+       here through window.riseWatchCatches, and deletes one only when this
+       page answers catchesSaved for it - which it does only after setLogs
+       has returned true. A second delivery of the same catch adds nothing.
+
+       Nothing is posted unless the container registered the riseWatch
+       handler, and a pack is posted only when its content changed. The
+       message contract is in docs/watch-app.md.
+       --------------------------------------------------------------------- */
+    const WATCH_PACK_VERSION = 1;
+    const WATCH_PACK_MAX_WATERS = 10;
+    const WATCH_PACK_FLIES = 6;
+    const WATCH_PACK_DEBOUNCE_MS = 1500;
+    const WATCH_PROVENANCE = ["measured", "stale", "reference", "unavailable"];
+    const WATCH_ID_PATTERN = /^[A-Za-z0-9-]{8,64}$/;
+    let watchPackTimer = null;
+    let watchPackPostedKey = null;
+    // { text, error } for the Log screen, or null.
+    let watchCatchNotice = null;
+
+    function watchHandler() {
+      return window.webkit?.messageHandlers?.riseWatch || null;
+    }
+
+    function postWatchMessage(payload) {
+      const handler = watchHandler();
+      if (!handler) return false;
+      try {
+        handler.postMessage(payload);
+        return true;
+      } catch {
+        // The Watch is a convenience; the phone app is the record.
+        return false;
+      }
+    }
+
+    function isoOrNull(value) {
+      if (!value) return null;
+      const time = Date.parse(value);
+      return Number.isFinite(time) ? new Date(time).toISOString() : null;
+    }
+
+    // Home first, then the saved waters, then today's top pick - ten at most.
+    function watchPackWaters() {
+      return validWaterIds([homeWaterId, ...savedWaterIds, topRecommendedWater()?.id])
+        .slice(0, WATCH_PACK_MAX_WATERS)
+        .map(waterById);
+    }
+
+    // A reading travels with where it came from and when. The Watch ages it
+    // again at the moment of a catch, and never upgrades one: a reference
+    // value stays reference however recently the pack arrived.
+    function watchPackReading(water, key) {
+      const source = valueProvenance(water, key);
+      const report = usableReport(water);
+      const live = source === "measured" || source === "stale";
+      const noGauge = key === "flow" && water.type !== "Lake" && !hasGauge(water);
+      return {
+        value: String(liveDisplayValue(water, key) ?? ""),
+        source,
+        observedAt: live ? isoOrNull(report?.usgs?.observedAt) : null,
+        cachedAt: live ? isoOrNull(report?.cachedAt) : null,
+        // What the Watch falls back to once a measurement is past its expiry,
+        // exactly as this page falls back to the seasonal value.
+        reference: noGauge ? "" : String(water[key] ?? "")
+      };
+    }
+
+    // The planner's days only if the angler loaded them; nothing is fetched
+    // for the Watch and nothing is filled in.
+    function watchPackPlanner(water) {
+      const plan = plannerForWater(water);
+      if (!plan.days.length) return null;
+      const day = (item) => ({
+        date: String(item.date),
+        label: String(item.label || ""),
+        score: typeof item.score === "number" ? item.score : null,
+        reason: String(item.reason || "")
+      });
+      return { fetchedAt: isoOrNull(plan.fetchedAt), days: plan.days.map(day), best: plan.best ? day(plan.best) : null };
+    }
+
+    function buildWatchPack(now = new Date()) {
+      const top = topRecommendedWater();
+      return {
+        version: WATCH_PACK_VERSION,
+        generatedAt: now.toISOString(),
+        pacificDate: pacificDateKey(now),
+        homeWaterId,
+        species: [...nativeFish],
+        waters: watchPackWaters().map((water) => {
+          const coordinates = waterCoordinates[water.id] || null;
+          const hours = primeWindowHours(water);
+          return {
+            id: water.id,
+            name: water.name,
+            type: water.type,
+            home: water.id === homeWaterId,
+            saved: savedWaterIds.includes(water.id),
+            topPick: water.id === top?.id,
+            lat: coordinates ? coordinates.lat : null,
+            lon: coordinates ? coordinates.lon : null,
+            usgsSite: liveSources[water.id]?.usgs || null,
+            score: Number(fishScore(water)),
+            scoreSource: scoreSourceLabel(water),
+            // Hours on Oregon's clock; null when wind decides the window.
+            primeWindow: hours ? { startHour: hours[0], endHour: hours[1] } : null,
+            flow: watchPackReading(water, "flow"),
+            temp: watchPackReading(water, "temp"),
+            flies: uniqueItems([...liveRecommendedFlies(water), ...Object.values(dailyFlyBoxFor(water)).flat()]).slice(0, WATCH_PACK_FLIES),
+            hatches: predictedHatches(water).slice(0, 4),
+            planner: watchPackPlanner(water)
+          };
+        })
+      };
+    }
+
+    // Posts the pack if, and only if, something in it changed. generatedAt
+    // alone is not a change: a repaint must not wake the Watch.
+    function postWatchPack() {
+      watchPackTimer = null;
+      if (!watchHandler()) return false;
+      let pack;
+      try {
+        pack = buildWatchPack();
+      } catch {
+        return false;
+      }
+      const key = JSON.stringify({ ...pack, generatedAt: "" });
+      if (key === watchPackPostedKey) return false;
+      if (!postWatchMessage({ action: "pack", body: JSON.stringify(pack) })) return false;
+      watchPackPostedKey = key;
+      return true;
+    }
+
+    // Called from every render; a burst of renders after a sync is one pack.
+    function scheduleWatchPack() {
+      if (!watchHandler()) return;
+      clearTimeout(watchPackTimer);
+      watchPackTimer = setTimeout(postWatchPack, WATCH_PACK_DEBOUNCE_MS);
+    }
+
+    function watchText(value, maxLength = 80) {
+      return String(value ?? "")
+        .replace(/[\u0000-\u001f\u007f]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim()
+        .slice(0, maxLength);
+    }
+
+    // One catch from the Watch as a journal entry: the fields Fish on! writes,
+    // dated on Oregon's clock from its own loggedAt by the same formatters as
+    // every other entry, plus its watchId and a marker. Anything malformed is
+    // refused, never repaired into a catch nobody logged, and a reading with
+    // no recognisable provenance is stored as unavailable rather than guessed.
+    function watchCatchEntry(raw) {
+      if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+      const watchId = String(raw.watchId || "");
+      if (!WATCH_ID_PATTERN.test(watchId)) return null;
+      const time = Date.parse(raw.loggedAt);
+      if (!Number.isFinite(time)) return null;
+      const at = new Date(time);
+      const water = waterById(String(raw.waterId || ""));
+      const reading = (key) => {
+        const source = String(raw[`${key}Source`] || "");
+        return WATCH_PROVENANCE.includes(source)
+          ? { value: watchText(raw[key], 40), source }
+          : { value: "", source: "unavailable" };
+      };
+      const flow = reading("flow");
+      const temp = reading("temp");
+      const length = String(raw.length ?? "");
+      const count = String(raw.count ?? "");
+      return {
+        loggedAt: at.toISOString(),
+        date: zonedDateLabel(at),
+        time: zonedTimeLabel(at),
+        waterName: water ? water.name : watchText(raw.waterName),
+        waterId: water ? water.id : watchText(raw.waterId, 64),
+        fly: watchText(raw.fly, 60),
+        fish: watchText(raw.fish, 60),
+        length: /^\d{1,3}(\.\d{1,2})?$/.test(length) ? length : "",
+        count: /^[1-9]\d{0,2}$/.test(count) ? count : "1",
+        notes: "",
+        flow: flow.value,
+        flowSource: flow.source,
+        temp: temp.value,
+        tempSource: temp.source,
+        photoId: "",
+        photo: "",
+        watchId,
+        loggedOn: "watch"
+      };
+    }
+
+    // The journal is newest first. Each new catch goes in front of the first
+    // entry logged before it, so nothing already there changes order, and a
+    // watchId already in the journal adds nothing.
+    function mergeWatchCatches(logs, entries) {
+      const next = logs.slice();
+      const known = new Set(next.map((entry) => entry?.watchId).filter(Boolean));
+      const added = [];
+      [...entries]
+        .sort((a, b) => Date.parse(b.loggedAt) - Date.parse(a.loggedAt))
+        .forEach((entry) => {
+          if (known.has(entry.watchId)) return;
+          known.add(entry.watchId);
+          const time = Date.parse(entry.loggedAt);
+          let index = next.findIndex((item) => {
+            const itemTime = Date.parse(item?.loggedAt);
+            return !Number.isFinite(itemTime) || itemTime < time;
+          });
+          if (index === -1) index = next.length;
+          next.splice(index, 0, entry);
+          added.push(entry);
+        });
+      return { logs: next, added };
+    }
+
+    function watchCatchCount(count) {
+      return `${count} ${count === 1 ? "catch" : "catches"}`;
+    }
+
+    function watchCatchKept(count) {
+      return `${count === 1 ? "It is" : "They are"} kept on this iPhone and will be offered again`;
+    }
+
+    /* Called by the container with every catch it is holding for the
+       journal, on every page load and whenever one arrives. Idempotent by
+       watchId. The container deletes a held catch only when it is named in
+       catchesSaved, and that is posted only for catches the journal now
+       holds - after setLogs returned true. A journal that cannot be read or
+       written acknowledges nothing, so the container keeps every catch. */
+    window.riseWatchCatches = function(payload) {
+      const incoming = (Array.isArray(payload?.catches) ? payload.catches : []).map(watchCatchEntry).filter(Boolean);
+      if (!incoming.length) return;
+      const logs = getLogs();
+      if (logStorageUnreadable) {
+        watchCatchNotice = {
+          error: true,
+          text: `${watchCatchCount(incoming.length)} from your Apple Watch could not be added because your journal could not be read. ${watchCatchKept(incoming.length)}.`
+        };
+        renderScreens("log", "trip");
+        return;
+      }
+      // Indexes move under an insert. An open edit form follows its catch.
+      const editingEntry = editingLogIndex !== null ? logs[editingLogIndex] || null : null;
+      const { logs: next, added } = mergeWatchCatches(logs, incoming);
+      if (added.length && !setLogs(next)) {
+        watchCatchNotice = {
+          error: true,
+          text: `${watchCatchCount(added.length)} from your Apple Watch could not be saved to this device's journal. ${watchCatchKept(added.length)} - free up storage and reopen The Rise.`
+        };
+        renderScreens("log", "trip");
+        return;
+      }
+      if (added.length && editingEntry) {
+        const moved = getLogs().indexOf(editingEntry);
+        editingLogIndex = moved === -1 ? null : moved;
+        if (moved === -1) logFormOpen = false;
+      }
+      // A fish on a fly is the fly working, as it is for Fish on! here.
+      added.forEach((entry) => {
+        if (entry.fly) setFlyFeedback(entry.fly, "worked", { toggle: false });
+      });
+      const inJournal = new Set(getLogs().map((entry) => entry?.watchId).filter(Boolean));
+      const ids = uniqueItems(incoming.map((entry) => entry.watchId)).filter((id) => inJournal.has(id));
+      if (ids.length) postWatchMessage({ action: "catchesSaved", ids });
+      if (added.length) {
+        watchCatchNotice = { error: false, text: `Added ${watchCatchCount(added.length)} from your Apple Watch.` };
+        maybeCompleteOnboarding();
+      } else if (watchCatchNotice?.error) {
+        watchCatchNotice = null;
+      }
+      renderScreens("today", "waters", "log", "trip");
+    };
+
     function photoSourceFor(entry) {
       if (entry?.photoId && hasNativeStoreBridge()) return `risephoto://photo/${entry.photoId}`;
       return entry?.photo || "";
@@ -12051,6 +12348,7 @@
           ${logRestoreNotice ? `<div class="data-provenance-notice">${logRestoreNotice}</div>` : ""}
           ${logStorageUnreadable ? `<div class="data-provenance-notice" role="alert">Your saved journal could not be read. The original data has been kept; new saves are blocked to avoid overwriting it. Reopen the app to retry the device backup, or contact support before clearing any app data.</div>` : ""}
           ${!logFormOpen && logSaveMessage ? `<div class="data-provenance-notice" role="status">${logSaveMessage}</div>` : ""}
+          ${watchCatchNotice ? `<div class="data-provenance-notice" role="${watchCatchNotice.error ? "alert" : "status"}" data-watch-notice>${esc(watchCatchNotice.text)}</div>` : ""}
 
           <div class="log-summary">
             <div class="log-stat"><strong>${totalFish}</strong><span>Fish</span></div>
@@ -12111,6 +12409,7 @@
                     ? `<span class="catch-conditions">${esc([loggedReadingLabel(entry, "flow"), loggedReadingLabel(entry, "temp")].filter(Boolean).join(" - "))}</span>`
                     : ""}
                   ${entry.notes ? `<span>${esc(entry.notes)}</span>` : ""}
+                  ${entry.loggedOn === "watch" ? `<span class="watch-tag" data-watch-tag>Logged on Apple Watch</span>` : ""}
                   <div class="catch-actions">
                     <button class="mini-btn" data-edit-log="${index}">Edit</button>
                     <button class="mini-btn danger" data-delete-log="${index}">Delete</button>
@@ -12338,6 +12637,9 @@
       if (!renderer) return;
       renderer();
       dirtyScreens.delete(id);
+      // Whatever changed on screen may have changed what the Watch should
+      // carry. Debounced, and posted only if the pack's content changed.
+      scheduleWatchPack();
       /* Re-rendering the visible screen changes what is painted under the
          status bar without anyone scrolling. The simulator proved it: at boot
          the app measured an unsynced Today, asked for dark glyphs, and then
@@ -12370,6 +12672,7 @@
 
     // Marks the named screens stale and repaints only the one on screen.
     function renderScreens(...ids) {
+      scheduleWatchPack();
       const active = activeScreenId();
       ids.forEach((id) => {
         if (id === active) {

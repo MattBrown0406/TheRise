@@ -45,6 +45,7 @@ final class RiseViewController: UIViewController, WKNavigationDelegate, WKScript
         configuration.userContentController.add(messageProxy, name: "riseStore")
         configuration.userContentController.add(messageProxy, name: "riseChrome")
         configuration.userContentController.add(messageProxy, name: "riseAlerts")
+        configuration.userContentController.add(messageProxy, name: "riseWatch")
         configuration.setURLSchemeHandler(photoSchemeHandler, forURLScheme: RisePhotoSchemeHandler.scheme)
 
         let webView = WKWebView(frame: .zero, configuration: configuration)
@@ -66,6 +67,7 @@ final class RiseViewController: UIViewController, WKNavigationDelegate, WKScript
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "riseStore")
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "riseChrome")
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "riseAlerts")
+        webView.configuration.userContentController.removeScriptMessageHandler(forName: "riseWatch")
     }
 
     override func viewDidLoad() {
@@ -97,6 +99,8 @@ final class RiseViewController: UIViewController, WKNavigationDelegate, WKScript
             return
         }
         let accessURL = url.deletingLastPathComponent()
+        // Watch catches wait for didFinish; a page mid-load cannot take them.
+        RiseWatchBridge.shared.pageWillLoad()
         webView.loadFileURL(url, allowingReadAccessTo: accessURL)
     }
 
@@ -118,6 +122,11 @@ final class RiseViewController: UIViewController, WKNavigationDelegate, WKScript
 
         if message.name == "riseAlerts" {
             handleAlertsMessage(message)
+            return
+        }
+
+        if message.name == "riseWatch" {
+            RiseWatchBridge.shared.handlePageMessage(message.body)
             return
         }
 
@@ -506,6 +515,9 @@ final class RiseViewController: UIViewController, WKNavigationDelegate, WKScript
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         restoreLogIfAvailable()
         restoreAlertsIfAvailable()
+        // After the journal restore, so held Watch catches merge into the
+        // restored journal rather than racing it.
+        RiseWatchBridge.shared.pageDidFinishLoading(self)
     }
 
     /// iOS kills the WebContent process under memory pressure - a journal full
@@ -531,5 +543,12 @@ final class RiseViewController: UIViewController, WKNavigationDelegate, WKScript
 
         UIApplication.shared.open(url)
         decisionHandler(.cancel)
+    }
+}
+
+/// The Apple Watch bridge hands held catches to the page through here.
+extension RiseViewController: RiseWatchPageHost {
+    func runWatchScript(_ script: String) {
+        webView.evaluateJavaScript(script)
     }
 }

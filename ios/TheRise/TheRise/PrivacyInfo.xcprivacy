@@ -8,7 +8,9 @@
 	  rules for saved waters stay in the app container on the device. Alerts
 	  are local notifications decided on the device. The only network traffic
 	  is anonymous reads of public USGS, NWS and ODFW endpoints, which carry no
-	  user data.
+	  user data. Catches logged on the Apple Watch app move only between the
+	  user's own Watch and iPhone over Apple's WatchConnectivity; the Watch's
+	  location is used only to pick the nearest water and is not stored.
 
 	  The app target itself calls no required-reason APIs: the alert rules are
 	  a JSON file in Application Support, not UserDefaults. Third-party SDKs

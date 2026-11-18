@@ -1,10 +1,12 @@
 # On the water: Live Activity and Apple Watch plan
 
 Status: **planned, not built.** The in-app "On the water" view ships in
-`the-rise-app.html`. The Lock Screen / Dynamic Island Live Activity and any
-Apple Watch presence need new Xcode targets, entitlements and signing that
-cannot be safely created by hand-editing `project.pbxproj`, so they are not in
-the project. Everything below has to be done in Xcode on a Mac.
+`the-rise-app.html`. The Lock Screen / Dynamic Island Live Activity needs a
+new Xcode target, entitlements and signing that cannot be safely created by
+hand-editing `project.pbxproj`, so it is not in the project. Everything below
+has to be done in Xcode on a Mac. The Apple Watch app has its own document,
+[`watch-app.md`](watch-app.md): its iPhone half is in the project, its Watch
+target is created in Xcode.
 
 > **The Swift files in `ios/pending/LiveActivity/` have never been compiled.**
 > They are written against the iOS 17 ActivityKit/WidgetKit APIs (the app's
@@ -101,9 +103,11 @@ Exit does.
    required-reason APIs).
 8. **App Groups: not needed** for this Live Activity. All data travels in the
    ActivityKit content state and the widget never reads storage. An App Group
-   (`group.com.mattbrown.therise`) becomes necessary only for the watch phase
-   below if a watch complication or Home Screen widget should read the journal
-   or the last readings without the app running.
+   (`group.com.mattbrown.therise`) becomes necessary only if a watch
+   complication or Home Screen widget should read the journal or the last
+   readings without the app running. The Watch app in `watch-app.md` does not
+   need one: it keeps its own files and gets everything over
+   WatchConnectivity.
 9. **Signing.** Automatic signing creates the App ID for the extension. If the
    team uses manual profiles, create an App Store profile for
    `com.mattbrown.therise.RiseOnWater` and select it for the Release
@@ -138,28 +142,30 @@ build beyond the steps above. If the deployment target is raised to iOS 18, add
 branch on `@Environment(\.activityFamily)` for a watch-specific layout (big
 countdown, next fly).
 
-**Phase 2 - a watchOS app (later, separate change).** The useful watch
-feature is a wrist-tap **Fish on!** while the phone stays in a pocket.
+**Phase 2 - a watchOS app: see [`watch-app.md`](watch-app.md).** The iPhone
+half is built and in the TheRise target (`RiseWatchBridge.swift`, with the
+shared, Foundation-only `RiseWatchModels.swift`); the Watch app's sources are
+in `ios/TheRiseWatch/TheRiseWatch Watch App/` and its target is created in
+Xcode by the steps in that document. It goes further than the plan that used
+to be here, because the goal is a Watch that is useful with the phone left in
+the truck:
 
-- New target: File > New > Target > watchOS > *App* ("The Rise Watch"),
-  companion to TheRise, watchOS 10+. One screen: countdown, next fly, a full
-  screen **Fish on!** button, and **Next fly**.
-- Transport: `WatchConnectivity`. The phone pushes the same `content`
-  dictionary the Live Activity gets with `updateApplicationContext`; the watch
-  sends `{ action: "fishOn", waterId, fly, at }` with `sendMessage` when the
-  phone is reachable, else `transferUserInfo` (queued, delivered later).
-- Journal integrity: the journal lives in the web view (`localStorage`,
-  mirrored by `RiseStore`). The phone must not write it from native code. A
-  watch catch is appended to a pending-catches file by a new Foundation-only
-  `RiseStore` function, and handed to the page on its next load through a new
-  `window.risePendingCatches` bridge that writes through `setLogs` (failing
-  closed, as every journal write does) and then clears the file. Readings on a
-  watch catch carry `flowSource`/`tempSource` from the content the phone last
-  pushed only if that reading was still fresh at the catch time; otherwise they
-  are stored blank with `"unavailable"`, never guessed.
-- Signing: a watch app needs its own App ID
-  (`com.mattbrown.therise.watchkitapp`) and profile; an App Group is needed
-  only if a complication reads shared state.
+- The phone sends a **trip pack** (home, saved and top-pick waters with
+  score, prime-window hours, readings with provenance and age, flies,
+  hatches, planner days) with `updateApplicationContext`, not the Live
+  Activity `content` for one water. The Watch keeps it on disk.
+- Every catch goes out with `transferUserInfo` - never `sendMessage`, which
+  needs the phone reachable - after it is written to a queue file on the
+  Watch.
+- The journal is still never written by native code. The iPhone writes
+  arriving catches to `watch-pending-catches.json` and hands them to the page
+  through `window.riseWatchCatches` (not `risePendingCatches`); the page
+  writes through `setLogs` and acknowledges with
+  `riseWatch {action: "catchesSaved", ids}`, and only then is a held catch
+  deleted.
+- A reading that is no longer fresh at catch time is stored as `stale` with
+  its age, as the page stores one, rather than blanked; one past the
+  seven-day expiry falls back to the seasonal value, labelled `reference`.
 
 ## What is not covered
 
