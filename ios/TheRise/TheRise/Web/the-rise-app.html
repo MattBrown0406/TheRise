@@ -2099,6 +2099,248 @@
       font-weight: 760;
     }
 
+    /* "Your <water>": the angler's own profile of one water. */
+    .profile-rows {
+      display: grid;
+      gap: 0;
+      margin-bottom: 8px;
+    }
+
+    .profile-row {
+      display: grid;
+      grid-template-columns: minmax(0, 92px) minmax(0, 1fr);
+      gap: 2px 10px;
+      border-top: 1px solid var(--line);
+      padding: 7px 0;
+      min-width: 0;
+    }
+
+    .profile-row span {
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 950;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      padding-top: 2px;
+    }
+
+    .profile-row b {
+      color: var(--ink);
+      font-size: 14px;
+      overflow-wrap: anywhere;
+    }
+
+    .profile-row small {
+      grid-column: 2;
+      color: var(--muted);
+      font-size: 11px;
+      overflow-wrap: anywhere;
+    }
+
+    .profile-need {
+      margin: 0 0 8px;
+      color: var(--ink);
+      font-size: 13px;
+      font-weight: 760;
+      line-height: 1.35;
+    }
+
+    /* The way into On the water from the full Trip screen. */
+    .on-water-open {
+      display: grid;
+      gap: 2px;
+      width: 100%;
+      min-height: 64px;
+      border: 3px solid #0b0f0c;
+      border-radius: 10px;
+      background: #0f4552;
+      color: #fff;
+      padding: 10px 16px;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .on-water-open b {
+      font-size: 22px;
+      line-height: 1.1;
+    }
+
+    .on-water-open span {
+      font-size: 13px;
+      font-weight: 700;
+      opacity: .92;
+    }
+
+    /* On the water: built for sun glare and wet gloves. Black on white is
+       the most legible pairing in direct sunlight, every action is a solid
+       block at least 64pt tall, and nothing important is under 20px. */
+    .on-water {
+      max-width: 640px;
+      margin: 0 auto;
+      gap: 14px;
+      color: #0b0f0c;
+    }
+
+    .on-water-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .on-water-top > div {
+      min-width: 0;
+    }
+
+    .on-water-eyebrow,
+    .on-water-label {
+      display: block;
+      margin: 0 0 4px;
+      color: #0b0f0c;
+      font-size: 13px;
+      font-weight: 950;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .on-water h1 {
+      margin: 0;
+      font-size: 34px;
+      line-height: 1.05;
+      overflow-wrap: anywhere;
+    }
+
+    .on-water-btn {
+      min-height: 64px;
+      border-radius: 12px;
+      border: 3px solid #0b0f0c;
+      font-size: 20px;
+      font-weight: 900;
+      padding: 0 18px;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+
+    .on-water-btn[disabled] {
+      opacity: .45;
+    }
+
+    .on-water-btn.secondary {
+      background: #fff;
+      color: #0b0f0c;
+    }
+
+    .on-water-btn.wide {
+      width: 100%;
+    }
+
+    .on-water-top .on-water-btn {
+      flex: 0 0 auto;
+      min-width: 96px;
+    }
+
+    .on-water-btn.next {
+      width: 100%;
+      min-height: 72px;
+      margin-top: 12px;
+      background: #0f4552;
+      color: #fff;
+    }
+
+    .on-water-btn.fish-on {
+      width: 100%;
+      min-height: 120px;
+      border-width: 4px;
+      background: #ffd23f;
+      color: #0b0f0c;
+      font-size: 40px;
+      letter-spacing: .02em;
+    }
+
+    .on-water-block,
+    .on-water-reading,
+    .on-water-logged {
+      border: 3px solid #0b0f0c;
+      border-radius: 12px;
+      background: #fff;
+      padding: 14px 16px;
+      min-width: 0;
+    }
+
+    .on-water-block strong,
+    .on-water-reading strong {
+      display: block;
+      font-size: 30px;
+      line-height: 1.1;
+      overflow-wrap: anywhere;
+    }
+
+    .on-water-block small {
+      display: block;
+      margin-top: 6px;
+      color: #2b332d;
+      font-size: 16px;
+      font-weight: 700;
+      line-height: 1.3;
+    }
+
+    .on-water-window.during {
+      background: #e3f6e8;
+    }
+
+    .on-water-readings {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .on-water-reading strong {
+      font-size: 26px;
+    }
+
+    .on-water-reading .prov {
+      font-size: 13px;
+    }
+
+    .on-water-notice,
+    .on-water-error,
+    .on-water-hint {
+      margin: 0;
+      font-size: 17px;
+      font-weight: 800;
+      line-height: 1.35;
+    }
+
+    .on-water-error {
+      border: 3px solid #8b2c20;
+      border-radius: 12px;
+      background: #fde8e4;
+      color: #8b2c20;
+      padding: 12px 14px;
+    }
+
+    .on-water-logged {
+      display: grid;
+      gap: 8px;
+      background: #e3f6e8;
+    }
+
+    .on-water-logged strong {
+      font-size: 22px;
+      overflow-wrap: anywhere;
+    }
+
+    .on-water-logged span {
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    .on-water-logged-actions {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 10px;
+    }
+
     .log-screen {
       max-width: 760px;
       margin: 0 auto;
@@ -5107,9 +5349,12 @@
       if (hiddenWaterIds.includes(expandedWaterId)) expandedWaterId = null;
     }
 
-    function setFlyFeedback(fly, value) {
+    // The Worked/Ignore buttons toggle. On the water sets a value outright:
+    // "Not working" on a fly already marked ignored must not un-ignore it.
+    function setFlyFeedback(fly, value, { toggle = true } = {}) {
       if (!fly) return;
-      if (flyFeedback[fly] === value) {
+      if (!toggle && flyFeedback[fly] === value) return;
+      if (toggle && flyFeedback[fly] === value) {
         delete flyFeedback[fly];
       } else {
         flyFeedback[fly] = value;
@@ -5140,7 +5385,7 @@
       if (!groups.Streamers.length) groups.Streamers.push(water.type === "Lake" ? "Balanced Leech #10" : "Muddler Minnow #6");
       if (!groups.Terrestrials.length && flyInSeason("Foam Ant #16")) groups.Terrestrials.push("Foam Ant #16");
       Object.keys(groups).forEach((key) => {
-        groups[key] = applyFlyFeedback(groups[key]).slice(0, 3);
+        groups[key] = applyFlyFeedback(groups[key], water).slice(0, 3);
       });
       return groups;
     }
@@ -5352,6 +5597,28 @@
       return clampScore(score + proximityScore(water));
     }
 
+    // One fix from the device, in the shape saveUserLocation stores. Shared by
+    // the Waters sort and the On the water "Which water am I on?" button, so
+    // both ask the same way and the fix keeps the same expiry.
+    function getDevicePosition(onFix, onFail) {
+      if (!navigator.geolocation) {
+        onFail();
+        return;
+      }
+      navigator.geolocation.getCurrentPosition((position) => {
+        onFix({
+          lat: position.coords.latitude,
+          lon: position.coords.longitude,
+          accuracy: position.coords.accuracy,
+          updatedAt: new Date().toISOString()
+        });
+      }, () => onFail(), {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 5 * 60 * 1000
+      });
+    }
+
     function requestUserLocation() {
       // The first-run panel lives on Today and offers this button, so Today
       // has to see the result as well as Waters.
@@ -5362,13 +5629,8 @@
       }
       locationStatus = "loading";
       renderScreens("waters", "today");
-      navigator.geolocation.getCurrentPosition((position) => {
-        saveUserLocation({
-          lat: position.coords.latitude,
-          lon: position.coords.longitude,
-          accuracy: position.coords.accuracy,
-          updatedAt: new Date().toISOString()
-        });
+      getDevicePosition((location) => {
+        saveUserLocation(location);
         waterSortMode = "Near";
         locationStatus = "ready";
         maybeCompleteOnboarding();
@@ -5376,10 +5638,6 @@
       }, () => {
         locationStatus = "error";
         renderScreens("waters", "today");
-      }, {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 5 * 60 * 1000
       });
     }
 
@@ -5474,6 +5732,10 @@
         if (forecast.includes("cloud") || forecast.includes("overcast")) score += .2;
         if (forecast.includes("thunder") || forecast.includes("snow")) score -= .45;
       }
+      // The angler's own history on this water: a small bonus, never a
+      // penalty, and zero until there is enough of it. "Your history" in the
+      // rating breakdown says exactly what this added.
+      score += personalScoreBonus(water).total;
       return clampScore(score).toFixed(1);
     }
 
@@ -5731,6 +5993,8 @@
         month: "2-digit",
         day: "2-digit",
         hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
         hourCycle: "h23"
       });
       const parts = zonedFormatter.formatToParts(date).reduce((memo, part) => {
@@ -5742,6 +6006,10 @@
         month: Number(parts.month),
         day: Number(parts.day),
         hour: Number(parts.hour),
+        // Minutes and seconds are for the On the water countdown. The score
+        // and the season still read only the hour and the month.
+        minute: Number(parts.minute),
+        second: Number(parts.second),
         yearText: parts.year,
         monthText: parts.month,
         dayText: parts.day
@@ -7442,11 +7710,21 @@
       return "No live gauge or forecast feed is mapped to this water. Every reading below is a seasonal reference value, not a current measurement. Check conditions before you drive.";
     }
 
-    function applyFlyFeedback(flies) {
+    /* Worked flies first, ignored flies last. Given a water, the flies the
+       angler has proven there - two or more fish logged on them - rise with
+       the worked ones and lead them, most fish first. An explicit "Ignore"
+       still wins over history: the angler said so more recently. */
+    function applyFlyFeedback(flies, water = null) {
       const unique = uniqueItems(flies);
+      const proven = water ? provenFliesFor(water).map((item) => item.fly) : [];
+      const provenRank = (fly) => {
+        const rank = proven.indexOf(fly);
+        return rank === -1 ? proven.length : rank;
+      };
+      const rises = (fly) => flyFeedback[fly] !== "ignored" && (flyFeedback[fly] === "worked" || proven.includes(fly));
       return [
-        ...unique.filter((fly) => flyFeedback[fly] === "worked"),
-        ...unique.filter((fly) => !flyFeedback[fly]),
+        ...unique.filter(rises).sort((a, b) => provenRank(a) - provenRank(b)),
+        ...unique.filter((fly) => !rises(fly) && flyFeedback[fly] !== "ignored"),
         ...unique.filter((fly) => flyFeedback[fly] === "ignored")
       ];
     }
@@ -7471,7 +7749,14 @@
         if (forecast.includes("cloud") || forecast.includes("rain")) flies.unshift("BWO Soft Hackle #18");
         if (hatchText.includes("caddis")) flies.unshift("X-Caddis #16");
       }
-      return applyFlyFeedback(waterAppropriateFlies(flies, water, { fallback: true })).slice(0, 4);
+      // A fly the angler has proven here is a candidate even if no rule above
+      // picked it. It still has to pass the water and season gates below: a
+      // June dry that caught fish is not a January pick.
+      // The name is the angler's own typing, so it is held to plain text as
+      // well: the fly views escape it, and this keeps markup out of the many
+      // places a recommended fly name travels.
+      flies.push(...provenFliesFor(water).map((item) => item.fly).filter((fly) => /^[^<>"`&]{1,60}$/.test(fly)));
+      return applyFlyFeedback(waterAppropriateFlies(flies, water, { fallback: true }), water).slice(0, 4);
     }
 
     function flyRecommendationReason(water, fly) {
@@ -7577,7 +7862,8 @@
         ],
         ["Clarity", clarity.label, clarity.trend],
         ["Hatches", hatches || "No hatch signal", `${confidenceForWater(water)} from weather, cache, and reports`],
-        ["Local intelligence", intel.sources?.length ? intel.sources.slice(0, 2).join(" + ") : "No local source hit yet", intel.cues?.length ? intel.cues.slice(0, 2).join(", ") : forecast || "Using baseline profile"]
+        ["Local intelligence", intel.sources?.length ? intel.sources.slice(0, 2).join(" + ") : "No local source hit yet", intel.cues?.length ? intel.cues.slice(0, 2).join(", ") : forecast || "Using baseline profile"],
+        personalHistoryBreakdown(water)
       ];
     }
 
@@ -7761,9 +8047,9 @@
           </div>
           ${scoreBreakdownItems(water).map(([label, value, note]) => `
             <div class="score-breakdown-row">
-              <span>${label}</span>
-              <b>${value}</b>
-              <small>${note}</small>
+              <span>${esc(label)}</span>
+              <b>${esc(value)}</b>
+              <small>${esc(note)}</small>
             </div>
           `).join("")}
         </div>
@@ -7842,9 +8128,9 @@
           <div class="plan-grid">
             ${fishPlanFor(water).map(([label, title, note]) => `
               <div class="plan-card">
-                <span>${label}</span>
-                <strong>${title}</strong>
-                <small>${note}</small>
+                <span>${esc(label)}</span>
+                <strong>${esc(title)}</strong>
+                <small>${esc(note)}</small>
               </div>
             `).join("")}
           </div>
@@ -7869,30 +8155,295 @@
       const workedHere = worked.find((fly) => recommended.includes(fly) || logs.some((entry) => entry.fly === fly));
       const ignoredHere = ignored.find((fly) => recommended.includes(fly));
       const lastCatch = logs[0];
+      const workedLine = workedHere ? `Prioritize ${workedHere}; you marked it as worked.` : "";
+      const ignoredLine = ignoredHere ? `Deprioritize ${ignoredHere}; you ignored it last time.` : "";
+      const lastCatchLine = lastCatch
+        ? `Last catch: ${lastCatch.fish || "fish"}${lastCatch.length ? `, ${lastCatch.length}"` : ""} on ${lastCatch.fly || "unknown fly"}.`
+        : "";
       const lines = [];
       if (logs.length) lines.push(`${logs.length} local ${logs.length === 1 ? "entry" : "entries"} saved for ${water.name}.`);
       if (topLoggedFly) lines.push(`Your best logged fly here: ${topLoggedFly}.`);
-      if (workedHere) lines.push(`Prioritize ${workedHere}; you marked it as worked.`);
-      if (ignoredHere) lines.push(`Deprioritize ${ignoredHere}; you ignored it last time.`);
-      if (lastCatch) lines.push(`Last catch: ${lastCatch.fish || "fish"}${lastCatch.length ? `, ${lastCatch.length}"` : ""} on ${lastCatch.fly || "unknown fly"}.`);
+      if (workedLine) lines.push(workedLine);
+      if (ignoredLine) lines.push(ignoredLine);
+      if (lastCatchLine) lines.push(lastCatchLine);
       if (!lines.length) lines.push("No local memory yet. Log catches or mark flies as worked/ignored to train this device.");
-      return { logs, lines, topLoggedFly, workedHere, ignoredHere };
+      return { logs, lines, topLoggedFly, workedHere, ignoredHere, workedLine, ignoredLine, lastCatchLine };
     }
 
+    /* ---------------------------------------------------------------------
+       "Your water": what the angler's own journal says about one water.
+
+       Built only from catches logged on that water, and honest about how
+       many there are. A flow or temperature band counts only readings the
+       entry recorded as measured (or measured earlier): a seasonal reference
+       value was never an observation of the river the fish came out of, and
+       averaging those would describe the app's seed data back to the angler
+       as their history. Nothing is stated below its minimum sample - the card
+       says how many more catches it needs instead.
+       --------------------------------------------------------------------- */
+    const PROFILE_MIN_CATCHES = 3;
+    const PROFILE_MIN_READINGS = 3;
+    // Fish on one fly on this water before it counts as proven there.
+    const PROFILE_PROVEN_FLY_FISH = 2;
+    // The score bonus. Small on purpose: three catches is a hint, not a law.
+    const PROFILE_FLOW_BONUS = .2;
+    const PROFILE_TIME_BONUS = .1;
+    const PROFILE_BONUS_MAX = .3;
+    const PROFILE_MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+    // Rebuilt only when the journal changes. setLogs and a restore replace the
+    // journal array rather than editing it, so its identity is the version.
+    let waterProfileLogs = null;
+    const waterProfileCache = new Map();
+
+    function fishInEntry(entry) {
+      const count = Number(entry?.count);
+      return Number.isFinite(count) && count >= 1 ? Math.round(count) : 1;
+    }
+
+    // A logged reading the profile may use, or null. Only "measured" and
+    // "stale" (measured earlier) are observations.
+    function observedReading(entry, key) {
+      if (!["measured", "stale"].includes(entry?.[`${key}Source`])) return null;
+      const value = key === "flow" ? flowFromText(entry[key]) : numberFromText(entry[key]);
+      if (value === null || !Number.isFinite(value)) return null;
+      if (key === "flow" && value < 0) return null;
+      return value;
+    }
+
+    // The middle of the readings: the full range for a handful, trimmed of
+    // the outer ~15% each side once there are enough to have outliers.
+    function readingBand(values) {
+      if (values.length < PROFILE_MIN_READINGS) return null;
+      const sorted = [...values].sort((a, b) => a - b);
+      const last = sorted.length - 1;
+      return {
+        low: sorted[Math.floor(last * .15)],
+        high: sorted[Math.ceil(last * .85)],
+        count: sorted.length
+      };
+    }
+
+    // The hour of the catch on Oregon's clock: the time the angler wrote on
+    // the entry, which they can correct, else the moment it was saved.
+    function catchHour(entry) {
+      const text = String(entry?.time || "").trim();
+      const twelve = text.match(/^(\d{1,2})(?::(\d{2}))?\s*([ap])\.?\s*m?\.?$/i);
+      if (twelve && Number(twelve[1]) >= 1 && Number(twelve[1]) <= 12) {
+        return (Number(twelve[1]) % 12) + (/p/i.test(twelve[3]) ? 12 : 0);
+      }
+      const twentyFour = text.match(/^(\d{1,2}):(\d{2})$/);
+      if (twentyFour && Number(twentyFour[1]) <= 23) return Number(twentyFour[1]);
+      if (!entry?.loggedAt) return null;
+      const saved = new Date(entry.loggedAt);
+      return Number.isNaN(saved.getTime()) ? null : zonedParts(saved).hour;
+    }
+
+    function catchMonth(entry) {
+      if (entry?.loggedAt) {
+        const saved = new Date(entry.loggedAt);
+        if (!Number.isNaN(saved.getTime())) return zonedParts(saved).month;
+      }
+      const named = String(entry?.date || "").match(/\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)/i);
+      if (!named) return null;
+      return PROFILE_MONTH_NAMES.findIndex((name) => name.toLowerCase() === named[1].toLowerCase()) + 1;
+    }
+
+    // The 2- or 3-hour stretch holding the most fish. A 3-hour band has to
+    // beat the best 2-hour one outright, and the winner has to hold at least
+    // two fish and 40% of them, or there is no pattern to report.
+    function bestTimeBand(timed) {
+      if (timed.length < PROFILE_MIN_CATCHES) return null;
+      const perHour = Array(24).fill(0);
+      timed.forEach(({ hour, fish }) => { perHour[hour] += fish; });
+      const totalFish = perHour.reduce((sum, value) => sum + value, 0);
+      let best = null;
+      for (const width of [2, 3]) {
+        for (let start = 0; start + width <= 24; start += 1) {
+          const fish = perHour.slice(start, start + width).reduce((sum, value) => sum + value, 0);
+          // On a tie, the band that opens on an hour with fish in it: six
+          // catches at 6 PM are "6 PM-8 PM", not "5 PM-7 PM".
+          const opensOnFish = fish === best?.fish && width === best.width && perHour[start] > 0 && perHour[best.start] === 0;
+          if (!best || fish > best.fish || opensOnFish) best = { start, end: start + width, width, fish };
+        }
+      }
+      if (!best || best.fish < 2 || best.fish / totalFish < .4) return null;
+      return { ...best, of: totalFish, catches: timed.length };
+    }
+
+    function waterProfileFor(water) {
+      const logs = getLogs();
+      if (waterProfileLogs !== logs) {
+        waterProfileLogs = logs;
+        waterProfileCache.clear();
+      }
+      if (waterProfileCache.has(water.id)) return waterProfileCache.get(water.id);
+      const entries = logsForWater(water);
+      const flows = entries.map((entry) => observedReading(entry, "flow")).filter((value) => value !== null);
+      const temps = entries.map((entry) => observedReading(entry, "temp")).filter((value) => value !== null);
+      const timed = entries
+        .map((entry) => ({ hour: catchHour(entry), fish: fishInEntry(entry) }))
+        .filter(({ hour }) => hour !== null);
+      const flyFish = {};
+      const monthFish = {};
+      entries.forEach((entry) => {
+        const fly = String(entry.fly || "").trim();
+        if (fly) flyFish[fly] = (flyFish[fly] || 0) + fishInEntry(entry);
+        const month = catchMonth(entry);
+        if (month) monthFish[month] = (monthFish[month] || 0) + fishInEntry(entry);
+      });
+      const enough = entries.length >= PROFILE_MIN_CATCHES;
+      const profile = {
+        waterId: water.id,
+        catches: entries.length,
+        fish: entries.reduce((sum, entry) => sum + fishInEntry(entry), 0),
+        enough,
+        flowReadings: flows.length,
+        flowBand: enough ? readingBand(flows) : null,
+        tempReadings: temps.length,
+        tempBand: enough ? readingBand(temps) : null,
+        timedCatches: timed.length,
+        timeBand: enough ? bestTimeBand(timed) : null,
+        topFlies: Object.entries(flyFish)
+          .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+          .slice(0, 3)
+          .map(([fly, fish]) => ({ fly, fish })),
+        bestMonths: enough
+          ? Object.entries(monthFish)
+            .sort((a, b) => b[1] - a[1] || Number(a[0]) - Number(b[0]))
+            .slice(0, 2)
+            .map(([month, fish]) => ({ month: Number(month), name: PROFILE_MONTH_NAMES[Number(month) - 1], fish }))
+          : []
+      };
+      waterProfileCache.set(water.id, profile);
+      return profile;
+    }
+
+    function provenFliesFor(water) {
+      return waterProfileFor(water).topFlies.filter((item) => item.fish >= PROFILE_PROVEN_FLY_FISH);
+    }
+
+    function bandLabel(band, unit) {
+      if (!band) return "";
+      const format = (value) => Math.round(value).toLocaleString("en-US");
+      return band.low === band.high ? `${format(band.low)} ${unit}` : `${format(band.low)}-${format(band.high)} ${unit}`;
+    }
+
+    function timeBandLabel(band) {
+      return band ? `${formatHour(band.start)}-${formatHour(band.end)}` : "";
+    }
+
+    // What the angler's history adds to today's score, and why. Never below
+    // zero: no history, too little history, or a reading that cannot be
+    // compared all add nothing rather than counting against the water.
+    function personalScoreBonus(water) {
+      const profile = waterProfileFor(water);
+      const result = { total: 0, flow: 0, time: 0, profile, todayFlow: null, flowProvenance: valueProvenance(water, "flow"), hour: currentHour(), inFlowBand: false, inTimeBand: false };
+      if (profile.flowBand && result.flowProvenance === "measured") {
+        result.todayFlow = flowFromText(usableReport(water)?.usgs?.flow);
+        result.inFlowBand = result.todayFlow !== null
+          && result.todayFlow >= profile.flowBand.low && result.todayFlow <= profile.flowBand.high;
+        if (result.inFlowBand) result.flow = PROFILE_FLOW_BONUS;
+      }
+      if (profile.timeBand) {
+        result.inTimeBand = result.hour >= profile.timeBand.start && result.hour < profile.timeBand.end;
+        if (result.inTimeBand) result.time = PROFILE_TIME_BONUS;
+      }
+      result.total = Math.max(0, Math.min(PROFILE_BONUS_MAX, result.flow + result.time));
+      return result;
+    }
+
+    function signedBonus(value) {
+      return value > 0 ? `+${value.toFixed(1)}` : "No change";
+    }
+
+    // The "Your history" row of the rating breakdown: exactly what
+    // personalScoreBonus added, each half explained on its own terms.
+    function personalHistoryBreakdown(water) {
+      const bonus = personalScoreBonus(water);
+      const { profile } = bonus;
+      const parts = [];
+      if (!profile.enough) {
+        parts.push(`${profile.catches} of ${PROFILE_MIN_CATCHES} catches logged here - your history adds nothing until there are ${PROFILE_MIN_CATCHES}`);
+      } else {
+        const noGauge = water.type === "Lake" || !hasGauge(water);
+        if (noGauge) {
+          parts.push("No flow gauge on this water, so flow history cannot count");
+        } else if (!profile.flowBand) {
+          parts.push(`Flow: need ${PROFILE_MIN_READINGS}+ catches with a measured flow (you have ${profile.flowReadings}) - adds nothing`);
+        } else if (bonus.flowProvenance !== "measured" || bonus.todayFlow === null) {
+          parts.push(`Your flow band is ${bandLabel(profile.flowBand, "cfs")}, but there is no current measured flow to compare - adds nothing`);
+        } else if (bonus.inFlowBand) {
+          parts.push(`Today's ${bandLabel({ low: bonus.todayFlow, high: bonus.todayFlow }, "cfs")} (measured) is inside your ${bandLabel(profile.flowBand, "cfs")} band from ${profile.flowBand.count} measured catches: +${PROFILE_FLOW_BONUS.toFixed(1)}`);
+        } else {
+          parts.push(`Today's ${bandLabel({ low: bonus.todayFlow, high: bonus.todayFlow }, "cfs")} is outside your ${bandLabel(profile.flowBand, "cfs")} band - no bonus, no penalty`);
+        }
+        if (!profile.timeBand) {
+          parts.push(`Time: no clear best time yet from ${profile.timedCatches} timed ${profile.timedCatches === 1 ? "catch" : "catches"} - adds nothing`);
+        } else if (bonus.inTimeBand) {
+          parts.push(`It is ${formatHour(bonus.hour)}, inside your best ${timeBandLabel(profile.timeBand)} band: +${PROFILE_TIME_BONUS.toFixed(1)}`);
+        } else {
+          parts.push(`Your best time here is ${timeBandLabel(profile.timeBand)}; it is ${formatHour(bonus.hour)} now - adds nothing`);
+        }
+      }
+      return ["Your history", signedBonus(bonus.total), `${parts.join(". ")}.`];
+    }
+
+    /* The "Your <water>" card. It replaces the old "Your local memory" card
+       rather than sitting beside it: the worked/ignored and last-catch lines
+       live on at the bottom, and the counts it used to print are the
+       profile's headline now. Free - nothing here is in PRO_FEATURES. */
     function personalMemoryCard(water, compact = false) {
       const memory = personalMemoryFor(water);
+      const profile = waterProfileFor(water);
+      const headline = profile.enough
+        ? `From your ${profile.catches} catches`
+        : profile.catches
+          ? `${profile.catches} of ${PROFILE_MIN_CATCHES} catches logged`
+          : "Learning this water";
+      const noGauge = water.type === "Lake" || !hasGauge(water);
+      const readingRow = (label, band, unit, readings) => {
+        if (band) return [label, bandLabel(band, unit), `from ${band.count} measured ${band.count === 1 ? "reading" : "readings"}`];
+        return [label, "Not yet", `need ${PROFILE_MIN_READINGS}+ catches with a measured ${label === "Flow" ? "flow" : "water temp"} (you have ${readings})`];
+      };
+      const rows = profile.enough ? [
+        noGauge
+          ? ["Flow", "No gauge", "no measured flow is possible on this water"]
+          : readingRow("Flow", profile.flowBand, "cfs", profile.flowReadings),
+        readingRow("Water temp", profile.tempBand, "F", profile.tempReadings),
+        profile.timeBand
+          ? ["Best time", timeBandLabel(profile.timeBand), `${profile.timeBand.fish} of ${profile.timeBand.of} fish, Pacific time`]
+          : ["Best time", "Not yet", `no clear pattern in ${profile.timedCatches} timed ${profile.timedCatches === 1 ? "catch" : "catches"}`],
+        ["Top flies", profile.topFlies.map((item) => `${item.fly} (${item.fish})`).join(", ") || "None logged", profile.topFlies.length ? "fish logged on each, here" : ""],
+        ["Best months", profile.bestMonths.map((item) => `${item.name} (${item.fish})`).join(", ") || "Not yet", profile.bestMonths.length ? "fish logged in each month" : ""]
+      ] : [];
+      const lines = [memory.workedLine, memory.ignoredLine, memory.lastCatchLine].filter(Boolean);
+      if (!profile.catches && !lines.length) lines.push("No catches logged here yet. Log catches or mark flies as worked/ignored to train this device.");
       return `
-        <div class="memory-card ${compact ? "compact" : ""}">
+        <div class="memory-card your-water-card ${compact ? "compact" : ""}" data-your-water="${attr(water.id)}">
           <div class="insight-head">
             <div>
-              <span>Your local memory</span>
-              <strong>${memory.logs.length ? `${memory.logs.length} entries here` : "Learning this water"}</strong>
+              <span>Your ${esc(water.name)}</span>
+              <strong>${esc(headline)}</strong>
             </div>
-            <button class="mini-action" data-quick-log="${water.id}">Quick log</button>
+            <button class="mini-action" data-quick-log="${attr(water.id)}">Quick log</button>
           </div>
-          <div class="reason-stack">
-            ${memory.lines.slice(0, compact ? 2 : 4).map((line) => `<p>${esc(line)}</p>`).join("")}
-          </div>
+          ${profile.enough ? `
+            <div class="profile-rows">
+              ${rows.slice(0, compact ? 3 : rows.length).map(([label, value, note]) => `
+                <div class="profile-row">
+                  <span>${esc(label)}</span>
+                  <b>${esc(value)}</b>
+                  ${note ? `<small>${esc(note)}</small>` : ""}
+                </div>
+              `).join("")}
+            </div>
+          ` : `<p class="profile-need">Need ${PROFILE_MIN_CATCHES}+ catches here to build your profile - you have ${profile.catches}.</p>`}
+          ${lines.length ? `
+            <div class="reason-stack">
+              ${lines.slice(0, compact ? 1 : 3).map((line) => `<p>${esc(line)}</p>`).join("")}
+            </div>
+          ` : ""}
         </div>
       `;
     }
@@ -8162,17 +8713,17 @@
       const feedback = flyFeedbackLabel(fly);
       const confidence = water ? flyConfidenceFor(water, fly) : "";
       return `
-        <div class="fly" data-fly-name="${fly}">
-          <div class="fly-photo" style="background-image:url('${ref.plate}');background-position:${ref.pos};background-size:${ref.size || "200% 200%"};" role="img" aria-label="${fly} artificial fly reference"></div>
+        <div class="fly" data-fly-name="${attr(fly)}">
+          <div class="fly-photo" style="background-image:url('${ref.plate}');background-position:${ref.pos};background-size:${ref.size || "200% 200%"};" role="img" aria-label="${attr(fly)} artificial fly reference"></div>
           <div>
-            <strong>${fly}</strong>
+            <strong>${esc(fly)}</strong>
             ${confidence ? `<span class="fly-confidence ${confidenceClass(confidence)}">${confidence}</span>` : ""}
             <div class="subtle">${subtext}</div>
             ${reason ? `<div class="fly-reason">${reason}</div>` : ""}
             <div class="subtle">${ref.cue}${feedback ? ` - ${feedback}` : ""}</div>
-            <div class="fly-feedback" aria-label="Fly feedback for ${fly}">
-              <button class="${flyFeedback[fly] === "worked" ? "active" : ""}" data-fly-feedback="${fly}" data-feedback-value="worked">Worked</button>
-              <button class="ignored ${flyFeedback[fly] === "ignored" ? "active" : ""}" data-fly-feedback="${fly}" data-feedback-value="ignored">Ignore</button>
+            <div class="fly-feedback" aria-label="Fly feedback for ${attr(fly)}">
+              <button class="${flyFeedback[fly] === "worked" ? "active" : ""}" data-fly-feedback="${attr(fly)}" data-feedback-value="worked">Worked</button>
+              <button class="ignored ${flyFeedback[fly] === "ignored" ? "active" : ""}" data-fly-feedback="${attr(fly)}" data-feedback-value="ignored">Ignore</button>
             </div>
           </div>
         </div>
@@ -8263,13 +8814,13 @@
             <div class="water-fly-badges" aria-label="${water.name} recommended flies">
               ${visibleFlies.map((fly) => {
                 const flyConfidence = flyConfidenceFor(water, fly);
-                return `<button class="water-fly-badge ${fly === selectedFly ? "active" : ""}" data-water-fly="${fly}" data-water-id="${water.id}">${fly}<small>${flyConfidence}</small></button>`;
+                return `<button class="water-fly-badge ${fly === selectedFly ? "active" : ""}" data-water-fly="${attr(fly)}" data-water-id="${water.id}">${esc(fly)}<small>${flyConfidence}</small></button>`;
               }).join("")}
             </div>
-            ${isExpanded ? `<div class="fly-reason"><b>Why ${selectedFly}:</b> ${reason}${feedback ? ` ${feedback}.` : ""}</div>` : ""}
+            ${isExpanded ? `<div class="fly-reason"><b>Why ${esc(selectedFly)}:</b> ${reason}${feedback ? ` ${feedback}.` : ""}</div>` : ""}
             <div class="subtle">${scoreSourceLabel(water)} - ${isExpanded ? "tap again to collapse" : "tap for details"}</div>
           </div>
-          <div class="water-fly-preview" style="background-image:url('${ref.plate}');background-position:${ref.pos};background-size:${ref.size || "200% 200%"};" role="img" aria-label="${selectedFly} artificial fly reference"></div>
+          <div class="water-fly-preview" style="background-image:url('${ref.plate}');background-position:${ref.pos};background-size:${ref.size || "200% 200%"};" role="img" aria-label="${attr(selectedFly)} artificial fly reference"></div>
           ${isExpanded ? waterAccordionDetail(water) : ""}
         </div>
       `;
@@ -8299,9 +8850,9 @@
             const feedback = flyFeedbackLabel(fly);
             return `
               <div class="pack-fly">
-                <div class="pack-fly-image" style="background-image:url('${ref.plate}');background-position:${ref.pos};background-size:${ref.size || "200% 200%"};" role="img" aria-label="${fly} artificial fly reference"></div>
+                <div class="pack-fly-image" style="background-image:url('${ref.plate}');background-position:${ref.pos};background-size:${ref.size || "200% 200%"};" role="img" aria-label="${attr(fly)} artificial fly reference"></div>
                 <div>
-                  <b>${fly}</b>
+                  <b>${esc(fly)}</b>
                   <span>${feedback || flyConfidenceFor(topPick, fly)} - ${flyRecommendationReason(topPick, fly)}</span>
                 </div>
               </div>
@@ -8398,8 +8949,8 @@
               </div>
               <div class="command-card">
                 <span>Top flies</span>
-                <strong>${topPickFlies.map((fly) => flyFamilyName(fly)).join(", ")}</strong>
-                <small>${topPickFlies.map((fly) => `${flyConfidenceFor(topPick, fly)}: ${fly}`).join(" - ")}</small>
+                <strong>${esc(topPickFlies.map((fly) => flyFamilyName(fly)).join(", "))}</strong>
+                <small>${esc(topPickFlies.map((fly) => `${flyConfidenceFor(topPick, fly)}: ${fly}`).join(" - "))}</small>
               </div>
               <div class="command-card">
                 <span>Nearby mode</span>
@@ -8572,8 +9123,18 @@
       `;
     }
 
+    function tripWater() {
+      return hiddenWaterIds.includes(activeWater) ? topRecommendedWater() : getWater();
+    }
+
     function renderTrip() {
-      const water = hiddenWaterIds.includes(activeWater) ? topRecommendedWater() : getWater();
+      const water = tripWater();
+      if (onWaterOpen) {
+        $("#trip").innerHTML = onWaterMarkup(water);
+        syncOnWaterLifecycle();
+        syncLiveActivity(water);
+        return;
+      }
       const flies = liveRecommendedFlies(water);
       const hatches = predictedHatches(water);
       const clarity = clarityFor(water);
@@ -8603,13 +9164,18 @@
             <button class="ghost-btn" data-tab-jump="waters">All Waters</button>
           </div>
 
+          <button class="on-water-open" data-on-water-open>
+            <b>On the water</b>
+            <span>Big buttons, prime-window countdown, one-tap Fish on!</span>
+          </button>
+
           <div class="trip-card trip-now">
             <div>
               <span class="trip-label">Prime window</span>
               <strong>${primeWindowFor(water).replace("Prime window: ", "")}</strong>
               <p>${fishabilityReason(water)}</p>
             </div>
-            <div class="trip-fly-image" style="background-image:url('${currentRef.plate}');background-position:${currentRef.pos};background-size:${currentRef.size || "200% 200%"};" role="img" aria-label="${currentFly} artificial fly reference"></div>
+            <div class="trip-fly-image" style="background-image:url('${currentRef.plate}');background-position:${currentRef.pos};background-size:${currentRef.size || "200% 200%"};" role="img" aria-label="${attr(currentFly)} artificial fly reference"></div>
           </div>
 
           <div class="trip-grid">
@@ -8644,6 +9210,500 @@
             ${checklist.map((item) => `<div class="trip-check">${item}</div>`).join("")}
             <p class="subtle">${dataFreshnessLabel()} - ${scoreSourceLabel(water)}</p>
           </div>
+        </div>
+      `;
+      syncOnWaterLifecycle();
+      syncLiveActivity(water);
+    }
+
+    /* ---------------------------------------------------------------------
+       On the water.
+
+       Trip mode, for standing in the river: wet hands, gloves, sun on the
+       screen, a rod in the other hand. Every action is one tap on a target
+       at least 64pt tall, the type is big, and black on white because that
+       is what stays readable in direct sun.
+
+       Its three moving parts are each owned in one place:
+       - the countdown timer runs only while this view is on screen and the
+         app is visible; syncOnWaterLifecycle() is the only thing that starts
+         or stops it, and it is idempotent, so re-rendering cannot stack a
+         second interval;
+       - the screen wake lock follows the same rule, and is asked for again
+         when the app comes back, because iOS and the browser drop it on hide;
+       - Fish on! writes through setLogs like every other journal write, fails
+         closed with the error on screen, and ignores a second tap inside two
+         seconds so a double-tap is one fish.
+       --------------------------------------------------------------------- */
+    const ON_WATER_TICK_MS = 15000;
+    const FISH_ON_REPEAT_MS = 2000;
+    const FISH_ON_UNDO_MS = 8000;
+    const ON_WATER_MATCH_MILES = 2;
+
+    let onWaterOpen = false;
+    let onWaterTimer = null;
+    let onWaterWakeLock = null;
+    let onWaterWakeLockPending = false;
+    let onWaterNotice = "";
+    let onWaterError = "";
+    let onWaterLocating = false;
+    // Session-only, by water: the flies the angler has said are not working
+    // today, so "next fly" keeps its place while they move around the app.
+    const onWaterTriedFlies = {};
+    let lastFishOnAt = 0;
+    let lastFishOnEntry = null;
+    let fishOnUndo = null;
+    let fishOnUndoTimer = null;
+    // The last content posted to the Live Activity bridge, or null when no
+    // activity is running.
+    let liveActivityPosted = null;
+
+    function onWaterShouldRun() {
+      return onWaterOpen && activeScreenId() === "trip" && !document.hidden;
+    }
+
+    function syncOnWaterLifecycle() {
+      if (onWaterShouldRun()) {
+        if (onWaterTimer === null) onWaterTimer = setInterval(tickOnWater, ON_WATER_TICK_MS);
+        acquireOnWaterWakeLock();
+      } else {
+        stopOnWaterTimer();
+        releaseOnWaterWakeLock();
+      }
+    }
+
+    function stopOnWaterTimer() {
+      if (onWaterTimer === null) return;
+      clearInterval(onWaterTimer);
+      onWaterTimer = null;
+    }
+
+    // Repaints the countdown text in place. A whole re-render every 15 seconds
+    // would rebuild the buttons under a finger that is about to tap one.
+    function tickOnWater() {
+      if (!onWaterShouldRun()) {
+        syncOnWaterLifecycle();
+        return;
+      }
+      const water = tripWater();
+      const countdown = primeWindowCountdown(water);
+      const node = document.querySelector("#trip [data-on-water-countdown]");
+      const block = node?.closest?.("[data-on-water-window]");
+      if (block && block.dataset.onWaterWindow !== countdown.state) {
+        renderTrip();
+        return;
+      }
+      if (node) node.textContent = countdown.text;
+      syncLiveActivity(water);
+    }
+
+    function acquireOnWaterWakeLock() {
+      if (onWaterWakeLock || onWaterWakeLockPending) return;
+      const wakeLock = navigator.wakeLock;
+      if (!wakeLock || typeof wakeLock.request !== "function") return;
+      onWaterWakeLockPending = true;
+      Promise.resolve()
+        .then(() => wakeLock.request("screen"))
+        .then((lock) => {
+          onWaterWakeLockPending = false;
+          if (!lock) return;
+          // Closed or hidden while the request was pending.
+          if (!onWaterShouldRun()) {
+            Promise.resolve(lock.release?.()).catch(() => {});
+            return;
+          }
+          onWaterWakeLock = lock;
+          lock.onrelease = () => {
+            if (onWaterWakeLock === lock) onWaterWakeLock = null;
+          };
+        })
+        .catch(() => {
+          // Unsupported, refused or not visible: the screen just sleeps as usual.
+          onWaterWakeLockPending = false;
+        });
+    }
+
+    function releaseOnWaterWakeLock() {
+      const lock = onWaterWakeLock;
+      onWaterWakeLock = null;
+      if (!lock) return;
+      try {
+        Promise.resolve(lock.release?.()).catch(() => {});
+      } catch {
+        // Already released by the system.
+      }
+    }
+
+    // Registered once, at startup, like every other document listener.
+    function startOnWaterLifecycleWatcher() {
+      document.addEventListener("visibilitychange", () => {
+        syncOnWaterLifecycle();
+        if (onWaterShouldRun()) tickOnWater();
+      });
+    }
+
+    function durationLabel(seconds) {
+      const minutes = Math.max(1, Math.ceil(seconds / 60));
+      const hours = Math.floor(minutes / 60);
+      const rest = minutes % 60;
+      if (!hours) return `${rest}m`;
+      return rest ? `${hours}h ${rest}m` : `${hours}h`;
+    }
+
+    // The same window primeWindowFor describes, counted down on Oregon's
+    // clock. start and end are real instants, for the Live Activity timer.
+    function primeWindowCountdown(water, now = new Date()) {
+      const window = primeWindowHours(water);
+      if (!window) {
+        return { state: "unknown", text: "Prime window: first calm hour", range: "Wind is deciding the window today", start: null, end: null };
+      }
+      const [startHour, endHour] = window;
+      const parts = zonedParts(now);
+      const secondsNow = parts.hour * 3600 + parts.minute * 60 + parts.second;
+      const midnight = Math.floor(now.getTime() / 1000) * 1000 - secondsNow * 1000;
+      const start = new Date(midnight + startHour * 3600000);
+      const end = new Date(midnight + endHour * 3600000);
+      const range = `${formatHour(startHour)}-${formatHour(endHour)} Pacific`;
+      if (secondsNow < startHour * 3600) {
+        return { state: "before", text: `Prime window starts in ${durationLabel(startHour * 3600 - secondsNow)}`, range, start, end };
+      }
+      if (secondsNow < endHour * 3600) {
+        return { state: "during", text: `Prime window ends in ${durationLabel(endHour * 3600 - secondsNow)}`, range, start, end };
+      }
+      return { state: "after", text: "Prime window has passed for today", range, start, end };
+    }
+
+    function onWaterCurrentFly(water) {
+      const flies = liveRecommendedFlies(water);
+      const tried = onWaterTriedFlies[water.id] || [];
+      return flies.find((fly) => !tried.includes(fly)) || flies[0] || "";
+    }
+
+    // "Not working - next fly": marks the fly ignored in the same fly
+    // feedback the Worked/Ignore buttons write, and moves on. Once every fly
+    // on the list has been tried, it starts again from the top.
+    function nextOnWaterFly(waterId) {
+      const water = waterById(waterId) || tripWater();
+      const current = onWaterCurrentFly(water);
+      if (!current) return;
+      setFlyFeedback(current, "ignored", { toggle: false });
+      const tried = uniqueItems([...(onWaterTriedFlies[water.id] || []), current]);
+      const flies = liveRecommendedFlies(water);
+      onWaterTriedFlies[water.id] = flies.every((fly) => tried.includes(fly)) ? [] : tried;
+      onWaterError = "";
+      renderScreens("today", "waters", "bugs", "trip");
+    }
+
+    // Exactly what writeLogEntry stamps on a new catch, with the form's
+    // fields left for "Add details": nothing the angler did not enter is
+    // invented, so the species is blank rather than guessed.
+    function fishOnEntry(water, fly, now) {
+      return {
+        loggedAt: now.toISOString(),
+        date: zonedDateLabel(now),
+        time: zonedTimeLabel(now),
+        waterName: water.name,
+        waterId: water.id,
+        fly: fly || "",
+        fish: "",
+        length: "",
+        count: "1",
+        notes: "",
+        flow: liveDisplayValue(water, "flow"),
+        flowSource: valueProvenance(water, "flow"),
+        temp: liveDisplayValue(water, "temp"),
+        tempSource: valueProvenance(water, "temp"),
+        photoId: "",
+        photo: ""
+      };
+    }
+
+    function clearFishOnUndo() {
+      clearTimeout(fishOnUndoTimer);
+      fishOnUndoTimer = null;
+      fishOnUndo = null;
+    }
+
+    function fishOn(waterId, fly) {
+      const nowMs = Date.now();
+      // The second half of a double-tap lands on the re-rendered button.
+      if (nowMs - lastFishOnAt < FISH_ON_REPEAT_MS) return false;
+      const water = waterById(waterId) || tripWater();
+      const entry = fishOnEntry(water, fly, new Date(nowMs));
+      const logs = getLogs();
+      if (!setLogs([entry, ...logs])) {
+        onWaterError = "This catch could not be saved to this device. Nothing was logged. Free up storage and try again.";
+        onWaterNotice = "";
+        renderScreens("trip");
+        return false;
+      }
+      lastFishOnAt = nowMs;
+      // Every index moved down one. An edit form left open on the Log screen
+      // must follow its catch, or Update would write onto the next one.
+      if (editingLogIndex !== null) editingLogIndex += 1;
+      const previousFeedback = flyFeedback[entry.fly];
+      if (entry.fly) setFlyFeedback(entry.fly, "worked", { toggle: false });
+      clearFishOnUndo();
+      fishOnUndo = { entry, previousFeedback };
+      fishOnUndoTimer = setTimeout(() => {
+        fishOnUndoTimer = null;
+        fishOnUndo = null;
+        renderScreens("trip");
+      }, FISH_ON_UNDO_MS);
+      lastFishOnEntry = entry;
+      onWaterError = "";
+      onWaterNotice = "";
+      maybeCompleteOnboarding();
+      renderScreens("today", "waters", "log", "trip");
+      return true;
+    }
+
+    // Removes exactly the catch Fish on! wrote - found by identity, never by
+    // position - and puts the fly feedback back the way it was.
+    function undoFishOn() {
+      const pending = fishOnUndo;
+      if (!pending) return;
+      clearFishOnUndo();
+      const logs = getLogs();
+      const index = logs.indexOf(pending.entry);
+      if (index === -1) {
+        onWaterError = "That catch has changed since it was logged, so it was left in your journal.";
+        renderScreens("trip");
+        return;
+      }
+      if (!setLogs(logs.filter((_, itemIndex) => itemIndex !== index))) {
+        onWaterError = "That catch could not be removed on this device. It is still in your journal.";
+        renderScreens("trip");
+        return;
+      }
+      deleteStoredPhoto(pending.entry);
+      if (editingLogIndex === index) {
+        editingLogIndex = null;
+        logFormOpen = false;
+      } else if (editingLogIndex !== null && editingLogIndex > index) {
+        editingLogIndex -= 1;
+      }
+      const fly = pending.entry.fly;
+      if (fly && flyFeedback[fly] === "worked" && pending.previousFeedback !== "worked") {
+        if (pending.previousFeedback) flyFeedback[fly] = pending.previousFeedback;
+        else delete flyFeedback[fly];
+        writeStoredObject(FLY_FEEDBACK_KEY, flyFeedback);
+      }
+      if (lastFishOnEntry === pending.entry) lastFishOnEntry = null;
+      lastFishOnAt = 0;
+      onWaterError = "";
+      onWaterNotice = "Catch removed from your journal.";
+      renderScreens("today", "waters", "log", "trip");
+    }
+
+    // Opens the ordinary edit form on the catch Fish on! just wrote.
+    function openFishOnDetails() {
+      const index = lastFishOnEntry ? getLogs().indexOf(lastFishOnEntry) : -1;
+      if (index === -1) {
+        lastFishOnEntry = null;
+        onWaterError = "That catch is no longer in your journal.";
+        renderScreens("trip");
+        return;
+      }
+      // Editing it is keeping it.
+      clearFishOnUndo();
+      editingLogIndex = index;
+      logFormOpen = true;
+      logSaveMessage = "";
+      renderLog();
+      activateTab("log");
+      scrollAppTo("#logForm");
+    }
+
+    function nearestWaterWithin(maxMiles = ON_WATER_MATCH_MILES) {
+      let best = null;
+      waters.forEach((water) => {
+        if (hiddenWaterIds.includes(water.id)) return;
+        const miles = distanceToWater(water);
+        if (miles === null || miles > maxMiles) return;
+        if (!best || miles < best.miles) best = { water, miles };
+      });
+      return best;
+    }
+
+    function locateOnWater() {
+      if (onWaterLocating) return;
+      onWaterLocating = true;
+      onWaterNotice = "";
+      onWaterError = "";
+      renderScreens("trip");
+      getDevicePosition((location) => {
+        saveUserLocation(location);
+        locationStatus = "ready";
+        onWaterLocating = false;
+        const match = nearestWaterWithin();
+        if (match) {
+          saveActiveWater(match.water.id);
+          onWaterNotice = `You look to be on ${match.water.name} - ${match.miles < .1 ? "under 0.1" : match.miles.toFixed(1)} mi from its mapped point.`;
+          renderAll();
+        } else {
+          onWaterNotice = `Couldn't tell which water you're on - none is within ${ON_WATER_MATCH_MILES} miles of you. Pick it from All Waters.`;
+          renderScreens("trip", "waters", "today");
+        }
+        // The answer is the water name and the notice under it, at the top.
+        if (activeScreenId() === "trip") scrollAppToTop();
+      }, () => {
+        onWaterLocating = false;
+        onWaterNotice = "Couldn't get your location. Check Location permission, or pick the water from All Waters.";
+        renderScreens("trip");
+        if (activeScreenId() === "trip") scrollAppToTop();
+      });
+    }
+
+    function fishTodayOn(water) {
+      const today = pacificDateKey();
+      return logsForWater(water).reduce((sum, entry) => {
+        const saved = entry.loggedAt ? new Date(entry.loggedAt) : null;
+        return saved && !Number.isNaN(saved.getTime()) && pacificDateKey(saved) === today ? sum + fishInEntry(entry) : sum;
+      }, 0);
+    }
+
+    /* The web half of the Live Activity. The native half (a Widget Extension
+       target with ActivityKit) is not in this build: it needs a new Xcode
+       target, App Group and signing, and is described in
+       docs/on-the-water-native.md with uncompiled sources in
+       ios/pending/LiveActivity/. Until that handler is registered nothing is
+       posted - the check below is the whole contract on this side. */
+    function liveActivityHandler() {
+      return window.webkit?.messageHandlers?.riseLiveActivity || null;
+    }
+
+    function liveActivityContent(water) {
+      const countdown = primeWindowCountdown(water);
+      return {
+        waterId: water.id,
+        waterName: water.name,
+        primeWindowState: countdown.state,
+        primeWindowStart: countdown.start ? countdown.start.toISOString() : null,
+        primeWindowEnd: countdown.end ? countdown.end.toISOString() : null,
+        flow: String(liveDisplayValue(water, "flow") || ""),
+        flowSource: valueProvenance(water, "flow"),
+        temp: String(liveDisplayValue(water, "temp") || ""),
+        tempSource: valueProvenance(water, "temp"),
+        nextFly: onWaterCurrentFly(water),
+        fishToday: fishTodayOn(water)
+      };
+    }
+
+    function syncLiveActivity(water) {
+      const handler = liveActivityHandler();
+      if (!handler) return;
+      if (!onWaterOpen) {
+        if (liveActivityPosted === null) return;
+        liveActivityPosted = null;
+        try {
+          handler.postMessage({ action: "end" });
+        } catch {
+          // The Lock Screen card is a convenience; the in-app view is the feature.
+        }
+        return;
+      }
+      // Only a change is posted. The countdown itself is drawn by the system
+      // from primeWindowEnd, so the 15-second tick sends nothing new.
+      const content = liveActivityContent(water);
+      const key = JSON.stringify(content);
+      if (key === liveActivityPosted) return;
+      try {
+        handler.postMessage({ action: liveActivityPosted === null ? "start" : "update", ...content });
+        liveActivityPosted = key;
+      } catch {
+        // As above.
+      }
+    }
+
+    function openOnWater() {
+      onWaterOpen = true;
+      onWaterNotice = "";
+      onWaterError = "";
+      renderScreens("trip");
+      scrollAppToTop();
+    }
+
+    function closeOnWater() {
+      onWaterOpen = false;
+      onWaterNotice = "";
+      onWaterError = "";
+      onWaterLocating = false;
+      clearFishOnUndo();
+      syncOnWaterLifecycle();
+      syncLiveActivity(tripWater());
+      renderScreens("trip");
+      scrollAppToTop();
+    }
+
+    function onWaterReading(water, key, label) {
+      return `
+        <div class="on-water-reading">
+          <span class="on-water-label">${esc(label)}</span>
+          <strong>${esc(liveDisplayValue(water, key))}</strong>
+          ${provenanceTag(water, key)}
+        </div>
+      `;
+    }
+
+    function onWaterMarkup(water) {
+      const countdown = primeWindowCountdown(water);
+      const flies = liveRecommendedFlies(water);
+      const fly = onWaterCurrentFly(water);
+      const position = flies.indexOf(fly) + 1;
+      const profile = waterProfileFor(water);
+      const logged = lastFishOnEntry && getLogs().includes(lastFishOnEntry) ? lastFishOnEntry : null;
+      const undoable = logged && fishOnUndo?.entry === logged;
+      const loggedReadings = logged ? [loggedReadingLabel(logged, "flow"), loggedReadingLabel(logged, "temp")].filter(Boolean).join(" - ") : "";
+      return `
+        <div class="trip-screen on-water" data-on-water-view>
+          <div class="on-water-top">
+            <div>
+              <p class="on-water-eyebrow">On the water</p>
+              <h1>${esc(water.name)}</h1>
+            </div>
+            <button class="on-water-btn secondary" data-on-water-close>Exit</button>
+          </div>
+          ${onWaterNotice ? `<p class="on-water-notice" role="status">${esc(onWaterNotice)}</p>` : ""}
+          ${onWaterError ? `<p class="on-water-error" role="alert">${esc(onWaterError)}</p>` : ""}
+
+          <section class="on-water-block on-water-window ${countdown.state}" data-on-water-window="${attr(countdown.state)}">
+            <strong data-on-water-countdown>${esc(countdown.text)}</strong>
+            <small>${esc(countdown.range)}</small>
+          </section>
+
+          <button class="on-water-btn fish-on" data-fish-on="${attr(water.id)}" data-fish-on-fly="${attr(fly)}">Fish on!</button>
+
+          ${logged ? `
+            <div class="on-water-logged" role="status">
+              <strong>Logged ${esc(logged.fly || "a fish")} at ${esc(logged.time)}</strong>
+              ${loggedReadings ? `<span>${esc(loggedReadings)}</span>` : ""}
+              <div class="on-water-logged-actions">
+                ${undoable ? `<button class="on-water-btn secondary" data-fish-on-undo>Undo</button>` : ""}
+                <button class="on-water-btn secondary" data-fish-on-details>Add details</button>
+              </div>
+            </div>
+          ` : ""}
+
+          <section class="on-water-block on-water-fly">
+            <span class="on-water-label">Next fly to try${flies.length > 1 && position ? ` - ${position} of ${flies.length}` : ""}</span>
+            <strong data-on-water-fly>${esc(fly || "No fly picked")}</strong>
+            ${fly ? `<small>${esc(flyRecommendationReason(water, fly))}</small>` : ""}
+            <button class="on-water-btn next" data-on-water-next-fly="${attr(water.id)}" ${flies.length > 1 ? "" : "disabled"}>Not working - next fly</button>
+          </section>
+
+          <section class="on-water-readings">
+            ${onWaterReading(water, "flow", "Flow")}
+            ${onWaterReading(water, "temp", "Water temp")}
+          </section>
+
+          <button class="on-water-btn secondary wide" data-on-water-locate${onWaterLocating ? "disabled" : ""}>${onWaterLocating ? "Finding you..." : "Which water am I on?"}</button>
+
+          <p class="on-water-hint">${esc(profile.timeBand
+            ? `Your best time on ${water.name}: ${timeBandLabel(profile.timeBand)} (${profile.timeBand.fish} of ${profile.timeBand.of} fish).`
+            : profile.enough
+              ? `From your ${profile.catches} catches here - no clear best time yet.`
+              : `${profile.catches} of ${PROFILE_MIN_CATCHES} catches logged here - your profile starts at ${PROFILE_MIN_CATCHES}.`)}</p>
         </div>
       `;
     }
@@ -9246,7 +10306,7 @@
               <div class="catch-card">
                 <div class="catch-photo">${photoSourceFor(entry) ? `<img src="${attr(photoSourceFor(entry))}" alt="${attr(entry.fish)} catch photo" loading="lazy">` : "🐟"}</div>
                 <div>
-                  <strong>${esc(entry.fish)}${entry.length ? ` - ${esc(entry.length)}"` : ""}</strong>
+                  <strong>${esc(entry.fish || "Species not set")}${entry.length ? ` - ${esc(entry.length)}"` : ""}</strong>
                   <span>${esc(entry.waterName)} - ${esc(entry.fly)}</span>
                   <span>${esc(formatLogDate(entry))} - ${esc(entry.time || "AM")}</span>
                   ${[loggedReadingLabel(entry, "flow"), loggedReadingLabel(entry, "temp")].filter(Boolean).length
@@ -9550,6 +10610,9 @@
       // and this is the line that puts the hero back under it.
       scrollAppToTop();
       syncStatusBarChrome();
+      // On the water's countdown and wake lock run only while it is on
+      // screen: leaving Trip stops both, coming back starts them again.
+      syncOnWaterLifecycle();
     }
 
     /* The status bar glyphs are drawn by the container, over whatever the page
@@ -9936,6 +10999,13 @@
         scrollAppTo("#today .score-breakdown-panel");
       }],
       ["[data-refresh-subscription]", () => syncSubscriptionStatus()],
+      ["[data-on-water-open]", () => openOnWater()],
+      ["[data-on-water-close]", () => closeOnWater()],
+      ["[data-on-water-locate]", () => locateOnWater()],
+      ["[data-on-water-next-fly]", (element) => nextOnWaterFly(element.dataset.onWaterNextFly)],
+      ["[data-fish-on]", (element) => fishOn(element.dataset.fishOn, element.dataset.fishOnFly)],
+      ["[data-fish-on-undo]", () => undoFishOn()],
+      ["[data-fish-on-details]", () => openFishOnDetails()],
       ["[data-water]", (element, event) => {
         const nestedControl = event.target.closest("button, a, input, select, textarea");
         if (nestedControl && nestedControl !== element) return;
@@ -10231,6 +11301,7 @@
     syncSubscriptionStatus();
     runInitialDataSync();
     startDailyOpenSyncWatcher();
+    startOnWaterLifecycleWatcher();
   </script>
 </body>
 </html>

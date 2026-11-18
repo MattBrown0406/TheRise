@@ -234,6 +234,56 @@ current unless it also has an entry in `liveSources`.
 Coordinates live in `waterCoordinates` only. `liveSources` must never hold a
 second copy; the release checks fail if it does.
 
+## Your water
+
+The "Your <water>" card (Trip, the expanded Waters card, Today's top pick) is
+a profile built from the angler's own journal entries on that water:
+catches, the flow and water-temperature band they caught fish in, the best 2-3
+hour band of the day on Oregon's clock, top flies by fish, and best months. It
+replaced the old "Your local memory" card; the worked/ignored and last-catch
+lines live on at its foot. It is free and is not in `PRO_FEATURES`.
+
+Nothing is stated below its sample. Under 3 catches the card says how many
+more it needs. A flow or temperature band counts only entries whose
+`flowSource`/`tempSource` is `measured` or `stale`: a reference value is the
+app's own seed number, and averaging it would describe the seed data back to
+the angler as their history.
+
+The score bonus (`personalScoreBonus`) is +0.2 when today's flow is a current
+`measured` reading inside the band, +0.1 inside the best time band, never more
+than +0.3 and never negative. The "Your history" row of the rating breakdown
+says exactly what it added and why, including "adds nothing". Flies with two or
+more fish on a water rise in that water's picks through `applyFlyFeedback` -
+the same ordering the Worked/Ignore buttons drive - and an explicit Ignore still
+wins. A typed fly name is only offered as a pick if it has no markup
+characters, and every fly view escapes it.
+
+## On the water
+
+Trip > **On the water** is the field view: 64pt-plus targets, black on white
+for sun, a live prime-window countdown, readings with provenance, "Next fly to
+try" with **Not working - next fly** (which marks the fly ignored in the
+existing fly feedback and remembers its place for the session), one-tap
+**Fish on!** with Undo and Add details, and **Which water am I on?** (nearest
+mapped water within 2 miles, else it says it could not tell).
+
+- **Fish on!** stamps exactly what `writeLogEntry` stamps, prepends through
+  `setLogs` (fails closed, error on screen), ignores a second tap inside two
+  seconds, and shifts an open edit form's index with the insert. Undo and Add
+  details find the entry by identity, never by position. Species is left blank
+  rather than guessed.
+- **One timer, owned in one place.** `syncOnWaterLifecycle()` is the only code
+  that starts or stops the countdown interval and the screen wake lock. It is
+  idempotent and runs on render, on `activateTab` and on `visibilitychange`
+  (registered once at startup), so the timer runs only while the view is on
+  screen and visible. The DOM suite counts live intervals to hold it to that.
+- **Live Activity, web half only.** The page posts to
+  `window.webkit.messageHandlers.riseLiveActivity` only if that handler
+  exists, which it will not until the widget extension is added in Xcode. The
+  plan, message contract and uncompiled Swift sources are in
+  [`docs/on-the-water-native.md`](docs/on-the-water-native.md) and
+  `ios/pending/LiveActivity/`. Nothing there is in `project.pbxproj`.
+
 ## What Pro unlocks
 
 `proAccessActive` gates flow history, the rating breakdown, the staged fish

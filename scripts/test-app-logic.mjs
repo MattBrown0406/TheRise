@@ -848,5 +848,160 @@ group("Audit 2026-11-18: smaller honesty fixes");
   app.liveReports.cache = savedCache;
 }
 
+group("Your water: a profile learned only from the angler's own measured catches");
+{
+  const crooked = app.waters.find((water) => water.id === "crooked");
+  const savedReports = { ...app.liveReports.byWater };
+  Object.keys(app.liveReports.byWater).forEach((key) => delete app.liveReports.byWater[key]);
+  const realHour = context.currentHour;
+  const catchOn = (overrides) => ({
+    loggedAt: "2026-06-21T01:00:00.000Z",
+    date: "Jun 20, 2026",
+    time: "6:00 PM",
+    waterName: "Crooked River",
+    waterId: "crooked",
+    fly: "Zebra Midge #20",
+    fish: "Redband Trout",
+    length: "",
+    count: "1",
+    notes: "",
+    flow: "240 cfs",
+    flowSource: "measured",
+    temp: "54 F",
+    tempSource: "measured",
+    ...overrides
+  });
+
+  // Empty journal: nothing is stated, nothing is added, nothing is taken away.
+  localStorage.clear();
+  app.setLogs([]);
+  const empty = context.waterProfileFor(crooked);
+  assert(empty.catches === 0 && !empty.enough && empty.flowBand === null && empty.timeBand === null,
+    "an empty journal builds no profile");
+  assert(context.personalScoreBonus(crooked).total === 0, "and adds nothing to the score");
+  const emptyRow = context.scoreBreakdownItems(crooked).find(([label]) => label === "Your history");
+  assert(emptyRow && emptyRow[1] === "No change" && /adds nothing/.test(emptyRow[2]),
+    `the breakdown says so in a "Your history" row (${emptyRow && emptyRow.join(" | ")})`);
+
+  // Two catches, both measured: below the minimum, so no band and no bonus.
+  app.setLogs([catchOn({}), catchOn({ flow: "250 cfs" })]);
+  const two = context.waterProfileFor(crooked);
+  assert(two.catches === 2 && !two.enough && two.flowBand === null, "two catches are not a profile");
+  app.liveReports.byWater.crooked = { status: "ready", usgs: { flow: "245 cfs", waterTemp: "54 F" }, nws: {} };
+  context.currentHour = () => 18;
+  assert(context.personalScoreBonus(crooked).total === 0, "two in-band catches still add nothing");
+
+  // Five catches, but only two measured flows: the three reference values are
+  // the app's own seed number, never an observation, and must not make a band.
+  app.setLogs([
+    catchOn({ flow: "230 cfs" }),
+    catchOn({ flow: "250 cfs" }),
+    catchOn({ flow: "4,160 cfs", flowSource: "reference" }),
+    catchOn({ flow: "4,160 cfs", flowSource: "reference" }),
+    catchOn({ flow: "4,160 cfs" , flowSource: "reference", tempSource: "reference" })
+  ]);
+  const referenceHeavy = context.waterProfileFor(crooked);
+  assert(referenceHeavy.enough && referenceHeavy.catches === 5, "five catches are enough for a profile");
+  assert(referenceHeavy.flowReadings === 2 && referenceHeavy.flowBand === null,
+    `reference flows are not readings (${referenceHeavy.flowReadings} measured, band ${JSON.stringify(referenceHeavy.flowBand)})`);
+  assert(referenceHeavy.tempReadings === 4 && referenceHeavy.tempBand.count === 4, "a reference temperature is left out of the temp band too");
+  assert(context.personalScoreBonus(crooked).flow === 0, "no flow bonus without three measured readings");
+  const needRow = context.scoreBreakdownItems(crooked).find(([label]) => label === "Your history");
+  assert(/need 3\+ catches with a measured flow \(you have 2\)/.test(needRow[2]), `the breakdown says what is missing (${needRow[2]})`);
+
+  // A third observation - "stale" is measured earlier, and counts.
+  app.setLogs([
+    catchOn({ flow: "230 cfs", time: "6:10 PM" }),
+    catchOn({ flow: "250 cfs", time: "7:20 PM", fly: "X-Caddis #16" }),
+    catchOn({ flow: "240 cfs", flowSource: "stale", time: "18:45", fly: "X-Caddis #16" }),
+    catchOn({ flow: "4,160 cfs", flowSource: "reference", time: "", loggedAt: "2026-06-22T03:30:00.000Z", fly: "X-Caddis #16" }),
+    catchOn({ flow: "No live gauge", flowSource: "unavailable", time: "11:00 AM", count: "2" })
+  ]);
+  const profile = context.waterProfileFor(crooked);
+  assert(profile.flowReadings === 3, `measured and stale readings both count (${profile.flowReadings})`);
+  assert(profile.flowBand && profile.flowBand.low === 230 && profile.flowBand.high === 250,
+    `the flow band is built from measured readings only (${JSON.stringify(profile.flowBand)})`);
+  assert(profile.timedCatches === 5, "a blank time falls back to the Pacific time it was saved");
+  assert(profile.timeBand && profile.timeBand.start === 18 && profile.timeBand.end === 21,
+    `12-hour, 24-hour and saved times all land in one Pacific band (${JSON.stringify(profile.timeBand)})`);
+  assert(profile.topFlies[0].fly === "X-Caddis #16" && profile.topFlies[0].fish === 3, "top flies are ranked by fish");
+  assert(profile.bestMonths[0].name === "Jun", "the best month is read on Oregon's clock");
+  assert(context.catchHour({ time: "6:05 PM" }) === 18, "the narrow space iOS puts before PM still parses");
+  const sixPm = context.bestTimeBand([18, 18, 18].map((hour) => ({ hour, fish: 1 })));
+  assert(sixPm.start === 18 && sixPm.end === 20, `three 6 PM catches are a band that opens at 6 PM (${sixPm.start}-${sixPm.end})`);
+  assert(context.bestTimeBand([6, 12, 20].map((hour) => ({ hour, fish: 1 }))) === null, "three catches spread across the day are no pattern");
+
+  // Today inside the band, inside the best time: the bonus, and no more.
+  context.currentHour = () => 19;
+  const both = context.personalScoreBonus(crooked);
+  assert(Math.abs(both.flow - .2) < 1e-9 && Math.abs(both.time - .1) < 1e-9, `flow and time each add their share (${both.flow}, ${both.time})`);
+  assert(both.total <= .3 + 1e-9 && both.total > 0, `the bonus never exceeds +0.3 (${both.total})`);
+  const bothRow = context.scoreBreakdownItems(crooked).find(([label]) => label === "Your history");
+  assert(bothRow[1] === "+0.3" && /inside your 230-250 cfs band/.test(bothRow[2]) && /inside your best 6 PM-9 PM band/.test(bothRow[2]),
+    `the breakdown names exactly what was added (${bothRow[1]}: ${bothRow[2]})`);
+  const withHistory = Number(app.fishScore(crooked));
+  const realBonus = context.personalScoreBonus;
+  context.personalScoreBonus = () => ({ total: 0 });
+  const withoutHistory = Number(app.fishScore(crooked));
+  context.personalScoreBonus = realBonus;
+  assert(withHistory - withoutHistory >= 0 && withHistory - withoutHistory <= .3 + 1e-9,
+    `the score moves by the bonus and no more (${withoutHistory} -> ${withHistory})`);
+
+  // Outside the band, outside the time: zero, never negative.
+  app.liveReports.byWater.crooked = { status: "ready", usgs: { flow: "900 cfs", waterTemp: "54 F" }, nws: {} };
+  context.currentHour = () => 9;
+  const outside = context.personalScoreBonus(crooked);
+  assert(outside.total === 0 && outside.flow === 0 && outside.time === 0, "outside the band and the window adds nothing and takes nothing");
+  assert(/no bonus, no penalty/.test(context.scoreBreakdownItems(crooked).find(([label]) => label === "Your history")[2]),
+    "and the breakdown says it is not a penalty");
+
+  // An in-band flow that is not today's measurement is not compared.
+  const stale = new Date(Date.now() - 30 * 3600000).toISOString();
+  app.liveReports.byWater.crooked = { status: "ready", cachedAt: stale, usgs: { flow: "240 cfs", waterTemp: "54 F" }, nws: {} };
+  assert(context.personalScoreBonus(crooked).flow === 0, "a day-old reading inside the band earns nothing");
+  delete app.liveReports.byWater.crooked;
+  assert(context.personalScoreBonus(crooked).flow === 0, "and neither does no reading at all");
+
+  // Proven flies rise in the picks through the same fly-feedback ordering.
+  app.setLogs([
+    catchOn({ fly: "Purple Haze Custom" }),
+    catchOn({ fly: "Purple Haze Custom", count: "2" }),
+    catchOn({ fly: "Zebra Midge #20" }),
+    catchOn({ fly: "<img src=x onerror=alert(1)>", count: "5" })
+  ]);
+  const picks = context.liveRecommendedFlies(crooked);
+  assert(picks[0] === "Purple Haze Custom", `a fly with three fish here leads the picks (${picks.join(", ")})`);
+  assert(!picks.some((fly) => fly.includes("<")), "a typed name carrying markup is never offered as a pick");
+  context.setFlyFeedback("Purple Haze Custom", "ignored", { toggle: false });
+  assert(context.liveRecommendedFlies(crooked)[0] !== "Purple Haze Custom", "an explicit Ignore still outranks history");
+  context.setFlyFeedback("Purple Haze Custom", "ignored", { toggle: false });
+  assert(context.liveRecommendedFlies(crooked)[0] !== "Purple Haze Custom", "setting ignored twice without toggling keeps it ignored");
+  context.setFlyFeedback("Purple Haze Custom", "ignored");
+
+  context.currentHour = realHour;
+  app.setLogs([]);
+  Object.assign(app.liveReports.byWater, savedReports);
+}
+
+group("On the water: the prime-window countdown");
+{
+  const crooked = app.waters.find((water) => water.id === "crooked");
+  const realWindow = context.primeWindowHours;
+  context.primeWindowHours = () => [18, 21];
+  // June: Pacific Daylight Time, UTC-7.
+  const before = context.primeWindowCountdown(crooked, new Date("2026-06-21T23:20:00Z"));
+  const during = context.primeWindowCountdown(crooked, new Date("2026-06-22T02:40:00Z"));
+  const after = context.primeWindowCountdown(crooked, new Date("2026-06-22T04:30:00Z"));
+  assert(before.state === "before" && before.text === "Prime window starts in 1h 40m", `before the window (${before.text})`);
+  assert(during.state === "during" && during.text === "Prime window ends in 1h 20m", `inside the window (${during.text})`);
+  assert(after.state === "after" && /passed/.test(after.text), `after the window (${after.text})`);
+  assert(during.end.toISOString() === "2026-06-22T04:00:00.000Z", `the window ends at a real instant for the Live Activity (${during.end.toISOString()})`);
+  const nearEnd = context.primeWindowCountdown(crooked, new Date("2026-06-22T03:59:30Z"));
+  assert(nearEnd.text === "Prime window ends in 1m", `the last seconds read as a minute, never zero (${nearEnd.text})`);
+  context.primeWindowHours = () => null;
+  assert(context.primeWindowCountdown(crooked).state === "unknown", "a wind-decided window says so instead of counting down");
+  context.primeWindowHours = realWindow;
+}
+
 console.log(`\n${checks - failures}/${checks} checks passed`);
 process.exit(failures ? 1 : 0);

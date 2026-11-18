@@ -2107,6 +2107,430 @@ try {
     await page.close();
   }
 
+  /* ---------------------------------------------------------------- */
+  group("Your water: the profile card says what it knows and what it does not");
+
+  {
+    const crookedCatch = (overrides) => sampleEntry({
+      waterId: "crooked",
+      waterName: "Crooked River",
+      flowSource: "measured",
+      tempSource: "measured",
+      ...overrides
+    });
+    const cardText = async (page) => page.evaluate(() => {
+      saveActiveWater("crooked");
+      renderAll();
+      activateTab("trip");
+      const card = document.querySelector("#trip .your-water-card");
+      return { text: card ? card.textContent.replace(/\s+/g, " ") : "", images: card ? card.querySelectorAll("img").length : -1 };
+    });
+
+    const page = await openApp(browser);
+    await seedLogs(page, [crookedCatch({ flow: "230 cfs" }), crookedCatch({ flow: "250 cfs" })]);
+    const two = await cardText(page);
+    assert(/Your Crooked River/.test(two.text), `the card is named for the water (${two.text.slice(0, 60)})`);
+    assert(/Need 3\+ catches here to build your profile - you have 2\./.test(two.text),
+      `two catches say how many more are needed (${two.text})`);
+    assert(!/cfs/.test(two.text), "and state no flow band");
+
+    await seedLogs(page, [
+      crookedCatch({ flow: "230 cfs" }),
+      crookedCatch({ flow: "250 cfs" }),
+      crookedCatch({ flow: "4,160 cfs", flowSource: "reference" }),
+      crookedCatch({ fly: '<img src=x onerror="window.__owned=1">', count: "3" })
+    ]);
+    const thin = await cardText(page);
+    assert(/From your 4 catches/.test(thin.text), `four catches are a profile (${thin.text.slice(0, 80)})`);
+    assert(/230-250 cfs/.test(thin.text) && /from 3 measured readings/.test(thin.text),
+      `the band is the three measured flows (${thin.text})`);
+    assert(!/4,160/.test(thin.text), "a reference flow never appears in the angler's band");
+    assert(thin.images === 0 && /<img src=x/.test(thin.text), "a fly name with markup is shown as text, not parsed");
+
+    await seedLogs(page, [
+      crookedCatch({ flow: "230 cfs" }),
+      crookedCatch({ flow: "250 cfs" }),
+      crookedCatch({ flow: "4,160 cfs", flowSource: "reference" }),
+      crookedCatch({ flow: "4,160 cfs", flowSource: "reference" })
+    ]);
+    const unmeasured = await cardText(page);
+    assert(/need 3\+ catches with a measured flow \(you have 2\)/.test(unmeasured.text),
+      `too few measured flows says exactly that (${unmeasured.text})`);
+
+    await seedLogs(page, [
+      crookedCatch({ flow: "230 cfs", time: "6:10 PM" }),
+      crookedCatch({ flow: "250 cfs", time: "7:20 PM" }),
+      crookedCatch({ flow: "240 cfs", time: "6:45 PM" })
+    ]);
+    const full = await cardText(page);
+    assert(/From your 3 catches/.test(full.text) && /230-250 cfs/.test(full.text) && /from 3 measured readings/.test(full.text),
+      `three measured catches state a band and its sample (${full.text})`);
+    assert(/6 PM-8 PM|6 PM-9 PM/.test(full.text), `and a best time (${full.text})`);
+    const memoryCards = await page.evaluate(() => document.querySelectorAll("#trip .memory-card").length);
+    assert(memoryCards === 1, `the old memory card is folded in, not duplicated (${memoryCards})`);
+    await page.close();
+  }
+
+  /* ---------------------------------------------------------------- */
+  group("On the water: Fish on! writes one catch, with its provenance, through setLogs");
+
+  // A measured reading for the Crooked River, so provenance is "measured".
+  const measuredCrooked = () => {
+    saveActiveWater("crooked");
+    liveReports.byWater.crooked = {
+      status: "ready",
+      cachedAt: new Date().toISOString(),
+      usgs: { flow: "240 cfs", waterTemp: "53 F" },
+      nws: { forecast: "Sunny", wind: "5 mph", air: "70 F" },
+      errors: []
+    };
+    renderAll();
+    activateTab("trip");
+    document.querySelector("[data-on-water-open]").click();
+  };
+
+  {
+    const page = await openApp(browser);
+    await seedLogs(page, [sampleEntry({ notes: "A" }), sampleEntry({ notes: "B" })]);
+    const result = await page.evaluate(async (open) => {
+      eval(`(${open})`)();
+      const view = Boolean(document.querySelector("#trip [data-on-water-view]"));
+      const shownFly = document.querySelector("#trip [data-on-water-fly]").textContent.trim();
+      const before = getLogs().length;
+      document.querySelector("#trip [data-fish-on]").click();
+      await new Promise((done) => requestAnimationFrame(done));
+      const entry = getLogs()[0];
+      const stored = JSON.parse(localStorage.getItem("riseLogs"));
+      activateTab("log");
+      const firstCard = document.querySelector("#log .catch-card");
+      const firstCardIndex = firstCard?.querySelector("[data-edit-log]")?.dataset.editLog;
+      activateTab("trip");
+      return {
+        view, shownFly, before, after: getLogs().length, storedCount: stored.length,
+        entry, expectedDate: zonedDateLabel(), expectedTime: zonedTimeLabel(),
+        ageMs: Date.now() - Date.parse(entry.loggedAt),
+        firstCardText: firstCard?.textContent || "", firstCardIndex,
+        confirmation: document.querySelector("#trip .on-water-logged")?.textContent.replace(/\s+/g, " ") || "",
+        feedback: flyFeedback[shownFly]
+      };
+    }, measuredCrooked.toString());
+    assert(result.view, "the Trip screen opens into On the water");
+    assert(result.before === 2 && result.after === 3 && result.storedCount === 3, `one tap writes exactly one catch (${result.before} -> ${result.after})`);
+    const entry = result.entry;
+    assert(entry.waterId === "crooked" && entry.waterName === "Crooked River", "on the current water");
+    assert(entry.fly === result.shownFly, `with the fly on screen (${entry.fly})`);
+    assert(entry.flow === "240 cfs" && entry.flowSource === "measured", `and the measured flow with its provenance (${entry.flow}, ${entry.flowSource})`);
+    assert(entry.temp === "53 F" && entry.tempSource === "measured", `and the measured temperature with its provenance (${entry.temp}, ${entry.tempSource})`);
+    assert(entry.date === result.expectedDate && entry.time === result.expectedTime, `filed on Oregon's date and time (${entry.date} ${entry.time})`);
+    assert(result.ageMs >= 0 && result.ageMs < 10000, "stamped with a full timestamp of the moment");
+    assert(entry.fish === "" && entry.length === "" && entry.count === "1", "nothing the angler did not enter is invented");
+    assert(result.firstCardIndex === "0" && result.firstCardText.includes(entry.fly),
+      `and it is journal index 0, the first card, with Edit pointing at 0 (${result.firstCardIndex})`);
+    assert(/Undo/.test(result.confirmation) && /Add details/.test(result.confirmation) && /240 cfs \(measured\)/.test(result.confirmation),
+      `the confirmation offers Undo and Add details and shows the reading (${result.confirmation})`);
+    assert(result.feedback === "worked", "the fly is marked as worked, as a saved catch always is");
+
+    const details = await page.evaluate(async () => {
+      document.querySelector("#trip [data-fish-on-details]").click();
+      await new Promise((done) => requestAnimationFrame(done));
+      return {
+        tab: document.querySelector(".view.active").id,
+        editing: editingLogIndex,
+        heading: document.querySelector("#logForm h2")?.textContent || "",
+        fly: document.querySelector("#logForm [name=fly]")?.value,
+        same: getLogs()[editingLogIndex] === getLogs()[0]
+      };
+    });
+    assert(details.tab === "log" && details.editing === 0 && details.same && /Edit Catch/.test(details.heading) && details.fly === entry.fly,
+      `Add details opens the ordinary edit form on that catch (${details.tab}, index ${details.editing}, ${details.heading})`);
+    await page.close();
+  }
+
+  {
+    // Double tap: the second tap lands on the re-rendered button.
+    const page = await openApp(browser);
+    const result = await page.evaluate(async (open) => {
+      eval(`(${open})`)();
+      document.querySelector("#trip [data-fish-on]").click();
+      document.querySelector("#trip [data-fish-on]").click();
+      await new Promise((done) => setTimeout(done, 50));
+      document.querySelector("#trip [data-fish-on]").click();
+      return { count: getLogs().length, stored: JSON.parse(localStorage.getItem("riseLogs")).length };
+    }, measuredCrooked.toString());
+    assert(result.count === 1 && result.stored === 1, `a double-tap (and a third tap) on Fish on! writes one catch (${result.count})`);
+    await page.close();
+  }
+
+  {
+    // Undo removes exactly the catch it wrote, and puts the fly feedback back.
+    const page = await openApp(browser);
+    await seedLogs(page, [sampleEntry({ notes: "A" }), sampleEntry({ notes: "B" }), sampleEntry({ notes: "C" })]);
+    const result = await page.evaluate(async (open) => {
+      eval(`(${open})`)();
+      const fly = document.querySelector("#trip [data-on-water-fly]").textContent.trim();
+      const feedbackBefore = flyFeedback[fly];
+      // An edit form open on "B" must follow it as indices move.
+      const editingBefore = getLogs()[1];
+      editingLogIndex = 1;
+      document.querySelector("#trip [data-fish-on]").click();
+      const followed = getLogs()[editingLogIndex] === editingBefore;
+      const during = getLogs().length;
+      document.querySelector("#trip [data-fish-on-undo]").click();
+      await new Promise((done) => requestAnimationFrame(done));
+      const stored = JSON.parse(localStorage.getItem("riseLogs"));
+      return {
+        during, followed, after: getLogs().length,
+        notes: getLogs().map((entry) => entry.notes).join(","),
+        storedNotes: stored.map((entry) => entry.notes).join(","),
+        stillEditing: getLogs()[editingLogIndex] === editingBefore,
+        feedbackBefore: feedbackBefore || null, feedbackAfter: flyFeedback[fly] || null,
+        undoGone: !document.querySelector("#trip [data-fish-on-undo]"),
+        text: document.querySelector("#trip").textContent
+      };
+    }, measuredCrooked.toString());
+    assert(result.during === 4 && result.after === 3, `Undo removes one catch (${result.during} -> ${result.after})`);
+    assert(result.notes === "A,B,C" && result.storedNotes === "A,B,C", `and exactly that one - the rest are untouched (${result.notes})`);
+    assert(result.followed && result.stillEditing, "an open edit form follows its catch through the insert and the undo");
+    assert(result.feedbackAfter === result.feedbackBefore, `the fly feedback is put back (${result.feedbackBefore} -> ${result.feedbackAfter})`);
+    assert(result.undoGone && /Catch removed/.test(result.text), "and the screen says it is gone");
+    await page.close();
+  }
+
+  {
+    // A write that fails writes nothing and says so.
+    const page = await openApp(browser);
+    await seedLogs(page, [sampleEntry({ notes: "A" })]);
+    const result = await page.evaluate(async (open) => {
+      eval(`(${open})`)();
+      const storedBefore = localStorage.getItem("riseLogs");
+      const realSetItem = Storage.prototype.setItem;
+      Storage.prototype.setItem = function () { throw new Error("QuotaExceededError"); };
+      document.querySelector("#trip [data-fish-on]").click();
+      Storage.prototype.setItem = realSetItem;
+      await new Promise((done) => requestAnimationFrame(done));
+      return {
+        count: getLogs().length,
+        unchanged: localStorage.getItem("riseLogs") === storedBefore,
+        error: document.querySelector("#trip .on-water-error")?.textContent || "",
+        confirmation: Boolean(document.querySelector("#trip .on-water-logged"))
+      };
+    }, measuredCrooked.toString());
+    assert(result.count === 1 && result.unchanged, `a failed write leaves the journal exactly as it was (${result.count})`);
+    assert(/could not be saved/i.test(result.error) && /Nothing was logged/.test(result.error), `and the error is on screen (${result.error})`);
+    assert(!result.confirmation, "with no confirmation claiming otherwise");
+    await page.close();
+  }
+
+  {
+    // Every primary control in the field view is at least 64pt.
+    const page = await openApp(browser, { viewport: { width: 320, height: 640 } });
+    const result = await page.evaluate(async (open) => {
+      eval(`(${open})`)();
+      document.querySelector("#trip [data-fish-on]").click();
+      await new Promise((done) => requestAnimationFrame(done));
+      const small = [...document.querySelectorAll("#trip button")]
+        .map((button) => ({ name: button.textContent.trim(), rect: button.getBoundingClientRect() }))
+        .filter(({ rect }) => rect.height < 64 || rect.width < 64)
+        .map(({ name, rect }) => `${name} ${Math.round(rect.width)}x${Math.round(rect.height)}`);
+      const screen = document.querySelector("#trip");
+      return { small, buttons: document.querySelectorAll("#trip button").length, overflow: screen.scrollWidth - screen.clientWidth };
+    }, measuredCrooked.toString());
+    assert(result.buttons >= 6 && !result.small.length, `every On the water button is at least 64pt at 320pt wide (${result.small.join(", ") || `${result.buttons} buttons`})`);
+    assert(result.overflow <= 0, `and the view fits a 320pt screen (${result.overflow}px over)`);
+    await page.close();
+  }
+
+  /* ---------------------------------------------------------------- */
+  group("On the water: next fly, countdown timer, wake lock, location, Live Activity bridge");
+
+  {
+    const page = await openApp(browser);
+    const result = await page.evaluate(async (open) => {
+      eval(`(${open})`)();
+      const shown = () => document.querySelector("#trip [data-on-water-fly]").textContent.trim();
+      const first = shown();
+      const firstList = liveRecommendedFlies(waterById("crooked"));
+      // The place is remembered for the session, across tabs.
+      document.querySelector("#trip [data-on-water-next-fly]").click();
+      const beforeTabs = shown();
+      activateTab("today");
+      activateTab("trip");
+      const afterTabs = shown();
+      // Ignoring a fly lets the next candidate into the list, so the walk can
+      // be longer than the four on screen; it must still come back round.
+      const seen = [first, beforeTabs];
+      for (let index = 0; index < 30 && seen[seen.length - 1] !== first; index += 1) {
+        document.querySelector("#trip [data-on-water-next-fly]").click();
+        seen.push(shown());
+      }
+      const rejected = seen.slice(0, -1);
+      return {
+        first, firstList, seen, beforeTabs, afterTabs,
+        ignored: rejected.every((fly) => flyFeedback[fly] === "ignored"),
+        distinct: new Set(rejected).size === rejected.length
+      };
+    }, measuredCrooked.toString());
+    assert(result.firstList[0] === result.first, `the first fly shown is the top recommendation (${result.first})`);
+    assert(result.beforeTabs !== result.first, `"Not working" moves to another fly (${result.first} > ${result.beforeTabs})`);
+    assert(result.beforeTabs === result.afterTabs, `the place in the list survives leaving the screen (${result.afterTabs})`);
+    assert(result.seen.length > 2 && result.distinct && result.seen[result.seen.length - 1] === result.first,
+      `each fly is offered once before it comes round to the first again (${result.seen.join(" > ")})`);
+    assert(result.ignored, "each rejected fly is recorded in the existing fly feedback as ignored");
+    await page.close();
+  }
+
+  {
+    const before = `
+      window.__intervals = new Set();
+      const realSetInterval = window.setInterval.bind(window);
+      const realClearInterval = window.clearInterval.bind(window);
+      window.setInterval = (...args) => { const id = realSetInterval(...args); window.__intervals.add(id); return id; };
+      window.clearInterval = (id) => { window.__intervals.delete(id); return realClearInterval(id); };
+      window.__wake = { requests: 0, releases: 0 };
+      Object.defineProperty(navigator, "wakeLock", {
+        configurable: true,
+        value: { request: async () => {
+          window.__wake.requests += 1;
+          const sentinel = { onrelease: null, release: async () => { window.__wake.releases += 1; } };
+          return sentinel;
+        } }
+      });
+      window.__hidden = false;
+      Object.defineProperty(document, "hidden", { configurable: true, get: () => window.__hidden });
+    `;
+    const page = await openApp(browser, { before });
+    const result = await page.evaluate(async (open) => {
+      const settle = () => new Promise((done) => setTimeout(done, 30));
+      const live = () => window.__intervals.size;
+      const baseline = live();
+      eval(`(${open})`)();
+      await settle();
+      const opened = live();
+      const text = document.querySelector("#trip [data-on-water-countdown]").textContent;
+      for (let index = 0; index < 20; index += 1) renderAll();
+      renderTrip();
+      document.querySelector("#trip [data-fish-on]").click();
+      await settle();
+      const afterRenders = live();
+      const wakeAfterOpen = { ...window.__wake };
+      activateTab("today");
+      await settle();
+      const awayFromTrip = live();
+      const wakeAway = { ...window.__wake };
+      activateTab("trip");
+      await settle();
+      const backOnTrip = live();
+      window.__hidden = true;
+      document.dispatchEvent(new Event("visibilitychange"));
+      await settle();
+      const hidden = live();
+      window.__hidden = false;
+      document.dispatchEvent(new Event("visibilitychange"));
+      await settle();
+      const visible = live();
+      const wakeVisible = { ...window.__wake };
+      document.querySelector("#trip [data-on-water-close]").click();
+      await settle();
+      return {
+        baseline, opened, afterRenders, awayFromTrip, backOnTrip, hidden, visible, closed: live(), text,
+        wakeAfterOpen, wakeAway, wakeVisible, wakeClosed: { ...window.__wake }
+      };
+    }, measuredCrooked.toString());
+    const on = (count) => count - result.baseline;
+    assert(/^Prime window (ends in|starts in|has passed)|first calm hour/.test(result.text), `the countdown reads as one (${result.text})`);
+    assert(on(result.opened) === 1, `opening the view starts one countdown timer (${on(result.opened)})`);
+    assert(on(result.afterRenders) === 1, `21 re-renders and a Fish on! leave exactly one (${on(result.afterRenders)})`);
+    assert(on(result.awayFromTrip) === 0, `leaving the Trip tab stops it (${on(result.awayFromTrip)})`);
+    assert(on(result.backOnTrip) === 1, `coming back starts one again (${on(result.backOnTrip)})`);
+    assert(on(result.hidden) === 0, `the app going to the background stops it (${on(result.hidden)})`);
+    assert(on(result.visible) === 1, `coming back to the foreground starts one (${on(result.visible)})`);
+    assert(on(result.closed) === 0, `Exit leaves none running (${on(result.closed)})`);
+    assert(result.wakeAfterOpen.requests === 1, `the screen wake lock is asked for once, not per render (${result.wakeAfterOpen.requests})`);
+    assert(result.wakeAway.releases === 1, "and released when the angler leaves the screen");
+    assert(result.wakeVisible.requests >= 3, `and asked for again on return and on visibilitychange (${result.wakeVisible.requests})`);
+    assert(result.wakeClosed.releases === result.wakeClosed.requests, `every lock taken is released by Exit (${result.wakeClosed.requests}/${result.wakeClosed.releases})`);
+    await page.close();
+  }
+
+  {
+    // No Wake Lock API at all (older WebKit): the view still works.
+    const page = await openApp(browser, { before: `Object.defineProperty(navigator, "wakeLock", { configurable: true, value: undefined });` });
+    const errors = [];
+    page.on("pageerror", (error) => errors.push(error.message));
+    const opened = await page.evaluate(async (open) => {
+      eval(`(${open})`)();
+      await new Promise((done) => setTimeout(done, 30));
+      return Boolean(document.querySelector("#trip [data-on-water-view]"));
+    }, measuredCrooked.toString());
+    assert(opened && !errors.length, `without the Wake Lock API the view opens and nothing throws (${errors.join(" | ") || "no errors"})`);
+    await page.close();
+  }
+
+  {
+    const before = `
+      window.__fix = null;
+      Object.defineProperty(navigator, "geolocation", {
+        configurable: true,
+        value: { getCurrentPosition: (success, failure) => {
+          if (!window.__fix) { failure({ code: 1 }); return; }
+          success({ coords: { latitude: window.__fix.lat, longitude: window.__fix.lon, accuracy: 15 } });
+        } }
+      });
+    `;
+    const page = await openApp(browser, { before });
+    const result = await page.evaluate(async (open) => {
+      eval(`(${open})`)();
+      const target = waterCoordinates.metolius;
+      window.__fix = { lat: target.lat + .004, lon: target.lon + .004 };
+      document.querySelector("#trip [data-on-water-locate]").click();
+      await new Promise((done) => setTimeout(done, 30));
+      const near = { water: activeWater, title: document.querySelector("#trip h1").textContent, notice: document.querySelector("#trip .on-water-notice")?.textContent || "" };
+      window.__fix = { lat: 40.0, lon: -100.0 };
+      document.querySelector("#trip [data-on-water-locate]").click();
+      await new Promise((done) => setTimeout(done, 30));
+      const far = { water: activeWater, notice: document.querySelector("#trip .on-water-notice")?.textContent || "" };
+      window.__fix = null;
+      document.querySelector("#trip [data-on-water-locate]").click();
+      await new Promise((done) => setTimeout(done, 30));
+      const denied = document.querySelector("#trip .on-water-notice")?.textContent || "";
+      return { near, far, denied, name: waterById("metolius").name };
+    }, measuredCrooked.toString());
+    assert(result.near.water === "metolius" && result.near.title.includes(result.name) && /You look to be on/.test(result.near.notice),
+      `a fix beside a mapped water picks that water (${result.near.water}: ${result.near.notice})`);
+    assert(result.far.water === "metolius" && /Couldn't tell/.test(result.far.notice),
+      `a fix near no water says it could not tell and changes nothing (${result.far.notice})`);
+    assert(/Couldn't get your location/.test(result.denied), `a refused fix says so (${result.denied})`);
+    await page.close();
+  }
+
+  {
+    const before = `
+      window.__liveActivity = [];
+      window.webkit = { messageHandlers: { riseLiveActivity: { postMessage: (message) => window.__liveActivity.push(JSON.parse(JSON.stringify(message))) } } };
+    `;
+    const page = await openApp(browser, { before });
+    const result = await page.evaluate(async (open) => {
+      const atLaunch = window.__liveActivity.length;
+      eval(`(${open})`)();
+      const afterOpen = window.__liveActivity.length;
+      for (let index = 0; index < 5; index += 1) renderTrip();
+      const afterRepaints = window.__liveActivity.length;
+      document.querySelector("#trip [data-fish-on]").click();
+      document.querySelector("#trip [data-on-water-close]").click();
+      return { atLaunch, afterOpen, afterRepaints, messages: window.__liveActivity };
+    }, measuredCrooked.toString());
+    const [start, update] = result.messages;
+    const end = result.messages[result.messages.length - 1];
+    assert(result.atLaunch === 0, "nothing is posted until On the water is opened");
+    assert(start?.action === "start" && start.waterName === "Crooked River" && start.flow === "240 cfs" && start.flowSource === "measured" && start.nextFly,
+      `opening posts start with the water, reading, provenance and next fly (${JSON.stringify(start)})`);
+    assert(start && (start.primeWindowEnd === null || !Number.isNaN(Date.parse(start.primeWindowEnd))), "the prime-window end is a real instant");
+    assert(result.afterRepaints === result.afterOpen, `an unchanged repaint posts nothing (${result.afterRepaints - result.afterOpen})`);
+    assert(update?.action === "update" && update.fishToday === 1, `a catch posts an update (${JSON.stringify(update)})`);
+    assert(end?.action === "end", "Exit ends the activity");
+    await page.close();
+  }
+
 } finally {
   for (const context of openContexts) {
     await context.close().catch(() => {});
