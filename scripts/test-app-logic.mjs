@@ -642,8 +642,8 @@ group("A gauge with no data is not a measurement (#3 round six)");
   const weeksAgo = new Date(Date.now() - 21 * 86400000).toISOString();
   const realFetch = context.fetchJsonWithTimeout;
   context.fetchJsonWithTimeout = async () => ({ value: { timeSeries: [series("00060", "-999999", now), series("00010", "-999999", now)] } });
-  const iced = await app.fetchUsgsReport({ usgs: "14087400" });
-  assert(iced.flow === null && iced.waterTemp === null, `an iced gauge reports nothing (${iced.flow} / ${iced.waterTemp})`);
+  const iced = await app.fetchUsgsReport({ usgs: "14087400" }).then(() => "resolved", (error) => error.message);
+  assert(/no current readings/.test(iced), `an iced gauge is a failed read, not an empty success (${iced})`);
   context.fetchJsonWithTimeout = async () => ({ value: { timeSeries: [series("00060", "4160", now), series("00010", "12", weeksAgo)] } });
   const mixed = await app.fetchUsgsReport({ usgs: "14087400" });
   assert(mixed.flow === "4,160 cfs" && app.flowFromText(mixed.flow) === 4160, `flow round-trips in any locale (${mixed.flow})`);
@@ -685,6 +685,167 @@ group("Stored payload validation preserves valid legacy data");
   assert(context.parseLogPayload(JSON.stringify({ savedAt: cachedAt, logs: [null] })) === null,
     "invalid backup rows reject the payload rather than silently deleting records");
   localStorage.removeItem("riseWaterReports.v1");
+}
+
+
+/* ------------------------------------------------------------------ */
+group("Audit 2026-11-18: flies are held to their insect's season");
+{
+  const lower = app.waters.find((water) => water.id === "lower-deschutes");
+  const metolius = app.waters.find((water) => water.id === "metolius");
+  const davis = app.waters.find((water) => water.id === "davis");
+  assert(context.flyInSeason("PMD Sparkle Dun #16", 1) === false, "a PMD dry is out of season in January");
+  assert(context.flyInSeason("Zebra Midge #20", 1) === true, "a midge is fishable in January");
+  assert(context.flyInSeason("Pat's Rubber Legs #8", 1) === true, "an attractor that imitates no seasonal insect is allowed");
+  const realMonth = context.currentMonth;
+  context.currentMonth = () => 1;
+  const saved = { ...app.liveReports.byWater };
+  Object.keys(app.liveReports.byWater).forEach((key) => delete app.liveReports.byWater[key]);
+  const januaryLower = context.liveRecommendedFlies(lower);
+  const januaryMetolius = context.liveRecommendedFlies(metolius);
+  const januaryDavis = context.liveRecommendedFlies(davis);
+  context.currentMonth = realMonth;
+  Object.assign(app.liveReports.byWater, saved);
+  assert(!januaryLower.some((fly) => /pmd|yellow sally|caddis/i.test(fly)),
+    `no summer fly on the Lower Deschutes in January (${januaryLower.join(", ")})`);
+  assert(januaryLower.length > 0, "the January box is not left empty");
+  assert(!januaryMetolius.some((fly) => /green drake/i.test(fly)), `no Green Drake in January (${januaryMetolius.join(", ")})`);
+  assert(!januaryDavis.some((fly) => /damsel|callibaetis/i.test(fly)),
+    `an unmeasured lake is not given summer flies from its reference temperature (${januaryDavis.join(", ")})`);
+}
+
+group("Audit 2026-11-18: reports land on the water they describe");
+{
+  const crooked = app.waters.find((water) => water.id === "crooked");
+  const metolius = app.waters.find((water) => water.id === "metolius");
+  const source = { label: "ODFW", type: "agency", readable: true };
+  const page = app.textFromHtml("<h3>Crooked River</h3><p>Fishing is slow and flows are high</p><h3>Metolius River</h3><p>Fishing has been good with green drakes.</p>");
+  assert(/\n/.test(page), "headings and paragraphs keep their boundaries");
+  const pageMetolius = app.extractSignalsForWater(metolius, page, source);
+  const pageCrooked = app.extractSignalsForWater(crooked, page, source);
+  assert(pageMetolius?.hatches.includes("Green Drake"), "the Metolius section's green drakes reach the Metolius");
+  assert(!pageCrooked?.hatches.includes("Green Drake"), "and not the Crooked");
+  assert(pageCrooked?.scoreBoost < 0, `the Crooked keeps its own slow report (${pageCrooked?.scoreBoost})`);
+  const sentence = "Anglers who found the Crooked River too high moved to the Metolius, where fishing has been good on green drakes.";
+  const sentenceMetolius = app.extractSignalsForWater(metolius, sentence, source);
+  const sentenceCrooked = app.extractSignalsForWater(crooked, sentence, source);
+  assert(sentenceMetolius?.hatches.includes("Green Drake") && sentenceMetolius.scoreBoost > 0,
+    "one sentence naming two waters credits each with its own part");
+  assert(!sentenceCrooked || !sentenceCrooked.hatches.includes("Green Drake"), "a longer name does not take the other water's report");
+}
+
+group("Audit 2026-11-18: a negation denies what follows it");
+{
+  const metolius = app.waters.find((water) => water.id === "metolius");
+  const source = { label: "ODFW", type: "agency", readable: true };
+  assert(app.cueSignalsFromText("fishing is good with no crowds").includes("positive human report"),
+    "\"good with no crowds\" is a good report");
+  assert(app.scoreBoostFromSignals("fishing has been good without much pressure", source, [], []) > 0,
+    "\"good without much pressure\" raises the score");
+  assert(app.scoreBoostFromSignals("fishing has not been good", source, [], []) < 0, "\"not been good\" still lowers it");
+  const wind = app.extractSignalsForWater(metolius, "Metolius River: caddis are hatching in the evenings with no wind.", source);
+  assert(wind?.hatches.includes("Caddis"), "\"caddis ... with no wind\" keeps the caddis");
+  assert(wind?.cues.includes("evening window"), "\"evenings\" is the evening window");
+  const none = app.extractSignalsForWater(metolius, "Metolius River: there is no caddis, mayfly, or stonefly activity yet.", source);
+  assert(!none?.hatches.includes("Caddis"), "a denied list is still denied");
+}
+
+group("Audit 2026-11-18: names are not cues, and a hatch is counted once");
+{
+  const clearLake = app.waters.find((water) => water.id === "clear-lake");
+  const lower = app.waters.find((water) => water.id === "lower-deschutes");
+  const source = { label: "ODFW", type: "agency", readable: true };
+  assert(app.extractSignalsForWater(clearLake, "Clear Lake: the campground road is now open for the season.", source) === null,
+    "\"Clear Lake\" in a road notice is not a clear-water report");
+  const realMonth = context.currentMonth;
+  context.currentMonth = () => 11;
+  const october = app.extractSignalsForWater(lower, "Lower Deschutes: October caddis hatching in the afternoons near Maupin.", source);
+  context.currentMonth = realMonth;
+  assert(october?.hatches.join(",") === "October Caddis", `October caddis is not also a generic Caddis (${october?.hatches.join(",")})`);
+}
+
+group("Audit 2026-11-18: readings keep their real age");
+{
+  const crooked = app.waters.find((water) => water.id === "crooked");
+  const realUsgs = context.fetchUsgsReport;
+  const realNws = context.fetchNwsReport;
+  const elevenHoursAgo = new Date(Date.now() - 11 * 3600000).toISOString();
+  const previous = {
+    status: "ready", cachedAt: elevenHoursAgo, meta: context.liveMetaFor(crooked),
+    usgs: { flow: "240 cfs", waterTemp: "52 F", observedAt: elevenHoursAgo }, nws: { wind: "5 mph W" }
+  };
+  app.liveReports.byWater.crooked = previous;
+  const samplesBefore = context.flowHistoryFor("crooked").length;
+  context.fetchUsgsReport = async () => { throw new Error("USGS timeout"); };
+  context.fetchNwsReport = async () => ({ air: "60 F", wind: "6 mph W", forecast: "Sunny", observedAt: null, url: "" });
+  const ok = await context.refreshLiveReportOnce(crooked, { render: false });
+  const carried = app.liveReports.byWater.crooked;
+  assert(ok && carried.usgs?.flow === "240 cfs", "a weather-only refresh keeps the fresh gauge reading");
+  assert(carried.cachedAt === elevenHoursAgo, `and keeps its age rather than re-stamping it (${carried.cachedAt})`);
+  assert(context.flowHistoryFor("crooked").length === samplesBefore, "a carried reading is not recorded as a new day of history");
+  app.liveReports.byWater.crooked = { ...carried, cachedAt: new Date(Date.now() - 13 * 3600000).toISOString() };
+  await context.refreshLiveReportOnce(crooked, { render: false });
+  assert(!app.liveReports.byWater.crooked.usgs, "once that age passes the fresh window it is no longer carried");
+  context.fetchUsgsReport = realUsgs;
+  context.fetchNwsReport = realNws;
+  delete app.liveReports.byWater.crooked;
+
+  const expiredAt = new Date(Date.now() - 9 * 86400000).toISOString();
+  app.liveReports.byWater.crooked = { status: "ready", cachedAt: expiredAt, usgs: { flow: "600 cfs" } };
+  assert(app.flowRatioFor(crooked) === null, "an expired reading does not drive the flow wording");
+  delete app.liveReports.byWater.crooked;
+}
+
+group("Audit 2026-11-18: a failed page keeps its last good reading");
+{
+  const metolius = app.waters.find((water) => water.id === "metolius");
+  const realText = context.fetchTextWithTimeout;
+  const savedCache = app.liveReports.cache;
+  app.liveReports.cache = null;
+  const realMonth = context.currentMonth;
+  context.currentMonth = () => 6;
+  const filler = " The Central Zone covers lakes, reservoirs and rivers across the region for anglers.";
+  context.fetchTextWithTimeout = async (url) => url.includes("recreation-report")
+    ? `<p>Metolius River: fishing has been good with green drakes.${filler}</p>`
+    : `<p>General regulations and seasons apply.${filler}</p>`;
+  await context.scrubLocalResources("manual");
+  assert(context.localIntelForWater(metolius).hatches.includes("Green Drake"), "day one reads the weekly report");
+  context.fetchTextWithTimeout = async (url) => {
+    if (url.includes("recreation-report")) throw new Error("ODFW timeout");
+    return `<p>General regulations and seasons apply.${filler}</p>`;
+  };
+  await context.scrubLocalResources("manual");
+  assert(context.localIntelForWater(metolius).hatches.includes("Green Drake"),
+    "a weekly report that times out the next day does not erase what it said");
+  context.fetchTextWithTimeout = realText;
+  context.currentMonth = realMonth;
+  app.liveReports.cache = savedCache;
+}
+
+group("Audit 2026-11-18: smaller honesty fixes");
+{
+  const crooked = app.waters.find((water) => water.id === "crooked");
+  const realHour = context.currentHour;
+  const window = app.primeWindowHours(crooked);
+  if (window) {
+    context.currentHour = () => window[1];
+    assert(app.timeOfDayFit(crooked) < 1, `the hour after the window closes is not full credit (${app.timeOfDayFit(crooked)})`);
+    context.currentHour = realHour;
+  }
+  const hosmer = app.waters.find((water) => water.id === "hosmer");
+  const temp = context.scoreBreakdownItems(hosmer).find(([label]) => label === "Water temp");
+  assert(/not measured/i.test(temp[2]), `an unmeasured temperature is not explained as a score factor (${temp[2]})`);
+  assert(JSON.stringify(context.hookSizeRange("#16-22")) === "[16,22]", "a size range is read whole");
+  assert(context.sizeRangesOverlap(context.hookSizeRange("#16-22"), [18, 26]), "a #16-22 BWO is a tiny bug");
+  assert(!context.sizeRangesOverlap(context.hookSizeRange("#4-10"), [18, 26]), "a #4-10 streamer is not");
+  assert(!/<small>▲ 2° since dawn<\/small>/.test(html) && !/<em>AI-matched<\/em>/.test(html), "Today prints no invented trend or AI claim");
+  assert(/`\\uFEFF\$\{logCsv\(\)\}`/.test(html), "the CSV export carries a UTF-8 byte-order mark");
+
+  const savedCache = app.liveReports.cache;
+  app.liveReports.cache = { ...context.emptyWaterCache(), localIntel: { byWater: { crooked: { hatches: ["BWO"], flies: [], cues: [], sources: ["ODFW"], scoreBoost: .2 } }, sources: [], updatedAt: new Date().toISOString(), errors: [] } };
+  context.markDailyOpenSyncComplete();
+  assert(app.liveReports.cache.localIntel.byWater.crooked, "marking the day synced does not reload over the in-memory intel");
+  app.liveReports.cache = savedCache;
 }
 
 console.log(`\n${checks - failures}/${checks} checks passed`);

@@ -2395,6 +2395,15 @@
       color: #a2591f;
     }
 
+    /* Inline in the hero sentence, on teal. */
+    .condition-line .prov {
+      display: inline;
+      margin: 0 2px 0 0;
+      font-size: .5em;
+      vertical-align: middle;
+      color: rgba(255, 255, 255, .72);
+    }
+
     .data-provenance-notice {
       margin-bottom: 12px;
       padding: 10px 12px;
@@ -4125,9 +4134,9 @@
       "little-lava": { lat: 43.91, lon: -121.77 },
       wickiup: { lat: 43.69, lon: -121.69 },
       davis: { lat: 43.58, lon: -121.82 },
-      "three-creek": { lat: 44.19, lon: -121.63 },
-      "north-twin": { lat: 43.73, lon: -121.61 },
-      "south-twin": { lat: 43.70, lon: -121.59 },
+      "three-creek": { lat: 44.10, lon: -121.63 },
+      "north-twin": { lat: 43.73, lon: -121.77 },
+      "south-twin": { lat: 43.72, lon: -121.77 },
       cultus: { lat: 43.82, lon: -121.86 },
       devils: { lat: 44.04, lon: -121.76 },
       suttle: { lat: 44.43, lon: -121.74 },
@@ -4168,7 +4177,7 @@
       "lucky-lake": { lat: 43.83, lon: -121.88 },
       "rosary-lakes": { lat: 43.70, lon: -122.01 },
       "square-lake": { lat: 44.48, lon: -121.86 },
-      "little-three-creeks": { lat: 44.19, lon: -121.65 },
+      "little-three-creeks": { lat: 44.10, lon: -121.64 },
       "yoran-lake": { lat: 43.57, lon: -122.08 }
     };
 
@@ -5129,7 +5138,7 @@
         groups[flyCategoryFor(fly)].push(fly);
       });
       if (!groups.Streamers.length) groups.Streamers.push(water.type === "Lake" ? "Balanced Leech #10" : "Muddler Minnow #6");
-      if (!groups.Terrestrials.length) groups.Terrestrials.push("Foam Ant #16");
+      if (!groups.Terrestrials.length && flyInSeason("Foam Ant #16")) groups.Terrestrials.push("Foam Ant #16");
       Object.keys(groups).forEach((key) => {
         groups[key] = applyFlyFeedback(groups[key]).slice(0, 3);
       });
@@ -5376,6 +5385,14 @@
 
     // Flow text arrives as "4,160 cfs" from both the seed data and USGS. The generic
     // numberFromText stops at the comma and would read that as 4.
+    // The report the app may reason from: loaded and not past its expiry.
+    // Expired readings are only purged at load, so an app left open past the
+    // limit must check here rather than trust whatever is in memory.
+    function usableReport(water) {
+      const report = liveReports.byWater[water.id];
+      return report?.status === "ready" && reportFreshness(report) !== "expired" ? report : null;
+    }
+
     function flowFromText(text) {
       const match = String(text || "").replace(/,/g, "").match(/-?\d+(\.\d+)?/);
       return match ? Number(match[0]) : null;
@@ -5386,7 +5403,7 @@
     // the seed data supports, rather than inventing absolute fishable cfs bands.
     function flowRatioFor(water) {
       if (water.type === "Lake") return null;
-      const report = liveReports.byWater[water.id];
+      const report = usableReport(water);
       const live = flowFromText(report?.usgs?.flow);
       const reference = flowFromText(water.flow);
       if (live === null || live < 0 || reference === null || reference <= 0) return null;
@@ -5440,7 +5457,7 @@
         // Only a measured temperature moves the score. Falling back to the seed
         // value scored every lake on a number nobody measured.
         const waterTemp = numberFromText(report.usgs?.waterTemp);
-        const wind = numberFromText(report.nws?.wind || water.wind);
+        const wind = numberFromText(report.nws?.wind);
         const forecast = `${report.nws?.forecast || ""}`.toLowerCase();
         score += flowScoreAdjustment(water);
         if (water.type === "Lake") {
@@ -5703,15 +5720,20 @@
        --------------------------------------------------------------------- */
     const APP_TIME_ZONE = "America/Los_Angeles";
 
+    // Built once: constructing a DateTimeFormat costs far more than using one,
+    // and the journal asks for a year per entry.
+    let zonedFormatter = null;
+
     function zonedParts(date = new Date()) {
-      const parts = new Intl.DateTimeFormat("en-US", {
+      zonedFormatter = zonedFormatter || new Intl.DateTimeFormat("en-US", {
         timeZone: APP_TIME_ZONE,
         year: "numeric",
         month: "2-digit",
         day: "2-digit",
         hour: "2-digit",
         hourCycle: "h23"
-      }).formatToParts(date).reduce((memo, part) => {
+      });
+      const parts = zonedFormatter.formatToParts(date).reduce((memo, part) => {
         memo[part.type] = part.value;
         return memo;
       }, {});
@@ -5809,8 +5831,41 @@
       return uniqueItems(yearRound);
     }
 
-    function waterAppropriateFlies(flies, water) {
-      return uniqueItems(flies.filter((fly) => flyAllowedForWater(fly, water)));
+    /* The insect a fly imitates, so the fly can be held to that insect's
+       season. Hatches were gated by month and flies were not, so a January
+       Today screen listed Midge/Leech/Baitfish as the hatches and put a PMD
+       Sparkle Dun (Jun-Aug) beside them as the first fly. An attractor or
+       streamer that imitates no seasonal insect returns null and is allowed. */
+    function flyImitates(fly) {
+      const library = flyLibrary.find((item) => item.name.toLowerCase() === String(fly || "").toLowerCase());
+      if (library?.bugId) return library.bugId;
+      const text = String(fly || "").toLowerCase();
+      const match = [...hatchSignalMap]
+        .sort((a, b) => b[0].length - a[0].length)
+        .find(([needle]) => mentionsNoun(text, needle));
+      return match ? match[1] : null;
+    }
+
+    // Stonefly nymphs live two to three years in the gravel and are in the
+    // river every month, whatever the adults' hatch season.
+    const PERENNIAL_FLY_PATTERN = /rubber legs|stone(?:fly)? nymph/i;
+
+    function flyInSeason(fly, month = currentMonth()) {
+      if (PERENNIAL_FLY_PATTERN.test(String(fly || ""))) return true;
+      const imitates = flyImitates(fly);
+      return !imitates || hatchInSeason(imitates, month);
+    }
+
+    const YEAR_ROUND_FLIES = {
+      River: ["Zebra Midge #20", "Pat's Rubber Legs #8", "Olive Bugger #8"],
+      Lake: ["Chromie #16", "Balanced Leech #10", "Olive Bugger #8"]
+    };
+
+    function waterAppropriateFlies(flies, water, options = {}) {
+      const { month = currentMonth(), fallback = false } = options;
+      const allowed = uniqueItems(flies.filter((fly) => flyAllowedForWater(fly, water) && flyInSeason(fly, month)));
+      if (allowed.length || !fallback) return allowed;
+      return YEAR_ROUND_FLIES[water.type === "Lake" ? "Lake" : "River"].filter((fly) => flyAllowedForWater(fly, water));
     }
 
     function localIntelForWater(water) {
@@ -5834,7 +5889,7 @@
     function predictedHatches(water) {
       const report = liveReports.byWater[water.id];
       const waterTemp = numberFromText(report?.usgs?.waterTemp);
-      const wind = numberFromText(report?.nws?.wind || water.wind);
+      const wind = numberFromText(report?.nws?.wind);
       const forecast = `${report?.nws?.forecast || ""}`.toLowerCase();
       const hatches = [...water.hatch];
       const intel = localIntelForWater(water);
@@ -5904,7 +5959,9 @@
       const [start, end] = window;
       const hour = currentHour();
       if (hour >= start && hour < end) return 1;
-      const distance = hour < start ? start - hour : hour - end;
+      // The window's end hour is outside it: at 1 PM a 10-1 window has
+      // passed, one hour ago, exactly as 9 AM is one hour before it opens.
+      const distance = hour < start ? start - hour : hour - end + 1;
       return Math.max(0, 1 - distance / 4);
     }
 
@@ -5919,11 +5976,19 @@
     function fishabilityReason(water) {
       const clarity = clarityFor(water);
       const hatch = predictedHatches(water)[0] || "hatch";
-      if (water.type === "Lake") return `${water.wind} wind + ${hatch.toLowerCase()} activity near weed edges`;
+      // Only a measured reading is quoted as today's condition. The seed wind
+      // printed under a live 22 mph forecast read as a second, calmer one.
+      const measured = (key) => ["measured", "stale"].includes(valueProvenance(water, key));
+      if (water.type === "Lake") {
+        return measured("wind")
+          ? `${liveDisplayValue(water, "wind")} wind + ${hatch.toLowerCase()} activity near weed edges`
+          : `${hatch} activity near weed edges on seasonal timing`;
+      }
       const flowNote = flowContextLabel(water);
       if (flowNote) return `${flowNote.toLowerCase()} + ${hatch.toLowerCase()} hatch building`;
       if (clarity.measured) return `${clarity.label} water + ${hatch.toLowerCase()} hatch building`;
-      return `${liveDisplayValue(water, "temp")} water + ${hatch.toLowerCase()} hatch building`;
+      if (measured("temp")) return `${liveDisplayValue(water, "temp")} water + ${hatch.toLowerCase()} hatch building`;
+      return `${hatch} hatch building on seasonal timing`;
     }
 
     function rankedWatersForCurrentMode(list = visibleWaters()) {
@@ -5999,15 +6064,27 @@
           if (strings(intel.errors)) cache.localIntel.errors = intel.errors;
           if (Array.isArray(intel.sources)) cache.localIntel.sources = intel.sources.filter((source) =>
             record(source) && ["label", "type", "url"].every((key) => typeof source[key] === "string") && typeof source.readable === "boolean");
-          for (const [id, signal] of Object.entries(record(intel.byWater) ? intel.byWater : {})) {
-            if (!waterById(id) || !record(signal)) continue;
-            if (!["hatches", "flies", "sources", "cues"].every((key) => signal[key] === undefined || strings(signal[key]))) continue;
-            cache.localIntel.byWater[id] = {
-              hatches: [], flies: [], sources: [], cues: [], ...signal,
-              scoreBoost: Number.isFinite(signal.scoreBoost) ? signal.scoreBoost : 0
-            };
-            for (const key of ["hatches", "flies", "sources", "cues"]) {
-              cache.localIntel.byWater[id][key] = (signal[key] || []).map((value) => safeText(value));
+          const signalMap = (input) => {
+            const output = {};
+            for (const [id, signal] of Object.entries(record(input) ? input : {})) {
+              if (!waterById(id) || !record(signal)) continue;
+              if (!["hatches", "flies", "sources", "cues"].every((key) => signal[key] === undefined || strings(signal[key]))) continue;
+              output[id] = {
+                hatches: [], flies: [], sources: [], cues: [], ...signal,
+                scoreBoost: Number.isFinite(signal.scoreBoost) ? signal.scoreBoost : 0
+              };
+              for (const key of ["hatches", "flies", "sources", "cues"]) {
+                output[id][key] = (signal[key] || []).map((value) => safeText(value));
+              }
+            }
+            return output;
+          };
+          cache.localIntel.byWater = signalMap(intel.byWater);
+          if (record(intel.bySource)) {
+            cache.localIntel.bySource = {};
+            for (const [label, source] of Object.entries(intel.bySource)) {
+              if (!record(source) || typeof source.updatedAt !== "string") continue;
+              cache.localIntel.bySource[label] = { updatedAt: source.updatedAt, byWater: signalMap(source.byWater) };
             }
           }
         }
@@ -6132,7 +6209,9 @@
       if (flow === null) return;
       const history = readFlowHistory();
       const samples = Array.isArray(history[waterId]) ? history[waterId] : [];
-      const now = new Date();
+      // Filed under when the gauge took the reading, not when it was fetched.
+      const observed = new Date(report?.usgs?.observedAt || "");
+      const now = Number.isNaN(observed.getTime()) ? new Date() : observed;
       const day = pacificDateKey(now);
       const last = samples[samples.length - 1];
       // One point per day was the whole record, so a subscriber who opened the
@@ -6141,6 +6220,7 @@
       // reading is kept as its own point; an unchanged one just updates the
       // day's value rather than stacking a flat run of identical bars.
       const sample = { d: day, t: now.toISOString(), f: flow };
+      if (last && last.t === sample.t) return;
       if (last && last.d === day && last.f === flow) {
         samples[samples.length - 1] = sample;
       } else {
@@ -6162,6 +6242,52 @@
     function flowHistoryFor(waterId) {
       const samples = readFlowHistory()[waterId];
       return Array.isArray(samples) ? samples : [];
+    }
+
+    /* The Today condition cards printed "▲ 2° since dawn" under the water
+       temperature and "steady" under the flow on every water, including ones
+       with no gauge and a reference temperature nobody measured. They now say
+       only what this device knows: a trend from readings it actually recorded,
+       or where the number came from. */
+    function flowTrendLabel(water) {
+      if (water.type === "Lake") return "stillwater";
+      if (!hasGauge(water)) return "no gauge on this water";
+      const provenance = valueProvenance(water, "flow");
+      if (provenance === "reference") return "seasonal reference";
+      const cutoff = Date.now() - 30 * 3600000;
+      const recent = flowHistoryFor(water.id).filter((sample) => {
+        const at = new Date(sample.t || "").getTime();
+        return Number.isFinite(at) && at >= cutoff;
+      });
+      if (recent.length >= 2) {
+        const first = recent[0];
+        const latest = recent[recent.length - 1];
+        const hours = Math.max(1, Math.round((new Date(latest.t) - new Date(first.t)) / 3600000));
+        const direction = latest.f > first.f * 1.05 ? "rising" : latest.f < first.f * .95 ? "dropping" : "steady";
+        return `${direction} over ${hours} h`;
+      }
+      if (provenance === "stale") return `measured ${ageLabel(reportAgeHours(liveReports.byWater[water.id]))}`;
+      return "measured - trend after the next reading";
+    }
+
+    function temperatureNoteFor(water) {
+      const provenance = valueProvenance(water, "temp");
+      if (provenance === "measured") return "measured";
+      if (provenance === "stale") return `measured ${ageLabel(reportAgeHours(liveReports.byWater[water.id]))}`;
+      return "seasonal reference";
+    }
+
+    // Season stage of a hatch this month, and whether a report named it. The
+    // badge used to be NOW / PEAK / SOON by list position alone.
+    function hatchStatusFor(water, hatch, month = currentMonth()) {
+      const reported = localIntelForWater(water).hatches
+        .some((item) => item.toLowerCase() === String(hatch).toLowerCase());
+      if (reported) return { label: "Reported", tone: "now" };
+      const fit = hatchSeasonFit(hatch, month);
+      if (fit === 1) return { label: "In season", tone: "now" };
+      const next = month === 12 ? 1 : month + 1;
+      if (hatchSeasonFit(hatch, next) === 1) return { label: "Early", tone: "soon" };
+      return { label: "Late", tone: "soon" };
     }
 
     function flowHistoryPanel(water) {
@@ -6220,8 +6346,10 @@
       `;
     }
 
-    function cacheReport(waterId, report, mode = "manual") {
-      recordFlowSample(waterId, report);
+    function cacheReport(waterId, report, mode = "manual", options = {}) {
+      // Only a reading this refresh actually fetched is history. A carried-over
+      // value recorded again was a day the gauge was never read.
+      if (options.recordFlow !== false) recordFlowSample(waterId, report);
       const cache = liveReports.cache || readWaterCache();
       const cachedReport = {
         ...report,
@@ -6229,7 +6357,7 @@
         fromCache: false,
         refreshing: false,
         cacheMode: mode,
-        cachedAt: new Date().toISOString()
+        cachedAt: options.cachedAt || new Date().toISOString()
       };
       cache.byWater[waterId] = cachedReport;
       cache.lastSavedAt = cachedReport.cachedAt;
@@ -6316,7 +6444,10 @@
     }
 
     function markDailyOpenSyncComplete() {
-      const cache = readWaterCache();
+      // The in-memory cache is the truth for this session. Re-reading disk
+      // threw away everything a full-quota write had failed to persist,
+      // including the intel the sync had just fetched.
+      const cache = liveReports.cache || readWaterCache();
       cache.lastDailyOpen = pacificDateKey();
       cache.lastSavedAt = cache.lastSavedAt || new Date().toISOString();
       writeWaterCache(cache);
@@ -6419,6 +6550,12 @@
       return String(html || "")
         .replace(/<script[\s\S]*?<\/script>/gi, " ")
         .replace(/<style[\s\S]*?<\/style>/gi, " ")
+        // Block boundaries are kept as line breaks. Turning every tag into a
+        // space ran a "<h3>Crooked River</h3><p>slow</p><h3>Metolius</h3>"
+        // page into one run-on sentence, so passageAboutWater could not tell
+        // where one water's report ended and the next began.
+        .replace(/<(?:br|hr)\b[^>]*>/gi, "\n")
+        .replace(/<\/?(?:p|div|h[1-6]|li|ul|ol|tr|td|th|table|section|article|header|footer|blockquote|dd|dt)\b[^>]*>/gi, "\n")
         .replace(/<[^>]+>/g, " ")
         // Entities are decoded before the text is split into clauses. The ";"
         // that ends "&nbsp;" or "&rsquo;" counts as a full stop, so "has not
@@ -6430,7 +6567,8 @@
         .replace(/&(?:ndash|mdash|#0*8211|#0*8212|#x0*2013|#x0*2014);/gi, " - ")
         .replace(/&amp;/gi, "&")
         .replace(/&#?[a-z0-9]+;/gi, " ")
-        .replace(/\s+/g, " ")
+        .replace(/[^\S\n]+/g, " ")
+        .replace(/ ?\n[\s]*/g, "\n")
         .trim();
     }
 
@@ -6444,26 +6582,6 @@
 
     function exclusionsForWater(water) {
       return (waterAliasExclusions[water.id] || []).map((item) => item.toLowerCase());
-    }
-
-    // Length of the longest term in `terms` that appears in `text` on word
-    // boundaries, or 0. Length is the specificity signal: "prineville
-    // reservoir" beating "prineville" is what stops a reservoir's bass report
-    // from landing on the Crooked.
-    function longestTermMatch(text, terms) {
-      let longest = 0;
-      terms.forEach((term) => {
-        if (term.length > longest && mentionsTerm(text, term)) longest = term.length;
-      });
-      return longest;
-    }
-
-    // How specifically this segment names this water. Zero means it does not.
-    function waterMentionStrength(segment, water) {
-      const own = longestTermMatch(segment, aliasesForWater(water).filter((alias) => alias.length > 3));
-      if (!own) return 0;
-      // A more specific name for somewhere else wins outright.
-      return own > longestTermMatch(segment, exclusionsForWater(water)) ? own : 0;
     }
 
     // Word-boundary matching. Bare substring matching had "good" firing on
@@ -6505,6 +6623,72 @@
       "hardly", "barely", "lack", "lacking", "stopped", "avoid", "nothing"
     ];
     const NEGATION_CONTRACTION = /\b(?:is|was|are|were|do|does|did|will|would|has|have|had|could|should)n[’']?t\b/i;
+
+    /* A negation denies what follows it, not the whole clause. "Fishing is
+       good with no crowds" used to read as a bad report, and "caddis are
+       hatching in the evenings with no wind" lost the caddis, because one
+       "no" anywhere flipped every word in the clause. A negator now reaches
+       forward at most NEGATION_SCOPE_WORDS words and stops at a conjunction
+       or "with". "Stopped" denies what came before it ("the hatch stopped"). */
+    const POST_NEGATION_TERMS = ["stopped"];
+    const NEGATION_SCOPE_WORDS = 4;
+    const NEGATION_SCOPE_BREAKERS = ["and", "with", "while", "as", "so", "then", "plus"];
+
+    function phraseSpans(text, term, noun = false) {
+      const escaped = String(term).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const body = noun
+        ? (/[^aeiou]y$/i.test(term) ? `${escaped.slice(0, -1)}(?:y|ies)` : `${escaped}(?:e?s)?`)
+        : escaped;
+      const pattern = new RegExp(`(^|[^a-z0-9])(${body})(?=[^a-z0-9]|$)`, "gi");
+      const spans = [];
+      let match;
+      while ((match = pattern.exec(text))) {
+        const start = match.index + match[1].length;
+        spans.push({ start, end: start + match[2].length });
+        pattern.lastIndex = start + match[2].length;
+      }
+      return spans;
+    }
+
+    function maskSpans(text, spans) {
+      let masked = text;
+      spans.forEach(({ start, end }) => {
+        masked = masked.slice(0, start) + " ".repeat(end - start) + masked.slice(end);
+      });
+      return masked;
+    }
+
+    function negatorSpans(text) {
+      // "a few" affirms; it is blanked to the same length so positions hold.
+      const lower = String(text).toLowerCase().replace(/\b(?:quite )?a few\b/g, (found) => " ".repeat(found.length));
+      const spans = NEGATION_TERMS.filter((term) => !POST_NEGATION_TERMS.includes(term))
+        .flatMap((term) => phraseSpans(lower, term));
+      const contraction = new RegExp(NEGATION_CONTRACTION.source, "gi");
+      let match;
+      while ((match = contraction.exec(lower))) spans.push({ start: match.index, end: match.index + match[0].length });
+      return spans;
+    }
+
+    // Is the word starting at `position` in this clause denied?
+    function negatedAt(clause, position, text = clause.text) {
+      if (clause.inheritedNegation) return true;
+      const lower = String(text).toLowerCase();
+      if (POST_NEGATION_TERMS.some((term) => phraseSpans(lower, term).some((span) => span.start > position))) return true;
+      return negatorSpans(lower).some((span) => {
+        if (span.end > position) return false;
+        const between = lower.slice(span.end, position).match(/[a-z0-9’']+/g) || [];
+        return between.length <= NEGATION_SCOPE_WORDS && !between.some((word) => NEGATION_SCOPE_BREAKERS.includes(word));
+      });
+    }
+
+    // "asserted" if any occurrence of a term stands, "denied" if every one is
+    // negated, null if the clause never says it.
+    function termStance(clause, terms, noun = false) {
+      const lower = clause.text.toLowerCase();
+      const spans = terms.flatMap((term) => phraseSpans(lower, term, noun));
+      if (!spans.length) return null;
+      return spans.some((span) => !negatedAt(clause, span.start)) ? "asserted" : "denied";
+    }
 
     // Weather words that make a clause a forecast rather than a fishing report.
     const WEATHER_MARKERS = [
@@ -6570,6 +6754,7 @@
         clauses.push({
           text: clause,
           negated,
+          inheritedNegation: negated && !ownNegation,
           // A clause with weather words and nothing about fishing is a
           // forecast. It is not a report on the water and is not read as one.
           aboutFishing: FISHING_MARKERS.some((term) => mentionsTerm(clause, term))
@@ -6582,27 +6767,19 @@
     const POSITIVE_TERMS = ["good", "fishing well", "productive"];
     const NEGATIVE_TERMS = ["slow", "tough", "poor"];
 
-    // Clauses a hatch or fly name can honestly be read out of: about fishing,
-    // and not denying that the insect is there.
-    function reportableClauseText(clauses) {
-      return clauses.filter((clause) => clause.aboutFishing && !clause.negated)
-        .map((clause) => clause.text)
-        .join(" ");
-    }
-
     function cueSignalsFromText(text) {
       const cues = [];
       passageClauses(text).forEach((clause) => {
         if (!clause.aboutFishing) return;
-        const positive = POSITIVE_TERMS.some((term) => mentionsTerm(clause.text, term));
-        const negative = NEGATIVE_TERMS.some((term) => mentionsTerm(clause.text, term));
-        if (positive) cues.push(clause.negated ? "technical human report" : "positive human report");
-        if (negative) cues.push(clause.negated ? "positive human report" : "technical human report");
-        if (clause.negated) return;
-        if (mentionsTerm(clause.text, "clear")) cues.push("clear water");
-        if (["off color", "dirty", "stained"].some((term) => mentionsTerm(clause.text, term))) cues.push("color/clarity note");
-        if (mentionsTerm(clause.text, "morning")) cues.push("morning window");
-        if (mentionsTerm(clause.text, "evening")) cues.push("evening window");
+        const positive = termStance(clause, POSITIVE_TERMS);
+        const negative = termStance(clause, NEGATIVE_TERMS);
+        if (positive) cues.push(positive === "denied" ? "technical human report" : "positive human report");
+        if (negative) cues.push(negative === "denied" ? "positive human report" : "technical human report");
+        if (termStance(clause, ["clear"]) === "asserted") cues.push("clear water");
+        if (termStance(clause, ["off color", "off colour", "dirty", "stained"]) === "asserted") cues.push("color/clarity note");
+        // "evenings" is the evening window too.
+        if (termStance(clause, ["morning"], true) === "asserted") cues.push("morning window");
+        if (termStance(clause, ["evening"], true) === "asserted") cues.push("evening window");
       });
       return uniqueItems(cues);
     }
@@ -6618,11 +6795,12 @@
       if (flies.length) boost += .06;
       passageClauses(text).forEach((clause) => {
         if (!clause.aboutFishing) return;
-        // A negated clause inverts: "fishing has not been good" is a report
+        // A denied term inverts: "fishing has not been good" is a report
         // that the fishing is poor, and it used to raise the score.
-        const sign = clause.negated ? -1 : 1;
-        if (POSITIVE_TERMS.some((term) => mentionsTerm(clause.text, term))) boost += .16 * sign;
-        if (NEGATIVE_TERMS.some((term) => mentionsTerm(clause.text, term))) boost -= .24 * sign;
+        const positive = termStance(clause, POSITIVE_TERMS);
+        const negative = termStance(clause, NEGATIVE_TERMS);
+        if (positive) boost += .16 * (positive === "denied" ? -1 : 1);
+        if (negative) boost -= .24 * (negative === "denied" ? -1 : 1);
       });
       if (!boost) return 0;
       const credibility = source.type === "shop" || source.type === "guide" ? 1.2 : 1;
@@ -6648,53 +6826,129 @@
 
        A segment now belongs to whichever water names it most specifically,
        and to no one when two waters tie. */
+    /* Attribution is done once per page, by position. A sentence that named
+       two waters used to go whole to the one with the longer alias, so
+       "anglers who found the Crooked River too high moved to the Metolius,
+       where green drakes are on" gave the Metolius report to the Crooked:
+       "crooked river" is longer than "metolius". Each mention now owns the
+       text from itself to the next mention, and the text before the first
+       mention belongs to the first water named. Overlapping mentions still
+       resolve to the most specific name, and an exact tie between two
+       waters belongs to neither. */
+    function termSpans(lower, term) {
+      const escaped = String(term).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const pattern = new RegExp(`(^|[^a-z0-9])(${escaped})(?=[^a-z0-9]|$)`, "gi");
+      const spans = [];
+      let match;
+      while ((match = pattern.exec(lower))) {
+        const start = match.index + match[1].length;
+        spans.push({ start, end: start + match[2].length });
+        pattern.lastIndex = start + match[2].length;
+      }
+      return spans;
+    }
+
+    // Non-overlapping water mentions in a segment, in reading order. A span's
+    // id is null when it names somewhere that is not one water in the app:
+    // an excluded place ("Deschutes County") or a name two waters share.
+    function waterMentionSpans(lower) {
+      const claims = new Map();
+      const claim = (span, id, real) => {
+        const key = `${span.start}:${span.end}`;
+        const entry = claims.get(key) || { ...span, waters: new Set(), excluded: false };
+        if (real) entry.waters.add(id);
+        else entry.excluded = true;
+        claims.set(key, entry);
+      };
+      waters.forEach((water) => {
+        aliasesForWater(water).filter((alias) => alias.length > 3)
+          .forEach((alias) => termSpans(lower, alias).forEach((span) => claim(span, water.id, true)));
+        exclusionsForWater(water)
+          .forEach((term) => termSpans(lower, term).forEach((span) => claim(span, null, false)));
+      });
+      const accepted = [];
+      [...claims.values()]
+        .sort((a, b) => (b.end - b.start) - (a.end - a.start) || a.start - b.start)
+        .forEach((entry) => {
+          if (accepted.some((span) => entry.start < span.end && span.start < entry.end)) return;
+          accepted.push({
+            start: entry.start,
+            end: entry.end,
+            id: entry.waters.size === 1 ? [...entry.waters][0] : null
+          });
+        });
+      return accepted.sort((a, b) => a.start - b.start);
+    }
+
+    let passageAttribution = { text: null, byWater: new Map() };
+
+    function passagesByWater(sourceText) {
+      const text = String(sourceText || "");
+      if (passageAttribution.text === text) return passageAttribution.byWater;
+      const byWater = new Map();
+      const add = (id, fragment) => {
+        const trimmed = String(fragment || "").trim();
+        if (!id || !trimmed) return;
+        if (!byWater.has(id)) byWater.set(id, []);
+        byWater.get(id).push(trimmed);
+      };
+      let carryId = null;
+      text.split(/(?<=[.!?])\s+|\s{2,}|\n+/).forEach((segment) => {
+        const spans = waterMentionSpans(segment.toLowerCase());
+        if (!spans.length) {
+          // The sentence after a mention is still about that water, once.
+          add(carryId, segment);
+          carryId = null;
+          return;
+        }
+        spans.forEach((span, index) => {
+          const from = index === 0 ? 0 : span.start;
+          const to = index + 1 < spans.length ? spans[index + 1].start : segment.length;
+          add(span.id, segment.slice(from, to));
+        });
+        carryId = spans[spans.length - 1].id;
+      });
+      passageAttribution = { text, byWater };
+      return byWater;
+    }
+
     function passageAboutWater(water, sourceText) {
       if (!aliasesForWater(water).filter((alias) => alias.length > 3).length) return "";
-      const otherWaters = waters.filter((item) => item.id !== water.id);
+      return (passagesByWater(sourceText).get(water.id) || []).join(" ");
+    }
 
-      const segments = String(sourceText || "").split(/(?<=[.!?])\s+|\s{2,}|\n+/);
-      const passage = [];
-      let carry = 0;
-      segments.forEach((segment) => {
-        const lower = segment.toLowerCase();
-        const own = waterMentionStrength(lower, water);
-        let strongestOther = 0;
-        otherWaters.forEach((item) => {
-          const strength = waterMentionStrength(lower, item);
-          if (strength > strongestOther) strongestOther = strength;
+    /* The longest name is read first and blanked, so "October caddis" is an
+       October Caddis report and not also a generic Caddis one, and "green
+       drake" is not counted again as "drake". */
+    function assertedSignals(clauses, signalMap) {
+      const found = new Set();
+      const ordered = [...signalMap].sort((a, b) => b[0].length - a[0].length);
+      clauses.filter((clause) => clause.aboutFishing).forEach((clause) => {
+        let working = clause.text.toLowerCase();
+        ordered.forEach(([needle, value]) => {
+          const spans = phraseSpans(working, needle, true);
+          if (!spans.length) return;
+          if (spans.some((span) => !negatedAt(clause, span.start, working))) found.add(value);
+          working = maskSpans(working, spans);
         });
-        if (own && own > strongestOther) {
-          passage.push(segment);
-          carry = 1;
-          return;
-        }
-        if (strongestOther) {
-          carry = 0;
-          return;
-        }
-        if (carry > 0) {
-          passage.push(segment);
-          carry -= 1;
-        }
       });
-      return passage.join(" ");
+      return uniqueItems(signalMap.map(([, value]) => value).filter((value) => found.has(value)));
     }
 
     function extractSignalsForWater(water, sourceText, source) {
       // A source that could not be read has nothing to say and is named nowhere.
       if (!source.readable) return null;
-      const passage = passageAboutWater(water, sourceText).toLowerCase();
-      if (!passage) return null;
-      // Insect names are read only out of clauses that assert them. "There is
+      const named = passageAboutWater(water, sourceText).toLowerCase();
+      if (!named) return null;
+      // Water names are blanked before anything is read: "Clear Lake" is not
+      // a clear-water report, and "lake" in a name is not fishing content.
+      const passage = maskSpans(named, waterMentionSpans(named)).replace(/\s+/g, " ").trim();
+      // Insect and fly names are read only where they are asserted. "There is
       // no caddis activity yet" used to put caddis on the card.
-      const asserted = reportableClauseText(passageClauses(passage));
-      const hatches = hatchSignalMap
-        .filter(([needle]) => mentionsNoun(asserted, needle))
-        .map(([, hatch]) => hatch)
+      const clauses = passageClauses(passage);
+      const hatches = assertedSignals(clauses, hatchSignalMap)
         .filter((hatch) => hatchAllowedForWater(normalizeHatchForWater(hatch, water), water));
-      const flies = flySignalMap
-        .filter(([needle]) => mentionsNoun(asserted, needle))
-        .map(([, fly]) => fly)
+      const flies = assertedSignals(clauses, flySignalMap)
         .filter((fly) => flyAllowedForWater(fly, water));
       const cues = cueSignalsFromText(passage);
       // A passage that names the water and says nothing about fishing it is
@@ -6756,20 +7010,45 @@
         return cache.localIntel;
       }
 
+      /* Each source's reading is kept on its own. When only one page fails -
+         the weekly report times out while the static overview loads - the
+         failed page's last good reading stands until it expires, instead of
+         the whole day's intel being rebuilt from the overview alone and the
+         report's hatches vanishing. */
+      const nowIso = new Date().toISOString();
+      const previousBySource = cache.localIntel?.bySource || {};
+      const bySource = {};
+      sourceResults.forEach((sourceResult) => {
+        if (sourceResult.readable) {
+          const signals = {};
+          waters.forEach((water) => {
+            const found = extractSignalsForWater(water, sourceResult.text, sourceResult);
+            if (found) signals[water.id] = found;
+          });
+          bySource[sourceResult.label] = { updatedAt: nowIso, byWater: signals };
+          return;
+        }
+        const kept = previousBySource[sourceResult.label];
+        const age = hoursSince(kept?.updatedAt);
+        if (kept && age !== null && age <= INTEL_EXPIRY_HOURS) bySource[sourceResult.label] = kept;
+      });
+
       const byWater = {};
       waters.forEach((water) => {
         let intel = { hatches: [], flies: [], cues: [], sources: [], scoreBoost: 0 };
-        sourceResults.forEach((sourceResult) => {
-          const signals = extractSignalsForWater(water, sourceResult.text, sourceResult);
-          intel = mergeIntelSignals(intel, signals);
+        Object.values(bySource).forEach((source) => {
+          intel = mergeIntelSignals(intel, source.byWater[water.id] || null);
         });
         if (intel.sources.length || intel.hatches.length || intel.flies.length) byWater[water.id] = intel;
       });
 
+      // Aged by its oldest contributing reading, so a kept page still expires.
+      const updatedAt = Object.values(bySource).map((source) => source.updatedAt).sort()[0] || nowIso;
       cache.localIntel = {
         byWater,
+        bySource,
         sources: sourceResults.map(({ label, type, url, readable }) => ({ label, type, url, readable })),
-        updatedAt: new Date().toISOString(),
+        updatedAt,
         mode,
         errors
       };
@@ -6802,17 +7081,25 @@
         // reading from weeks ago is not a current measurement.
         const age = hoursSince(latest.dateTime);
         if (age === null || age > USGS_MAX_READING_AGE_HOURS) return;
+        const keep = () => {
+          if (!observedAt || new Date(latest.dateTime).getTime() < new Date(observedAt).getTime()) observedAt = latest.dateTime;
+        };
         if (code === "00060" && raw >= 0) {
           // Formatted en-US so flowFromText can read it back: a German-region
           // phone wrote 4160 as "4.160" and parsed it as 4.16 cfs.
           flow = `${raw.toLocaleString("en-US")} cfs`;
-          observedAt = latest.dateTime;
+          keep();
         }
         if (code === "00010" && raw > -5 && raw < 40) {
           waterTemp = `${fahrenheitFromC(raw)} F`;
-          observedAt = latest.dateTime;
+          keep();
         }
       });
+      // A gauge that answered with nothing usable - every series no-data, or
+      // too old - has not been read. Returning an empty report counted as a
+      // successful refresh, replaced a still-fresh earlier reading with the
+      // reference value, and marked the day's sync done.
+      if (flow === null && waterTemp === null) throw new Error("USGS returned no current readings");
       return { site: meta.usgs, flow, waterTemp, observedAt: safeText(observedAt, 40), url };
     }
 
@@ -6843,8 +7130,19 @@
     // Serialises weather requests and spaces them out.
     function queueWeatherRequest(run) {
       const queued = nwsRequestChain.then(async () => {
-        const result = await run();
-        await new Promise((resolve) => setTimeout(resolve, NWS_MIN_REQUEST_SPACING_MS));
+        const pause = () => new Promise((resolve) => setTimeout(resolve, NWS_MIN_REQUEST_SPACING_MS));
+        let result;
+        try {
+          result = await run();
+        } catch (error) {
+          // A request the server answered with an error is spaced like any
+          // other: a fast 429 used to send the next request straight back at
+          // the API that had just refused one. A request that never left the
+          // phone (no signal) is not traffic, and is not held up.
+          if (/\b[45]\d\d\b/.test(error?.message || "")) await pause();
+          throw error;
+        }
+        await pause();
         return result;
       });
       // The chain must survive a rejected link, or one failure stops the queue.
@@ -6902,13 +7200,16 @@
       }
       const period = forecastJson?.properties?.periods?.[0];
       const airTemp = Number(period?.temperature);
-      return {
+      const report = {
         air: Number.isFinite(airTemp) ? `${Math.round(airTemp)} F` : null,
         wind: safeText(period?.windSpeed && period?.windDirection ? `${period.windSpeed} ${period.windDirection}` : period?.windSpeed, 40) || null,
         forecast: safeText(period?.shortForecast, 80) || null,
         observedAt: safeText(period?.startTime, 40) || null,
         url: pointUrl
       };
+      // An empty periods array is not a forecast.
+      if (!report.air && !report.wind && !report.forecast) throw new Error("NWS returned no forecast");
+      return report;
     }
 
     const liveRefreshInFlight = new Map();
@@ -6982,14 +7283,30 @@
            it is still fresh, because the report is re-stamped as current when
            it is cached. */
         const carryOver = previous?.status === "ready" && reportFreshness(previous) === "fresh";
+        const carriedUsgs = !usgs && carryOver && meta.usgs ? previous.usgs || null : null;
+        const carriedNws = !nws && carryOver ? previous.nws || null : null;
+        /* A carried half keeps the age it already had. Stamping the whole
+           report as new let a gauge reading ride along on every weather-only
+           refresh indefinitely, still "measured, fresh" two days later. A
+           gauge value that was already old when USGS served it is aged from
+           when it was taken, not from when it was downloaded. */
+        let stampedAt = Date.now();
+        if (carriedUsgs || carriedNws) {
+          const previousAt = new Date(previous.cachedAt || "").getTime();
+          if (Number.isFinite(previousAt)) stampedAt = Math.min(stampedAt, previousAt);
+        }
+        const observedAt = new Date(usgs?.observedAt || "").getTime();
+        if (Number.isFinite(observedAt) && Date.now() - observedAt > READING_FRESH_HOURS * 3600000) {
+          stampedAt = Math.min(stampedAt, observedAt);
+        }
         cacheReport(water.id, {
           status: "ready",
           meta,
           updatedAt: zonedTimeLabel(),
-          usgs: usgs || (carryOver && meta.usgs ? previous.usgs || null : null),
-          nws: nws || (carryOver ? previous.nws || null : null),
+          usgs: usgs || carriedUsgs,
+          nws: nws || carriedNws,
           errors
-        }, mode);
+        }, mode, { cachedAt: new Date(stampedAt).toISOString(), recordFlow: Boolean(usgs) });
       } catch (error) {
         liveReports.byWater[water.id] = previous?.status === "ready"
           ? { ...previous, refreshing: false, refreshError: error.message }
@@ -7135,9 +7452,11 @@
     }
 
     function liveRecommendedFlies(water) {
-      const report = liveReports.byWater[water.id];
-      const waterTemp = numberFromText(report?.usgs?.waterTemp || water.temp);
-      const wind = numberFromText(report?.nws?.wind || water.wind);
+      // Only measured conditions pick flies. The seed temperature is a summer
+      // value, so falling back to it put damsels and PMDs in a January box.
+      const report = usableReport(water);
+      const waterTemp = numberFromText(report?.usgs?.waterTemp);
+      const wind = numberFromText(report?.nws?.wind);
       const forecast = `${report?.nws?.forecast || ""}`.toLowerCase();
       const hatchText = predictedHatches(water).join(" ").toLowerCase();
       const intel = localIntelForWater(water);
@@ -7152,7 +7471,7 @@
         if (forecast.includes("cloud") || forecast.includes("rain")) flies.unshift("BWO Soft Hackle #18");
         if (hatchText.includes("caddis")) flies.unshift("X-Caddis #16");
       }
-      return applyFlyFeedback(waterAppropriateFlies(flies, water)).slice(0, 4);
+      return applyFlyFeedback(waterAppropriateFlies(flies, water, { fallback: true })).slice(0, 4);
     }
 
     function flyRecommendationReason(water, fly) {
@@ -7221,19 +7540,23 @@
     }
 
     function scoreBreakdownItems(water) {
-      const report = liveReports.byWater[water.id];
+      // Explains only what fishScore used: measured readings from a report that
+      // has not expired. A reference value is shown as one, and says it did
+      // not move the score, rather than being explained as if it had.
+      const report = usableReport(water);
       const intel = localIntelForWater(water);
-      const waterTemp = numberFromText(report?.usgs?.waterTemp || water.temp);
-      const wind = numberFromText(report?.nws?.wind || water.wind);
+      const waterTemp = numberFromText(report?.usgs?.waterTemp);
+      const wind = numberFromText(report?.nws?.wind);
       const forecast = `${report?.nws?.forecast || ""}`;
       const clarity = clarityFor(water);
       const hatches = predictedHatches(water).slice(0, 3).join(", ");
-      const tempText = water.type === "Lake"
-        ? waterTemp !== null && waterTemp >= 52 && waterTemp <= 62 ? "In the stillwater comfort band" : "Outside the ideal lake band"
-        : waterTemp !== null && waterTemp >= 50 && waterTemp <= 58 ? "In the best river hatch band" : "Less ideal for river hatches";
-      const windText = water.type === "Lake"
-        ? wind !== null && wind >= 4 && wind <= 11 ? "Good chop without blowing out lanes" : "Wind is a bigger variable"
-        : wind !== null && wind > 18 ? "Wind may hurt presentation" : "Wind is not a major limiter";
+      const unmeasured = "Reference value - not measured, so it does not move the score";
+      const tempText = waterTemp === null ? unmeasured : water.type === "Lake"
+        ? waterTemp >= 52 && waterTemp <= 62 ? "In the stillwater comfort band" : "Outside the ideal lake band"
+        : waterTemp >= 50 && waterTemp <= 58 ? "In the best river hatch band" : "Less ideal for river hatches";
+      const windText = wind === null ? unmeasured : water.type === "Lake"
+        ? wind >= 4 && wind <= 11 ? "Good chop without blowing out lanes" : "Wind is a bigger variable"
+        : wind > 18 ? "Wind may hurt presentation" : "Wind is not a major limiter";
       const month = currentMonth();
       const inSeason = (water.hatch || []).filter((hatch) => hatchSeasonFit(hatch, month) === 1);
       const seasonText = inSeason.length
@@ -7579,6 +7902,17 @@
       return text;
     }
 
+    const HATCH_ID_SIZE_RANGES = { tiny: [18, 26], small: [14, 18], large: [2, 12] };
+
+    function hookSizeRange(sizes) {
+      const numbers = (String(sizes || "").match(/\d+/g) || []).map(Number).filter(Number.isFinite);
+      return numbers.length ? [Math.min(...numbers), Math.max(...numbers)] : null;
+    }
+
+    function sizeRangesOverlap(a, b) {
+      return Boolean(a && b && a[0] <= b[1] && b[0] <= a[1]);
+    }
+
     function hatchCandidateScore(bug) {
       const text = hatchTraitSummary(bug);
       let score = 0;
@@ -7589,9 +7923,10 @@
       if (!size && !color && !water && !behavior) {
         return bug.id === activeBug ? 5 : predictedHatches(getWater()).some((hatch) => hatchProfileFor(hatch).bugId === bug.id) ? 4 : 1;
       }
-      if (size === "tiny" && /#1[8-9]|#2[0-4]|18-24|18-22/.test(text)) score += 3;
-      if (size === "small" && /#1[4-8]|14-18|12-18/.test(text)) score += 3;
-      if (size === "large" && /#4|#6|#8|#10|4-10|6-12|8-12/.test(text)) score += 3;
+      // Sizes are a hook-size range, and the whole range counts. Matching only
+      // the number after "#" read "#16-22" as a #16, so a BWO scored nothing
+      // for "tiny" and streamers tied the midges for first place.
+      if (size && HATCH_ID_SIZE_RANGES[size] && sizeRangesOverlap(hookSizeRange(bug.sizes), HATCH_ID_SIZE_RANGES[size])) score += 3;
       if (color && text.includes(color)) score += 3;
       if (color === "yellow" && /pale|cream|golden|sally/.test(text)) score += 3;
       if (color === "tan" && /tan|orange|caddis|hopper|sedge/.test(text)) score += 3;
@@ -7606,9 +7941,12 @@
       return score;
     }
 
+    // With traits chosen, a bug that matches none of them is not a result.
     function hatchIdResults() {
+      const filtered = Object.values(hatchIdTraits).some(Boolean);
       return bugs
         .map((bug) => ({ bug, score: hatchCandidateScore(bug) }))
+        .filter(({ score }) => !filtered || score > 0)
         .sort((a, b) => b.score - a.score || a.bug.name.localeCompare(b.bug.name))
         .slice(0, 3);
     }
@@ -7639,6 +7977,7 @@
             `).join("")}
           </div>
           <div class="hatch-results">
+            ${results.length ? "" : `<p class="subtle">Nothing in the bug library matches those traits. Try clearing one.</p>`}
             ${results.map(({ bug, score }) => {
               const profile = hatchProfileFor(bug.name);
               const flies = flyLibraryForBug(bug.id).slice(0, 3);
@@ -7951,7 +8290,8 @@
       const flowUnit = liveFlow.includes("cfs") ? "CFS" : "";
       const currentHatches = predictedHatches(best);
       const packBox = dailyFlyBoxFor(topPick);
-      const packGroups = Object.entries(packBox).map(([group, flies]) => `
+      // A group with nothing in season (terrestrials in January) is left out.
+      const packGroups = Object.entries(packBox).filter(([, flies]) => flies.length).map(([group, flies]) => `
         <div class="pack-group">
           <div class="pack-head"><strong>${group}</strong><span>${flies.length} picks</span></div>
           ${flies.map((fly) => {
@@ -7971,8 +8311,7 @@
       `).join("");
       const hatches = currentHatches.slice(0, 3).map((hatch, index) => {
         const profile = hatchProfileFor(hatch);
-        const status = index === 0 ? "NOW" : index === 1 ? "PEAK" : "SOON";
-        const statusClass = status.toLowerCase();
+        const { label: status, tone: statusClass } = hatchStatusFor(best, hatch);
         return `
           <div class="hatch-row">
             <div class="hatch-thumb" style="${hatchThumbStyle(profile, index === 2 ? 1 : 2)}" role="img" aria-label="${profile.label} reference"></div>
@@ -8017,7 +8356,7 @@
               </select>
             </div>
             <h1 class="prime-title">${primeWindowFor(best)}</h1>
-            <div class="condition-line">${liveTemp} water - ${liveWind} - clarity ${clarity.label}</div>
+            <div class="condition-line">${liveTemp} ${provenanceTag(best, "temp")} water - ${liveWind} ${provenanceTag(best, "wind")} - clarity ${clarity.label}</div>
             ${dataStatusStrip("today")}
             <div class="fishability-card">
               <button class="score-button" data-score-breakdown aria-expanded="${scoreBreakdownOpen}" aria-label="${scoreBreakdownOpen ? "Hide" : "Show"} why this rating is ${score}"><span class="score-ring" style="--score-deg:${scoreDeg}deg"><strong>${score}</strong></span><em>Why this rating?</em></button>
@@ -8085,12 +8424,12 @@
               <div class="condition-card">
                 <strong>${liveTemp}</strong>
                 <span>Water</span>
-                <small>▲ 2° since dawn</small>
+                <small>${esc(temperatureNoteFor(best))}</small>
               </div>
               <div class="condition-card">
                 <strong>${flowValue}${flowUnit ? `<small style="font-size:.5em;background:transparent;padding:0;color:#65716d;">${flowUnit}</small>` : ""}</strong>
                 <span>Flow</span>
-                <small>steady</small>
+                <small>${esc(flowTrendLabel(best))}</small>
               </div>
               <div class="condition-card">
                 <strong>${clarity.measured ? clarity.inches : clarity.label}</strong>
@@ -8102,10 +8441,10 @@
             <h2 class="section-title">Pack My Fly Box <em>${topPick.name}</em></h2>
             <div class="pack-box">${packGroups}</div>
 
-            <h2 class="section-title">Hatching Now</h2>
+            <h2 class="section-title">Hatches In Season</h2>
             <div class="hatch-card">${hatches}</div>
 
-            <h2 class="section-title">Today's Fly Box <em>AI-matched</em></h2>
+            <h2 class="section-title">Today's Fly Box <em>matched to these hatches</em></h2>
             <div class="bench-card">
               <div class="bench-grid">${benchGroups}</div>
             </div>
@@ -8357,7 +8696,13 @@
       const matches = stageMatches.length ? stageMatches : allMatches;
       const selectedFly = selectedFlyFrom(matches);
       const selectedRef = flyReferenceForLibraryItem(selectedFly);
-      const stageLabel = activeBugStage ? `${activeBugStage} imitations` : "All imitations";
+      // No pattern is tied to this stage, so the full list is shown - and
+      // labelled as the full list, not as "Adult gnat imitations".
+      const stageLabel = !activeBugStage
+        ? "All imitations"
+        : stageMatches.length
+          ? `${activeBugStage} imitations`
+          : `No ${activeBugStage.toLowerCase()}-specific pattern yet - all imitations`;
       return `
         <div class="fly-library">
           <div class="panel-head">
@@ -8641,7 +8986,14 @@
         }
       }
       logRestoreNotice = `Restored ${logCache.length} saved ${logCache.length === 1 ? "catch" : "catches"} from this device's backup.`;
+      // The restore lands after the first paint. Today had already drawn the
+      // new-install "Log your first catch" panel over an empty journal and
+      // queued a scroll to it; a returning angler with a full journal saw the
+      // setup screen until something else repainted it.
+      if (logCache.length) firstRunScrollPending = false;
+      maybeCompleteOnboarding();
       renderLog();
+      renderScreens("today", "waters", "trip");
     };
 
     function photoSourceFor(entry) {
@@ -8698,7 +9050,9 @@
       getLogs().forEach((entry) => {
         if (!entry.loggedAt) return;
         const parsed = new Date(entry.loggedAt);
-        if (!Number.isNaN(parsed.getTime())) years.add(parsed.getFullYear());
+        // The year on the water's clock, as every card date is: a phone
+        // outside Pacific time filed a Dec 31 catch under the next year.
+        if (!Number.isNaN(parsed.getTime())) years.add(zonedParts(parsed).year);
       });
       return [...years].sort();
     }
@@ -8755,7 +9109,10 @@
     }
 
     function exportLog() {
-      const csv = logCsv();
+      // A UTF-8 byte-order mark, or Excel opens the file in the legacy code
+      // page and the iOS keyboard's curly apostrophe in "didn’t" turns into
+      // "didnâ€™t". Numbers and Google Sheets ignore it.
+      const csv = `\uFEFF${logCsv()}`;
       if (hasNativeStoreBridge()) {
         return postStoreMessage({ action: "exportLog", body: csv })
           ? "Export requested." : "Export failed on this device.";
@@ -9025,6 +9382,20 @@
     window.riseSubscriptionResult = function(result) {
       const previousAccess = proAccessActive;
       const pendingAction = subscriptionActionPending;
+      /* Replies now name the request they answer. A status check sent on
+         returning to the app, answered while the App Store sheet was up, used
+         to be taken as the purchase's reply: it re-enabled Subscribe mid
+         checkout (a second purchase could be started), said "not active yet",
+         and the real "active" reply then found nothing pending, so the buyer
+         never saw what they had unlocked. A background reply ("status", or an
+         "update" pushed by the store) only refreshes prices while a purchase
+         or restore is waiting; that action's own reply is the answer. */
+      const background = result?.action === "status" || result?.action === "update";
+      if (background && pendingAction) {
+        if (result?.prices?.monthly) subscriptionPrices.monthly = result.prices.monthly;
+        if (result?.prices?.annual) subscriptionPrices.annual = result.prices.annual;
+        return;
+      }
       // Every reply ends whatever action was in flight, including a cancel and
       // an error, so a failed purchase cannot arm the welcome panel later.
       subscriptionActionPending = null;
@@ -9765,6 +10136,13 @@
         // (from whichever water is selected) onto an old catch is the same lie.
         for (const key of ["flow", "flowSource", "temp", "tempSource"]) {
           preservedReadings[key] = original[key];
+        }
+        // Moving the catch to another water leaves its readings behind. They
+        // were that water's gauge, and kept here they became one water's flow
+        // labelled "measured" on another - a river reading on a reservoir.
+        // What the new water read at the time cannot be known now.
+        if (waterField && waterField !== original.waterId) {
+          Object.assign(preservedReadings, { flow: "", flowSource: "unavailable", temp: "", tempSource: "unavailable" });
         }
         const edited = {
           ...original,

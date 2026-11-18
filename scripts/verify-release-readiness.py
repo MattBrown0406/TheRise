@@ -64,6 +64,11 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--online", action="store_true", help="also verify public legal URLs")
     parser.add_argument(
+        "--skip-native",
+        action="store_true",
+        help="allow the native storage tests to be skipped when no Swift toolchain is installed",
+    )
+    parser.add_argument(
         "--skip-screenshots",
         action="store_true",
         help="skip App Store screenshot freshness checks (the generator only runs on macOS)",
@@ -402,7 +407,7 @@ def main() -> int:
         "an alias key contains a space; water ids are hyphenated and the key would be dead code",
     )
     require(
-        "function waterMentionStrength(" in web,
+        "function waterMentionSpans(" in web,
         "report attribution is back to first-substring-wins; a reservoir report can land on a tailwater",
     )
     require(
@@ -835,6 +840,13 @@ def main() -> int:
         sys.stderr.write(store_result.stderr)
     require(store_result.returncode == 0, "native storage tests failed")
     store_summary = store_result.stdout.strip().splitlines()[-1] if store_result.stdout.strip() else "no output"
+    # A skipped suite used to print "PASS: native storage tests (SKIP: ...)",
+    # so a release could be signed off with RiseStore never having run.
+    native_skipped = store_summary.startswith("SKIP")
+    require(
+        not native_skipped or args.skip_native,
+        "native storage tests did not run (no swiftc); run on a Mac, or pass --skip-native to accept that",
+    )
 
     if args.online:
         check_online(PRIVACY_URL)
@@ -876,7 +888,10 @@ def main() -> int:
     print("PASS: a fresh install is told what to set up, and a long journal pages")
     print(f"PASS: app behaviour tests ({logic_summary})")
     print(f"PASS: real-DOM tests ({dom_summary})")
-    print(f"PASS: native storage tests ({store_summary})")
+    if native_skipped:
+        print(f"SKIPPED: native storage tests ({store_summary}) - not verified")
+    else:
+        print(f"PASS: native storage tests ({store_summary})")
     if args.online:
         print("PASS: public Privacy Policy and Apple Standard EULA URLs")
     return 0

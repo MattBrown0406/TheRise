@@ -93,7 +93,14 @@ Run the deterministic pre-build checks, including live legal-link validation:
 python3 scripts/verify-release-readiness.py --online
 ```
 
-The release checks run all three test suites.
+The release checks run all three test suites. Without a Swift toolchain the
+native storage tests cannot run; the release check then fails rather than
+reporting them as passed. On Linux, accept that explicitly — the native suite is
+then unverified and must be run on a Mac before submission:
+
+```bash
+python3 scripts/verify-release-readiness.py --skip-native
+```
 
 ## App Store screenshots
 

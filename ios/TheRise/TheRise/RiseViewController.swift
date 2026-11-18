@@ -18,7 +18,7 @@ final class RiseScriptMessageProxy: NSObject, WKScriptMessageHandler {
     }
 }
 
-final class RiseViewController: UIViewController, WKNavigationDelegate, WKScriptMessageHandler {
+final class RiseViewController: UIViewController, WKNavigationDelegate, WKScriptMessageHandler, PurchasesDelegate {
     private let photoSchemeHandler = RisePhotoSchemeHandler()
 
     /// The teal the Today hero, the Waters header and LaunchScreen.storyboard
@@ -69,6 +69,9 @@ final class RiseViewController: UIViewController, WKNavigationDelegate, WKScript
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = Self.shellTeal
+        // Renewals, expiries, refunds and Ask to Buy approvals arrive here
+        // while the app is open, instead of only on the next status check.
+        Purchases.shared.delegate = self
         view.addSubview(webView)
         webView.translatesAutoresizingMaskIntoConstraints = false
         // Pinned to the view, not the safe area. Pinning to safeAreaLayoutGuide
@@ -113,7 +116,7 @@ final class RiseViewController: UIViewController, WKNavigationDelegate, WKScript
 
         guard let payload = message.body as? [String: Any],
               let action = payload["action"] as? String else {
-            sendSubscriptionResult(status: "error", message: "The purchase request was incomplete.")
+            sendSubscriptionResult(action: nil, status: "error", message: "The purchase request was incomplete.")
             return
         }
 
@@ -126,7 +129,7 @@ final class RiseViewController: UIViewController, WKNavigationDelegate, WKScript
         case "restore":
             Task { await restorePurchases() }
         default:
-            sendSubscriptionResult(status: "error", message: "Unknown purchase action.")
+            sendSubscriptionResult(action: action, status: "error", message: "Unknown purchase action.")
         }
     }
 
@@ -135,12 +138,13 @@ final class RiseViewController: UIViewController, WKNavigationDelegate, WKScript
             let customerInfo = try await Purchases.shared.customerInfo()
             let prices = await localizedSubscriptionPrices()
             sendSubscriptionResult(
+                action: "status",
                 status: hasProAccess(customerInfo) ? "active" : "inactive",
                 message: hasProAccess(customerInfo) ? "The Rise Pro is active." : "The Rise Pro is not active yet.",
                 prices: prices
             )
         } catch {
-            sendSubscriptionResult(status: "error", message: "Could not check subscription status.")
+            sendSubscriptionResult(action: "status", status: "error", message: "Could not check subscription status.")
         }
     }
 
@@ -148,22 +152,23 @@ final class RiseViewController: UIViewController, WKNavigationDelegate, WKScript
         do {
             let offerings = try await Purchases.shared.offerings()
             guard let offering = offerings.offering(identifier: SubscriptionConfig.RevenueCat.defaultOfferingIdentifier) ?? offerings.current else {
-                sendSubscriptionResult(status: "error", message: "The Rise Pro offering is not available yet.")
+                sendSubscriptionResult(action: "purchase", status: "error", message: "The Rise Pro offering is not available yet.")
                 return
             }
 
             guard let package = package(for: plan, in: offering) else {
-                sendSubscriptionResult(status: "error", message: "The selected subscription package is not available yet.")
+                sendSubscriptionResult(action: "purchase", status: "error", message: "The selected subscription package is not available yet.")
                 return
             }
 
             let result = try await Purchases.shared.purchase(package: package)
             if result.userCancelled {
-                sendSubscriptionResult(status: "cancelled", message: "Purchase cancelled.")
+                sendSubscriptionResult(action: "purchase", status: "cancelled", message: "Purchase cancelled.")
                 return
             }
 
             sendSubscriptionResult(
+                action: "purchase",
                 status: hasProAccess(result.customerInfo) ? "active" : "inactive",
                 message: hasProAccess(result.customerInfo) ? "The Rise Pro is active." : "Purchase finished, but Pro access was not confirmed yet."
             )
@@ -172,9 +177,18 @@ final class RiseViewController: UIViewController, WKNavigationDelegate, WKScript
             // throwing purchaseCancelledError, not through userCancelled, so
             // closing the sheet used to read "Purchase failed. Please try again."
             if let code = error as? ErrorCode, code == .purchaseCancelledError {
-                sendSubscriptionResult(status: "cancelled", message: "Purchase cancelled.")
+                sendSubscriptionResult(action: "purchase", status: "cancelled", message: "Purchase cancelled.")
+            } else if let code = error as? ErrorCode, code == .paymentPendingError {
+                // Ask to Buy, or a payment the bank still has to approve. This
+                // used to read "Purchase failed. Please try again." and invite a
+                // second request. Approval arrives later through the delegate.
+                sendSubscriptionResult(
+                    action: "purchase",
+                    status: "pending",
+                    message: "Your purchase is waiting for approval. Pro unlocks here as soon as it is approved."
+                )
             } else {
-                sendSubscriptionResult(status: "error", message: "Purchase failed. Please try again.")
+                sendSubscriptionResult(action: "purchase", status: "error", message: "Purchase failed. Please try again.")
             }
         }
     }
@@ -183,11 +197,24 @@ final class RiseViewController: UIViewController, WKNavigationDelegate, WKScript
         do {
             let customerInfo = try await Purchases.shared.restorePurchases()
             sendSubscriptionResult(
+                action: "restore",
                 status: hasProAccess(customerInfo) ? "active" : "inactive",
                 message: hasProAccess(customerInfo) ? "The Rise Pro has been restored." : "No active The Rise Pro purchase was found."
             )
         } catch {
-            sendSubscriptionResult(status: "error", message: "Restore failed. Please try again.")
+            sendSubscriptionResult(action: "restore", status: "error", message: "Restore failed. Please try again.")
+        }
+    }
+
+    /// Pushed by RevenueCat whenever the customer's entitlements change.
+    nonisolated func purchases(_ purchases: Purchases, receivedUpdated customerInfo: CustomerInfo) {
+        let active = customerInfo.entitlements[SubscriptionConfig.RevenueCat.proEntitlementIdentifier]?.isActive == true
+        Task { @MainActor [weak self] in
+            self?.sendSubscriptionResult(
+                action: "update",
+                status: active ? "active" : "inactive",
+                message: active ? "The Rise Pro is active." : "The Rise Pro is not active."
+            )
         }
     }
 
@@ -228,12 +255,18 @@ final class RiseViewController: UIViewController, WKNavigationDelegate, WKScript
         }
     }
 
-    private func sendSubscriptionResult(status: String, message: String, prices: [String: String] = [:]) {
+    /// `action` names the request this answers ("status", "purchase",
+    /// "restore") or "update" for a change the store pushed, so the page can
+    /// tell a purchase's reply from a background status check.
+    private func sendSubscriptionResult(action: String?, status: String, message: String, prices: [String: String] = [:]) {
         var payload: [String: Any] = [
             "status": status,
             "active": status == "active",
             "message": message
         ]
+        if let action = action {
+            payload["action"] = action
+        }
         if !prices.isEmpty {
             payload["prices"] = prices
         }

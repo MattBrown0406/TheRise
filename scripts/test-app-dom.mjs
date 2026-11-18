@@ -2021,6 +2021,92 @@ try {
     await page.close();
   }
 
+  /* ---------------------------------------------------------------- */
+  group("Audit 2026-11-18: journal edits, restores and purchase replies");
+  {
+    const page = await openApp(browser);
+    await seedLogs(page, [sampleEntry({ flowSource: "measured", tempSource: "measured" })]);
+    const moved = await page.evaluate(async () => {
+      activateTab("log");
+      document.querySelector("[data-edit-log]").click();
+      await new Promise((done) => requestAnimationFrame(done));
+      const select = document.querySelector("#logForm [name=water]");
+      select.value = "crane-prairie";
+      document.querySelector("#logForm").requestSubmit();
+      await new Promise((done) => setTimeout(done, 300));
+      const entry = getLogs()[0];
+      return { water: entry.waterId, flow: entry.flow, flowSource: entry.flowSource, card: document.querySelector("#log .catch-card")?.textContent || "" };
+    });
+    assert(moved.water === "crane-prairie", `the edit moved the catch (${moved.water})`);
+    assert(!moved.flow && moved.flowSource === "unavailable",
+      `moving a catch to another water drops the old water's readings (${moved.flow} / ${moved.flowSource})`);
+    assert(!/235 cfs/.test(moved.card), "the card no longer shows the river's flow on a reservoir");
+    await page.close();
+  }
+  {
+    const page = await openApp(browser);
+    const restored = await page.evaluate(async () => {
+      activateTab("today");
+      const before = Boolean(document.querySelector("#today .first-run"));
+      window.riseLogRestore({ body: JSON.stringify({ savedAt: new Date().toISOString(), logs: [{
+        loggedAt: "2026-06-21T18:00:00.000Z", date: "Jun 21, 2026", time: "6:00 PM", waterName: "Crooked River",
+        waterId: "crooked", fly: "Zebra Midge #18", fish: "Redband Trout", length: "14", count: "1", notes: "", flow: "", temp: ""
+      }] }) });
+      await new Promise((done) => requestAnimationFrame(done));
+      const panel = document.querySelector("#today .first-run")?.textContent || "";
+      return { before, pending: firstRunScrollPending, panel };
+    });
+    assert(restored.before, "a fresh install shows the setup panel");
+    assert(!restored.pending, "a restored journal cancels the pending scroll to the setup panel");
+    assert(!/0 of 3/i.test(restored.panel), `Today is repainted after a restore (${restored.panel.slice(0, 80)})`);
+    await page.close();
+  }
+  {
+    const page = await openApp(browser, {
+      before: () => {
+        window.__subscriptionMessages = [];
+        window.webkit = { messageHandlers: { riseSubscription: { postMessage: (message) => window.__subscriptionMessages.push(message) } } };
+      }
+    });
+    const race = await page.evaluate(() => {
+      window.riseSubscriptionResult({ action: "status", status: "inactive", active: false, message: "The Rise Pro is not active yet.", prices: { monthly: "$6.99", annual: "$49.99" } });
+      activateTab("pro");
+      const button = document.querySelector("[data-subscribe-plan]");
+      button.click();
+      // A status check answered while the App Store sheet is still up.
+      window.riseSubscriptionResult({ action: "status", status: "inactive", active: false, message: "The Rise Pro is not active yet." });
+      const midCheckout = {
+        disabled: document.querySelector("[data-subscribe-plan]").disabled,
+        pending: subscriptionActionPending
+      };
+      window.riseSubscriptionResult({ action: "purchase", status: "active", active: true, message: "The Rise Pro is active." });
+      return { midCheckout, welcome: Boolean(document.querySelector(".pro-welcome")) };
+    });
+    assert(race.midCheckout.disabled && race.midCheckout.pending === "purchase",
+      "a status reply during checkout does not re-enable Subscribe or end the purchase");
+    assert(race.welcome, "the purchase's own reply still lands the buyer on what it unlocked");
+    const pending = await page.evaluate(() => {
+      proAccessActive = false;
+      renderAll();
+      activateTab("pro");
+      document.querySelector("[data-subscribe-plan]").click();
+      window.riseSubscriptionResult({ action: "purchase", status: "pending", active: false, message: "Your purchase is waiting for approval." });
+      return { pro: proAccessActive, text: document.querySelector("#pro").textContent };
+    });
+    assert(!pending.pro && /waiting for approval/.test(pending.text), "Ask to Buy reads as waiting, not failed");
+    await page.close();
+  }
+  {
+    const page = await openApp(browser);
+    const today = await page.evaluate(() => {
+      activateTab("today");
+      return document.querySelector("#today").textContent;
+    });
+    assert(!/since dawn/.test(today) && !/AI-matched/.test(today), "Today shows no invented temperature trend or AI claim");
+    assert(/seasonal reference|measured/.test(today), "the condition cards say where each number came from");
+    await page.close();
+  }
+
 } finally {
   for (const context of openContexts) {
     await context.close().catch(() => {});
