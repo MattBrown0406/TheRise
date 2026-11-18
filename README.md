@@ -202,6 +202,31 @@ Catch photos are read off the main thread in `RisePhotoSchemeHandler`, which
 tracks its live tasks so a cancelled load is dropped instead of calling back
 into a task WebKit has finished with.
 
+## Snap a bug is photo-assisted, not photo recognition
+
+Snap a bug (Bugs screen, Pro) takes a photo with `<input type="file"
+capture="environment">`, but there is no image classifier, no labelled photo
+set and no server, so the app never identifies a bug from a photo and must
+never say it does. The photo is a reference: the angler taps the bug's body to
+sample a colour, picks a size against actual-size silhouettes (about right on an
+iPhone, approximate elsewhere), and answers wing-shape and tail questions. Only
+those confirmed answers are scored.
+
+- The photo goes through `readPhotoCanvas`, the same decode and 1600px bound
+  as catch photos, and stays in memory. It is stored only if the angler taps
+  **Attach photo to a catch**, and then by the normal `storePhoto` path when
+  the catch is saved.
+- A tap is mapped to the photo by its fraction of the displayed image, so CSS
+  scaling and `devicePixelRatio` both cancel out; a ~3pt patch is averaged.
+- `classifyBugColour` is a short HSL rule list, documented where it is
+  defined. The angler can overrule it.
+- Every bug in `bugs` needs a row in `BUG_SNAP_TRAITS` (colours, shapes, tail
+  counts; size comes from `bug.sizes`). The behaviour suite fails on a bug
+  without one, and on a trait value no option can select.
+- Season (`hatchSeasonFit`) and the selected water's `predictedHatches` only
+  reorder bugs the traits already support, and each result says why. A result
+  must match at least half the traits set; otherwise there is no result.
+
 ## Escaping
 
 `esc()` escapes text between tags, `attr()` escapes a value inside a quoted

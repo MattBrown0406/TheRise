@@ -157,7 +157,8 @@ vm.runInContext(`${scriptBody}\n;globalThis.__app = {
   readingProvenanceWord, loggedReadingLabel, scoreSourceLabel,
   READING_FRESH_HOURS, READING_EXPIRY_HOURS, LOCATION_EXPIRY_HOURS,
   hatchSeasonMonths, hatchProfileFor, hatchProfiles, textFromHtml,
-  fetchUsgsReport, localIntelForWater
+  fetchUsgsReport, localIntelForWater,
+  BUG_SNAP_TRAITS, SNAP_COLOURS, SNAP_SIZE_BUCKETS, SNAP_SHAPES, SNAP_TAILS
 };`, context);
 
 const app = context.__app;
@@ -846,6 +847,131 @@ group("Audit 2026-11-18: smaller honesty fixes");
   context.markDailyOpenSyncComplete();
   assert(app.liveReports.cache.localIntel.byWater.crooked, "marking the day synced does not reload over the in-memory intel");
   app.liveReports.cache = savedCache;
+}
+
+group("Feature 5: Snap a bug is photo-assisted, never photo-recognised");
+{
+  // The colour classifier, on colours whose names nobody disputes.
+  const cases = [
+    [[85, 107, 47], "olive", "olive drab"],
+    [[128, 128, 0], "olive", "olive"],
+    [[34, 139, 34], "olive", "forest green"],
+    [[210, 180, 140], "tan", "tan"],
+    [[139, 69, 19], "tan", "saddle brown"],
+    [[255, 140, 0], "tan", "dark orange (October caddis)"],
+    [[20, 20, 20], "black", "near black"],
+    [[60, 55, 50], "black", "dark grey-brown"],
+    [[255, 253, 208], "yellow", "cream"],
+    [[240, 220, 60], "yellow", "yellow"],
+    [[178, 34, 34], "red", "firebrick"],
+    [[128, 0, 32], "red", "maroon"],
+    [[60, 120, 200], "blue", "blue"],
+    [[64, 180, 170], "blue", "blue-green (adult damsel)"],
+    [[128, 128, 128], "grey", "mid grey"],
+    [[192, 192, 192], "grey", "silver"]
+  ];
+  for (const [[r, g, b], expected, name] of cases) {
+    const got = context.classifyBugColour({ r, g, b });
+    assert(got === expected, `${name} rgb(${r},${g},${b}) reads as ${expected} (${got})`);
+  }
+  const colourKeys = app.SNAP_COLOURS.map(([key]) => key);
+  for (const key of ["olive", "tan", "black", "yellow"]) {
+    assert(colourKeys.includes(key), `the photo colours keep the assistant's "${key}" key`);
+  }
+
+  // Coverage: every bug has every trait, and every value is a real option.
+  assert(context.bugsMissingSnapTraits().length === 0,
+    `every bug has Snap a bug traits (${context.bugsMissingSnapTraits().join(", ") || "none missing"})`);
+  assert(Object.keys(app.BUG_SNAP_TRAITS).every((id) => app.bugs.some((bug) => bug.id === id)),
+    "the trait table names no bug that is not in the library");
+  const shapeKeys = app.SNAP_SHAPES.map(([key]) => key);
+  const tailKeys = app.SNAP_TAILS.map(([key]) => key);
+  const unknown = Object.entries(app.BUG_SNAP_TRAITS).flatMap(([id, traits]) => [
+    ...traits.colors.filter((value) => !colourKeys.includes(value)),
+    ...traits.shapes.filter((value) => !shapeKeys.includes(value)),
+    ...traits.tails.filter((value) => !tailKeys.includes(value))
+  ].map((value) => `${id}:${value}`));
+  assert(!unknown.length, `every trait value is an option the angler can pick (${unknown.join(", ") || "all valid"})`);
+  const used = new Set(Object.values(app.BUG_SNAP_TRAITS).flatMap((traits) => [...traits.colors, ...traits.shapes, ...traits.tails]));
+  const unreachable = [...colourKeys, ...shapeKeys, ...tailKeys].filter((value) => !used.has(value));
+  assert(!unreachable.length, `every option matches at least one bug (${unreachable.join(", ") || "none dead"})`);
+  for (const bucket of app.SNAP_SIZE_BUCKETS) {
+    assert(app.bugs.some((bug) => context.sizeRangesOverlap(context.hookSizeRange(bug.sizes), bucket.range)),
+      `size ${bucket.label} matches at least one bug`);
+  }
+
+  // Scoring on traits.
+  const none = { month: 11, waterName: "Test water", predictedBugIds: [] };
+  const bwo = context.snapBugResults({ color: "olive", size: "s20", shape: "upright", tails: "2" }, none);
+  assert(bwo[0]?.bug.id === "bwo", `an olive #20 upright-winged two-tailed bug is a BWO first (${bwo.map((r) => r.bug.id)})`);
+  assert(context.snapConfidenceLabel(bwo[0]) === "Strong match on 4 of 4 traits", `and is a strong match (${context.snapConfidenceLabel(bwo[0])})`);
+  assert(bwo.length <= 3, "no more than three results");
+  assert(bwo.every((result) => result.matched.length * 2 >= result.answered), "every result matches at least half the traits");
+  const stone = context.snapBugResults({ color: "black", size: "big", shape: "flat", tails: "2" }, none);
+  assert(stone[0]?.bug.id === "stonefly", `a big dark flat-winged two-tailed bug is a stonefly (${stone.map((r) => r.bug.id)})`);
+  assert(context.snapBugTraitLabel(app.bugs.find((bug) => bug.id === "stonefly"), "tails") === "2 tails",
+    "a missed trait is explained with what the bug actually has");
+  assert(context.snapConfidenceLabel({ matched: ["color", "size"], answered: 2 }) === "Possible match on 2 of 2 traits",
+    "two traits cannot make a strong match however well they agree");
+  assert(context.snapConfidenceLabel({ matched: ["color", "size", "shape"], answered: 4 }) === "Strong match on 3 of 4 traits",
+    "three of four is strong");
+  assert(context.snapConfidenceLabel({ matched: ["color", "size"], answered: 4 }) === "Possible match on 2 of 4 traits",
+    "two of four is only possible");
+
+  // Priors reorder a tie, explain themselves, and never beat a trait.
+  const tent = { shape: "tent", tails: "none" };
+  const june = context.snapBugResults(tent, { month: 6, waterName: "Test water", predictedBugIds: [] });
+  assert(june[0]?.bug.id === "caddis", `in June the in-season Tan Caddis outranks the October Caddis (${june.map((r) => r.bug.id)})`);
+  assert(june.find((r) => r.bug.id === "october-caddis")?.prior.reasons.some((reason) => /Out of season in Jun.*not ruled out/.test(reason)),
+    "and the October Caddis says it is out of season, not excluded");
+  const november = context.snapBugResults(tent, { month: 11, waterName: "Test water", predictedBugIds: [] });
+  assert(november[0]?.bug.id === "october-caddis", `in November the order flips (${november.map((r) => r.bug.id)})`);
+  const octoberTie = context.snapBugResults(tent, { month: 10, waterName: "Test water", predictedBugIds: [] });
+  const octoberOnWater = context.snapBugResults(tent, { month: 10, waterName: "Lower Deschutes", predictedBugIds: ["caddis"] });
+  assert(octoberTie[0]?.bug.id === "october-caddis" && octoberOnWater[0]?.bug.id === "caddis",
+    `being on the water's predicted list breaks a tie (${octoberTie[0]?.bug.id} -> ${octoberOnWater[0]?.bug.id})`);
+  assert(octoberOnWater[0].prior.reasons.some((reason) => /predicted hatch list for Lower Deschutes/.test(reason)),
+    "and the boost names the water");
+  const damselInJanuary = context.snapBugResults({ color: "blue", shape: "long", tails: "3" }, { month: 1, waterName: "Test water", predictedBugIds: [] });
+  assert(damselInJanuary[0]?.bug.id === "damsel", "an out-of-season bug that matches every trait still comes first");
+  const everyBug = app.bugs.map((bug) => bug.id);
+  const boosted = context.snapBugResults({ color: "blue", shape: "long", tails: "3" }, { month: 7, waterName: "Test water", predictedBugIds: everyBug });
+  assert(boosted.every((result) => result.matched.length >= 2), "priors never promote a bug the traits do not support");
+  const lowerDeschutes = app.waters.find((water) => water.id === "lower-deschutes") || app.waters[0];
+  const liveContext = context.snapPriorContext(6, lowerDeschutes);
+  assert(liveContext.predictedBugIds.length > 0 && liveContext.predictedBugIds.every((id) => app.bugs.some((bug) => bug.id === id)),
+    `the water's predicted hatches resolve to bugs in the library (${liveContext.predictedBugIds.join(", ")})`);
+
+  // Nothing set, or nothing that matches, is no result at all.
+  assert(context.snapBugResults({}, none).length === 0, "no traits, no results");
+  assert(context.snapBugResults({ color: "", size: "", shape: "", tails: "" }, none).length === 0, "empty traits, no results");
+  const nothing = context.snapBugResults({ color: "blue", shape: "fish", tails: "2" }, none);
+  assert(nothing.length === 0, `traits no bug half-matches return nothing (${nothing.map((r) => r.bug.id)})`);
+
+  // Tap mapping and sampling.
+  const rect = { left: 100, top: 50, width: 200, height: 100 };
+  const point = context.snapTapToPixel(150, 75, rect, 800, 400);
+  assert(point.x === 200 && point.y === 100 && point.fx === .25 && point.fy === .25,
+    `a tap maps by fraction of the displayed box, not by CSS pixels (${JSON.stringify(point)})`);
+  const edge = context.snapTapToPixel(400, 400, rect, 800, 400);
+  assert(edge.x === 799 && edge.y === 399, "a tap on the far edge stays inside the photo");
+  assert(context.snapSampleRadius(rect, 800) === 12, "the sample patch is about three CSS pixels, in photo pixels");
+  assert(context.snapSampleRadius({ width: 400 }, 100) === 1, "and never less than one pixel");
+  const data = [];
+  for (let i = 0; i < 9; i += 1) data.push(...(i === 4 ? [90, 0, 0, 255] : [0, 0, 0, 255]));
+  assert(JSON.stringify(context.averageRgb(data, 3, 3, 1, 1, 1)) === JSON.stringify({ r: 10, g: 0, b: 0 }),
+    "a patch is averaged, so one bright pixel does not decide the colour");
+  assert(JSON.stringify(context.averageRgb(data, 3, 3, 0, 0, 0)) === JSON.stringify({ r: 0, g: 0, b: 0 }),
+    "a zero radius reads one pixel");
+  assert(context.rgbHex({ r: 100, g: 120, b: 40 }) === "#647828", "the swatch hex is exact");
+
+  // Honesty, gating and the input.
+  assert(html.includes('accept="image/*" capture="environment" data-snap-photo'), "the snap button opens the rear camera");
+  assert(/does not recognise bugs from a photo/.test(html), "the panel says the photo is not recognised");
+  assert(!/(AI|automatic(ally)?)[- ](identif|recogni)|identif(y|ies) (the|your) bug from/i.test(html),
+    "nothing claims the app identifies a bug from its photo");
+  const snapPanel = context.snapBugPanel.toString();
+  assert(/if \(!proAccessActive\)/.test(snapPanel) && /proLock\(/.test(snapPanel), "Snap a bug is behind the Pro lock");
 }
 
 console.log(`\n${checks - failures}/${checks} checks passed`);

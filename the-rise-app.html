@@ -946,6 +946,327 @@
       line-height: 1.25;
     }
 
+    /* Snap a bug. */
+    .snap-bug {
+      margin: 0 18px 14px;
+      border: 1px solid #e0dbcf;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, .96);
+      padding: 14px;
+      box-shadow: 0 8px 18px rgba(30, 43, 34, .05);
+      min-width: 0;
+    }
+
+    .snap-pick-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 10px 0;
+    }
+
+    /* The file input is the tap target itself, stretched invisibly over its
+       label, so no script has to forward a click to it. An absolute box is
+       placed against the padding box, so it reaches out over the label's
+       1px border to cover the whole 44pt button and not 2pt less. */
+    .snap-pick {
+      position: relative;
+      overflow: hidden;
+    }
+
+    .snap-pick input {
+      position: absolute;
+      inset: -1px;
+      width: auto;
+      height: auto;
+      min-height: 0;
+      padding: 0;
+      border: 0;
+      opacity: 0;
+      cursor: pointer;
+    }
+
+    .snap-error {
+      color: var(--danger);
+    }
+
+    .snap-workspace {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+      gap: 14px;
+      margin-top: 6px;
+    }
+
+    .snap-photo-column,
+    .snap-questions,
+    .snap-step {
+      display: grid;
+      gap: 8px;
+      align-content: start;
+      min-width: 0;
+    }
+
+    .snap-questions {
+      gap: 14px;
+    }
+
+    .snap-step-label {
+      display: block;
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 950;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+    }
+
+    .snap-step p {
+      margin: 0;
+    }
+
+    /* Sized to the photo itself, never letterboxed, so a tap's fraction of
+       this box is the same fraction of the photo. */
+    .snap-photo-frame {
+      position: relative;
+      width: fit-content;
+      max-width: 100%;
+      line-height: 0;
+    }
+
+    .snap-photo {
+      display: block;
+      max-width: 100%;
+      max-height: 360px;
+      width: auto;
+      height: auto;
+      border-radius: 8px;
+      cursor: crosshair;
+      touch-action: manipulation;
+    }
+
+    .snap-marker {
+      position: absolute;
+      width: 18px;
+      height: 18px;
+      margin: -9px 0 0 -9px;
+      border: 2px solid #fff;
+      border-radius: 50%;
+      box-shadow: 0 0 0 2px rgba(22, 32, 25, .7);
+      pointer-events: none;
+    }
+
+    .snap-colour-row {
+      display: grid;
+      grid-template-columns: 36px minmax(0, 1fr);
+      gap: 10px;
+      align-items: center;
+    }
+
+    .snap-colour-row p {
+      margin: 0;
+    }
+
+    .snap-swatch {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+    }
+
+    .snap-swatch.empty {
+      background: repeating-linear-gradient(45deg, #f2efe6, #f2efe6 4px, #fff 4px, #fff 8px);
+    }
+
+    .snap-choice-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+      gap: 8px;
+    }
+
+    .snap-choice {
+      display: grid;
+      justify-items: center;
+      align-content: center;
+      gap: 4px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfaf5;
+      color: var(--ink);
+      padding: 8px 6px;
+      text-align: center;
+      min-width: 0;
+    }
+
+    .snap-choice.active {
+      border-color: var(--pine);
+      background: #edf5f1;
+      box-shadow: inset 0 0 0 1px var(--pine);
+    }
+
+    .snap-choice b {
+      font-size: 12px;
+      line-height: 1.2;
+    }
+
+    .snap-choice small {
+      color: var(--muted);
+      font-size: 10px;
+      line-height: 1.2;
+    }
+
+    .snap-icon {
+      width: 48px;
+      height: 32px;
+    }
+
+    /* Drawn at the size its width and height attributes give: scaling it to
+       fit would defeat the point of an actual-size silhouette. */
+    .snap-size-art {
+      flex: none;
+      max-width: none;
+      color: var(--ink);
+    }
+
+    .snap-empty {
+      grid-column: 1 / -1;
+    }
+
+    .snap-results {
+      grid-column: 1 / -1;
+      display: grid;
+      gap: 8px;
+    }
+
+    .snap-results h4 {
+      margin: 0;
+      font-size: 15px;
+    }
+
+    .snap-results > p {
+      margin: 0;
+    }
+
+    .snap-results-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .snap-result {
+      display: grid;
+      gap: 6px;
+      align-content: start;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfaf5;
+      padding: 10px;
+      min-width: 0;
+    }
+
+    .snap-result strong {
+      font-size: 15px;
+      overflow-wrap: anywhere;
+    }
+
+    .snap-result p {
+      margin: 0;
+      font-size: 11px;
+    }
+
+    .snap-confidence {
+      color: var(--pine);
+      font-size: 12px;
+      font-weight: 850;
+    }
+
+    .snap-compare {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+
+    .snap-compare figure {
+      margin: 0;
+      min-width: 0;
+    }
+
+    .snap-compare img,
+    .snap-plate {
+      display: block;
+      width: 100%;
+      aspect-ratio: 1;
+      object-fit: cover;
+      border-radius: 8px;
+      background-color: #e6f1e9;
+      background-repeat: no-repeat;
+    }
+
+    .snap-compare figcaption {
+      color: var(--muted);
+      font-size: 10px;
+      margin-top: 3px;
+      overflow-wrap: anywhere;
+    }
+
+    .snap-trait-list {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      display: grid;
+      gap: 3px;
+      font-size: 11px;
+      line-height: 1.3;
+    }
+
+    .snap-trait-list .hit {
+      color: var(--pine);
+    }
+
+    .snap-trait-list .hit::before {
+      content: "\2713  ";
+    }
+
+    .snap-trait-list .miss {
+      color: var(--danger);
+    }
+
+    .snap-trait-list .miss::before {
+      content: "\2717  ";
+    }
+
+    .snap-result-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .log-attached-photo {
+      display: grid;
+      grid-template-columns: 72px minmax(0, 1fr);
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .log-attached-photo[hidden] {
+      display: none;
+    }
+
+    .log-attached-photo img {
+      width: 72px;
+      height: 72px;
+      object-fit: cover;
+      border-radius: 8px;
+    }
+
+    .log-attached-photo span {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .log-attached-photo button {
+      grid-column: 2;
+      justify-self: start;
+    }
+
     .fly-confidence.worked-here {
       background: #e0f2dc;
       color: #2f5b45;
@@ -3043,8 +3364,14 @@
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
 
-      .hatch-assistant {
+      .hatch-assistant,
+      .snap-bug {
         margin: 0 14px 14px;
+      }
+
+      .snap-workspace,
+      .snap-results-grid {
+        grid-template-columns: minmax(0, 1fr);
       }
 
       .skill-mode-selector.compact {
@@ -3862,6 +4189,12 @@
       align-content: center;
     }
 
+    /* A grid of art over a label, so it keeps its own display and takes only
+       the height. */
+    .snap-choice {
+      min-height: 44px;
+    }
+
     /* Icon-only, so it needs the horizontal minimum as well. */
     .save-water {
       width: 44px;
@@ -4424,6 +4757,37 @@
       }
     ];
 
+    /* What an angler can see on each bug, for Snap a bug. Every bug in `bugs`
+       needs an entry; the behaviour suite fails on a bug without one, because a
+       bug missing here could never be a photo match.
+
+       Colours use the Hatch ID assistant's colour keys (olive, tan, black,
+       yellow) plus three the photo sampler can tell apart (red, blue, grey),
+       and come from each bug's own body and stage text above. Shapes and tails
+       list the adult *and* the immature form, because a photo is as likely to
+       be a nymph on a rock as a dun on the water: a mayfly nymph has legs and
+       no wings yet, and a Baetis or Callibaetis adult has two tails where its
+       nymph has three. Size is not listed here - it is read from bug.sizes. */
+    const BUG_SNAP_TRAITS = {
+      bwo: { colors: ["olive", "grey"], shapes: ["upright", "legs"], tails: ["2", "3"] },
+      pmd: { colors: ["yellow", "olive", "tan"], shapes: ["upright", "legs"], tails: ["3"] },
+      "green-drake": { colors: ["olive"], shapes: ["upright", "legs"], tails: ["3"] },
+      stonefly: { colors: ["black", "tan"], shapes: ["flat", "legs"], tails: ["2"] },
+      caddis: { colors: ["tan", "olive"], shapes: ["tent", "worm"], tails: ["none"] },
+      "october-caddis": { colors: ["tan"], shapes: ["tent", "worm"], tails: ["none"] },
+      // Adult midges and chironomids rest with their wings flat over the back.
+      chironomid: { colors: ["black", "red", "olive"], shapes: ["worm", "flat"], tails: ["none"] },
+      midge: { colors: ["black", "grey", "olive"], shapes: ["worm", "flat"], tails: ["none"] },
+      leech: { colors: ["olive", "black", "tan", "red"], shapes: ["worm"], tails: ["none"] },
+      // Hoppers fold their wings along the back; ants and beetles show legs and no wings.
+      terrestrial: { colors: ["black", "tan", "olive"], shapes: ["flat", "legs"], tails: ["none"] },
+      baitfish: { colors: ["grey", "olive", "tan"], shapes: ["fish"], tails: ["none"] },
+      // "Nymph: olive, three tail plates" / "Adult: blue-green body".
+      damsel: { colors: ["olive", "blue"], shapes: ["long", "legs"], tails: ["3", "none"] },
+      "yellow-sally": { colors: ["yellow"], shapes: ["flat", "legs"], tails: ["2"] },
+      callibaetis: { colors: ["grey", "tan"], shapes: ["upright", "legs"], tails: ["2", "3"] }
+    };
+
     let activeWater = readSavedWaterId(ACTIVE_WATER_KEY) || waters[0].id;
     let homeWaterId = readSavedWaterId(HOME_WATER_KEY) || activeWater;
     let activeWaterFlyByWater = {};
@@ -4470,6 +4834,15 @@
     let skillMode = readStoredSkillMode();
     let beginnerMode = skillMode === "Beginner";
     let hatchIdTraits = readStoredObject("riseHatchIdTraits.v1");
+    // Snap a bug lives in memory only. A photo of a bug is not the angler's
+    // data until they attach it to a catch, so nothing here is persisted.
+    const SNAP_NO_TRAITS = Object.freeze({ color: "", size: "", shape: "", tails: "" });
+    let snapBug = { status: "idle", photo: "", error: "", sample: null, autoColor: "" };
+    let snapTraits = { ...SNAP_NO_TRAITS };
+    let snapSampleCanvas = null;
+    let snapPhotoSequence = 0;
+    // A Snap a bug photo the angler chose to attach to the next new catch.
+    let pendingCatchPhoto = "";
 
     const nativeFish = [
       "Redband Trout",
@@ -4509,7 +4882,8 @@
     const icon = {
       save: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></svg>',
       bell: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg>',
-      plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 5v14"/><path d="M5 12h14"/></svg>'
+      plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 5v14"/><path d="M5 12h14"/></svg>',
+      camera: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 7h3l2-3h6l2 3h3a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="4"/></svg>'
     };
 
     const flyRefs = {
@@ -7595,7 +7969,7 @@
       ["Flow history", "Every gauge reading this device takes is recorded and charted, so you can see whether today is high or low against days you have actually fished."],
       ["Rating breakdown", "The full numeric explanation behind a water's score: season fit, time of day, flow against reference, temperature, wind and forecast."],
       ["Fish this plan", "A staged plan for the water: what to fish, where, and in what order for the current window."],
-      ["Hatch ID assistant", "Filter by size, colour, water type and behaviour to narrow what you are looking at, then jump straight to matching fly patterns."]
+      ["Hatch ID assistant", "Filter by size, colour, water type and behaviour to narrow what you are looking at, then jump straight to matching fly patterns. Snap a bug adds a photo you can sample a colour from and compare against the closest bugs - you confirm every trait; the app does not recognise bugs from photos."]
     ];
 
     /* ---------------------------------------------------------------------
@@ -7993,6 +8367,478 @@
               `;
             }).join("")}
           </div>
+        </div>
+      `;
+    }
+
+    /* ---------------------------------------------------------------------
+       Snap a bug: photo-ASSISTED hatch ID.
+
+       There is no image classifier in this app, no labelled photo set to
+       train one on, and no server to send a photo to - and the app has to work
+       on a riverbank with no signal. So the photo never identifies anything,
+       and the screen says so. It is a reference the angler compares against
+       and a surface they sample a colour from. Every trait the score uses is
+       one the angler confirmed: the colour they tapped (and can overrule), the
+       size bucket, the wing shape and the tail count they saw.
+
+       The photo goes through the catch-photo decoder (readPhotoCanvas), is
+       held in memory, and is stored only if the angler attaches it to a catch.
+       --------------------------------------------------------------------- */
+
+    // Colour keys shared with the Hatch ID assistant (olive, tan, black,
+    // yellow), plus the three a photo sample can separate that the dropdown
+    // folds together: red, blue and grey.
+    const SNAP_COLOURS = [
+      ["olive", "Olive / green"],
+      ["tan", "Tan / brown / orange"],
+      ["black", "Black / dark"],
+      ["yellow", "Pale / yellow / cream"],
+      ["red", "Red / maroon"],
+      ["blue", "Blue / blue-green"],
+      ["grey", "Grey / silver"]
+    ];
+
+    /* Body lengths are approximate standard dry-fly shank lengths for each
+       hook size, and the buckets overlap their neighbours on purpose: hook
+       sizes are not a precise measurement and neither is a bug on a fingertip.
+       SNAP_PX_PER_MM draws them at roughly actual size on an iPhone. A CSS
+       pixel is one iOS point, and iPhones run about 153-163 points to the inch
+       (460ppi / 3, 326ppi / 2), so about 6.2 points to the millimetre. CSS
+       "mm" would be wrong by 40%: it assumes 96 per inch. On an iPad (132
+       points to the inch) the silhouettes draw about a fifth too large, which
+       the panel says. */
+    const SNAP_PX_PER_MM = 6.2;
+    const SNAP_SIZE_BUCKETS = [
+      { id: "big", label: "Bigger than #12", range: [2, 10], mm: 0, hint: "Over ~10 mm body" },
+      { id: "s12", label: "#12", range: [10, 14], mm: 10, hint: "~10 mm body" },
+      { id: "s16", label: "#16", range: [14, 18], mm: 6.5, hint: "~6.5 mm body" },
+      { id: "s20", label: "#20", range: [18, 22], mm: 4, hint: "~4 mm body" },
+      { id: "s24", label: "#24", range: [22, 26], mm: 3, hint: "~3 mm body" }
+    ];
+
+    const SNAP_LINE_ART = (paths) => `<svg class="snap-icon" viewBox="0 0 48 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths}</svg>`;
+
+    const SNAP_SHAPES = [
+      ["upright", "Wings upright like sails", "Mayfly", SNAP_LINE_ART('<path d="M6 21c8-1 18-1 30 0"/><circle cx="38" cy="21" r="2"/><path d="M21 20L25 4l7 15"/><path d="M6 21L1 14M6 21L1 18"/>')],
+      ["tent", "Wings tent-like over the back", "Caddis", SNAP_LINE_ART('<path d="M10 23h24"/><path d="M5 24L20 10l16 10"/><circle cx="37" cy="22" r="2"/><path d="M38 20c3-6 6-9 9-11"/>')],
+      ["flat", "Wings flat over the back", "Stonefly", SNAP_LINE_ART('<path d="M34 12H10c-4 0-6 2-6 4s2 4 6 4h24"/><path d="M10 16h26"/><circle cx="39" cy="16" r="2.5"/><path d="M41 15l6-6M41 17l6 6"/>')],
+      ["long", "Long thin body, wings held apart or together", "Damsel / dragonfly", SNAP_LINE_ART('<path d="M3 21h33"/><circle cx="40" cy="20" r="3"/><path d="M34 19c-3-7-8-12-16-13M34 19c0-7 1-12 5-15"/>')],
+      ["legs", "Legs but no wings", "Nymph, ant, beetle", SNAP_LINE_ART('<ellipse cx="26" cy="16" rx="11" ry="5"/><path d="M20 12l-4-7M26 11V4M32 12l4-7M20 20l-4 7M26 21v7M32 20l4 7"/><path d="M15 16H3M15 15L5 10M15 17L5 22"/>')],
+      ["worm", "No visible wings, worm-like", "Midge larva, chironomid, leech", SNAP_LINE_ART('<path d="M3 22c6-12 12 0 18-8s12 4 16-2 6-4 8-6"/>')],
+      ["fish", "A small fish", "Baitfish", SNAP_LINE_ART('<path d="M4 16c8-10 22-10 30 0-8 10-22 10-30 0z"/><path d="M34 16l10-7v14z"/><circle cx="11" cy="15" r="1"/>')]
+    ];
+
+    const SNAP_TAILS = [
+      ["2", "2 tails", "Stonefly, some mayflies", SNAP_LINE_ART('<path d="M24 16h20"/><path d="M24 16L4 8M24 16L4 24"/>')],
+      ["3", "3 tails", "Most mayflies, damsel nymph", SNAP_LINE_ART('<path d="M24 16h20"/><path d="M24 16L4 8M24 16H2M24 16L4 24"/>')],
+      ["none", "No tails", "Caddis, midge, terrestrials", SNAP_LINE_ART('<path d="M22 12h22v8H22a4 4 0 0 1 0-8z"/>')]
+    ];
+
+    const SNAP_TRAIT_KEYS = ["color", "size", "shape", "tails"];
+    const SNAP_TRAIT_NAMES = { color: "Colour", size: "Size", shape: "Shape", tails: "Tails" };
+    const SNAP_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+    // Bugs with no Snap a bug traits. Empty is the only correct answer; the
+    // behaviour suite asserts it.
+    function bugsMissingSnapTraits() {
+      return bugs.filter((bug) => {
+        const traits = BUG_SNAP_TRAITS[bug.id];
+        return !traits || !traits.colors?.length || !traits.shapes?.length || !traits.tails?.length || !hookSizeRange(bug.sizes);
+      }).map((bug) => bug.id);
+    }
+
+    function rgbToHsl({ r, g, b }) {
+      const red = r / 255;
+      const green = g / 255;
+      const blue = b / 255;
+      const max = Math.max(red, green, blue);
+      const min = Math.min(red, green, blue);
+      const l = (max + min) / 2;
+      if (max === min) return { h: 0, s: 0, l };
+      const d = max - min;
+      const s = l > .5 ? d / (2 - max - min) : d / (max + min);
+      let h;
+      if (max === red) h = ((green - blue) / d + (green < blue ? 6 : 0)) * 60;
+      else if (max === green) h = ((blue - red) / d + 2) * 60;
+      else h = ((red - green) / d + 4) * 60;
+      return { h, s, l };
+    }
+
+    /* The colour classifier. Deliberately small and readable, because the
+       angler is told what the swatch "reads as" and is expected to overrule
+       it when the light or the background fooled it. RGB -> HSL, then:
+
+         lightness under 18%                     black / dark (no hue left to read)
+         saturation under 15% (a grey):
+           lightness over 85%                    pale / cream (silver is ~75%)
+           lightness under 35%                   black / dark
+           otherwise                             grey / silver
+         lightness over 80% (a washed-out tint)  pale / cream
+         hue under 15 or 335 and up              red / maroon
+         hue 15-45                               tan / brown / orange
+         hue 45-70: lightness under 45%          olive (a dark yellow is olive)
+                    otherwise                    pale / yellow
+         hue 70-170                              olive / green
+         hue 170-260                             blue / blue-green
+         hue 260-335                             red / maroon (purples read as maroon on a bug)
+
+       No bug in the library is purple, and a photographed leech that looks
+       maroon belongs with red, not blue. */
+    function classifyBugColour(rgb) {
+      const { h, s, l } = rgbToHsl(rgb);
+      if (l < .18) return "black";
+      if (s < .15) {
+        if (l > .85) return "yellow";
+        if (l < .35) return "black";
+        return "grey";
+      }
+      if (l > .8) return "yellow";
+      if (h < 15 || h >= 335) return "red";
+      if (h < 45) return "tan";
+      if (h < 70) return l < .45 ? "olive" : "yellow";
+      if (h < 170) return "olive";
+      if (h < 260) return "blue";
+      return "red";
+    }
+
+    function rgbHex({ r, g, b }) {
+      return `#${[r, g, b].map((value) => Math.round(value).toString(16).padStart(2, "0")).join("")}`;
+    }
+
+    /* A tap in CSS pixels, mapped to a pixel of the photo's own canvas. What
+       carries over is the tap's *fraction* of the displayed box: CSS scales
+       the photo to fit the panel, and devicePixelRatio changes only how many
+       screen pixels draw it, never which photo pixel is under the finger.
+       Reading clientX straight against the canvas would sample the wrong spot
+       on every phone - by the CSS scale, and again by 2x or 3x for the DPR. */
+    function snapTapToPixel(clientX, clientY, rect, canvasWidth, canvasHeight) {
+      const fx = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
+      const fy = Math.min(1, Math.max(0, (clientY - rect.top) / rect.height));
+      return {
+        x: Math.min(canvasWidth - 1, Math.floor(fx * canvasWidth)),
+        y: Math.min(canvasHeight - 1, Math.floor(fy * canvasHeight)),
+        fx,
+        fy
+      };
+    }
+
+    // About three CSS pixels either side of the tap, expressed in photo
+    // pixels: a fingertip-sized patch is averaged so one speck of glare or a
+    // JPEG block edge does not decide the colour.
+    function snapSampleRadius(rect, canvasWidth) {
+      return Math.max(1, Math.min(24, Math.round(3 * canvasWidth / Math.max(1, rect.width))));
+    }
+
+    // Mean colour of the square of side 2*radius+1 around (x, y), clipped to
+    // the image. `data` is RGBA, row-major, as getImageData returns it.
+    function averageRgb(data, width, height, x, y, radius) {
+      let r = 0;
+      let g = 0;
+      let b = 0;
+      let count = 0;
+      for (let row = Math.max(0, y - radius); row <= Math.min(height - 1, y + radius); row += 1) {
+        for (let column = Math.max(0, x - radius); column <= Math.min(width - 1, x + radius); column += 1) {
+          const index = (row * width + column) * 4;
+          r += data[index];
+          g += data[index + 1];
+          b += data[index + 2];
+          count += 1;
+        }
+      }
+      if (!count) return null;
+      return { r: Math.round(r / count), g: Math.round(g / count), b: Math.round(b / count) };
+    }
+
+    function snapTraitMatches(bug, key, value) {
+      const traits = BUG_SNAP_TRAITS[bug.id];
+      if (!traits || !value) return false;
+      if (key === "size") {
+        const bucket = SNAP_SIZE_BUCKETS.find((item) => item.id === value);
+        return Boolean(bucket) && sizeRangesOverlap(hookSizeRange(bug.sizes), bucket.range);
+      }
+      if (key === "color") return traits.colors.includes(value);
+      if (key === "shape") return traits.shapes.includes(value);
+      if (key === "tails") return traits.tails.includes(value);
+      return false;
+    }
+
+    // What the angler chose, in words.
+    function snapChoiceLabel(key, value) {
+      if (key === "color") return SNAP_COLOURS.find(([id]) => id === value)?.[1] || value;
+      if (key === "size") return SNAP_SIZE_BUCKETS.find((item) => item.id === value)?.label || value;
+      if (key === "shape") return SNAP_SHAPES.find(([id]) => id === value)?.[1] || value;
+      if (key === "tails") return SNAP_TAILS.find(([id]) => id === value)?.[1] || value;
+      return value;
+    }
+
+    // What the bug actually has, for explaining a miss.
+    function snapBugTraitLabel(bug, key) {
+      const traits = BUG_SNAP_TRAITS[bug.id] || { colors: [], shapes: [], tails: [] };
+      if (key === "size") return bug.sizes;
+      if (key === "color") return traits.colors.map((id) => snapChoiceLabel("color", id).split(" / ")[0]).join(", ");
+      if (key === "shape") return traits.shapes.map((id) => snapChoiceLabel("shape", id).toLowerCase()).join(" or ");
+      if (key === "tails") return traits.tails.map((id) => snapChoiceLabel("tails", id).toLowerCase()).join(" or ");
+      return "";
+    }
+
+    function snapPriorContext(month = currentMonth(), water = getWater()) {
+      return {
+        month,
+        waterName: water.name,
+        predictedBugIds: uniqueItems(predictedHatches(water).map((hatch) => hatchProfileFor(hatch).bugId).filter(Boolean))
+      };
+    }
+
+    /* Priors only reorder bugs the traits already support: a trait is worth
+       10, in season 3 (the month either side 1), on today's predicted list for
+       the selected water 2. An out-of-season bug loses 3 - ranked lower, never
+       ruled out, because the angler is holding the evidence and the season
+       table is a reference. */
+    function snapPriorFor(bug, context) {
+      const fit = hatchSeasonFit(bug.name, context.month);
+      const onWater = context.predictedBugIds.includes(bug.id);
+      const monthName = SNAP_MONTHS[context.month - 1] || "this month";
+      const reasons = [];
+      let boost;
+      if (fit === 1) {
+        boost = 3;
+        reasons.push(`In season in ${monthName} (${bug.season}) - ranked up.`);
+      } else if (fit > 0) {
+        boost = 1;
+        reasons.push(`Edge of its season in ${monthName} (${bug.season}) - ranked up a little.`);
+      } else {
+        boost = -3;
+        reasons.push(`Out of season in ${monthName} (${bug.season}) - ranked lower, not ruled out.`);
+      }
+      if (onWater) {
+        boost += 2;
+        reasons.push(`On the predicted hatch list for ${context.waterName} - ranked up.`);
+      }
+      return { fit, onWater, boost, reasons };
+    }
+
+    /* Top three bugs for the traits the angler set. Nothing set, no results.
+       A bug has to match at least half of what was set to be a result at all:
+       one hit out of four is not a match, and listing it would make the panel
+       look surer than the evidence is. */
+    function snapBugResults(traits, context = snapPriorContext()) {
+      const answered = SNAP_TRAIT_KEYS.filter((key) => traits?.[key]);
+      if (!answered.length) return [];
+      return bugs
+        .map((bug) => {
+          const matched = answered.filter((key) => snapTraitMatches(bug, key, traits[key]));
+          const missed = answered.filter((key) => !matched.includes(key));
+          const prior = snapPriorFor(bug, context);
+          return { bug, matched, missed, answered: answered.length, prior, score: matched.length * 10 - missed.length * 5 + prior.boost };
+        })
+        .filter((result) => result.matched.length > 0 && result.matched.length * 2 >= result.answered)
+        .sort((a, b) => b.score - a.score || a.bug.name.localeCompare(b.bug.name))
+        .slice(0, 3);
+    }
+
+    // "Strong" needs at least three traits set and three in four matched;
+    // fewer traits than that cannot support a strong claim however they match.
+    function snapConfidenceLabel(result) {
+      const matched = result.matched.length;
+      const strength = result.answered >= 3 && matched / result.answered >= .75 ? "Strong" : "Possible";
+      return `${strength} match on ${matched} of ${result.answered} trait${result.answered === 1 ? "" : "s"}`;
+    }
+
+    function clearSnapBug() {
+      snapPhotoSequence += 1;
+      snapBug = { status: "idle", photo: "", error: "", sample: null, autoColor: "" };
+      snapTraits = { ...SNAP_NO_TRAITS };
+      snapSampleCanvas = null;
+    }
+
+    async function loadSnapPhoto(file) {
+      if (!file || !proAccessActive) return;
+      clearSnapBug();
+      const sequence = snapPhotoSequence;
+      snapBug = { ...snapBug, status: "loading" };
+      renderScreens("bugs");
+      try {
+        const canvas = await readPhotoCanvas(file);
+        // A second photo picked while this one decoded wins.
+        if (sequence !== snapPhotoSequence) return;
+        if (!canvas) throw new Error("No photo");
+        snapSampleCanvas = canvas;
+        snapBug = { ...snapBug, status: "ready", photo: canvas.toDataURL("image/jpeg", .82) };
+      } catch {
+        if (sequence !== snapPhotoSequence) return;
+        snapBug = { ...snapBug, status: "error", error: "That photo could not be opened. Try another one." };
+      }
+      renderScreens("bugs");
+      if (activeScreenId() === "bugs") scrollAppTo("#bugs .snap-bug");
+    }
+
+    // Samples the photo under a tap, sets the colour trait, and returns the
+    // colour key (or null when there is nothing to sample).
+    function sampleSnapAt(image, clientX, clientY) {
+      const canvas = snapSampleCanvas;
+      const context = canvas?.getContext("2d", { willReadFrequently: true });
+      const rect = image?.getBoundingClientRect();
+      if (!canvas || !context || !rect?.width || !rect?.height) return null;
+      const point = snapTapToPixel(clientX, clientY, rect, canvas.width, canvas.height);
+      const radius = snapSampleRadius(rect, canvas.width);
+      const left = Math.max(0, point.x - radius);
+      const top = Math.max(0, point.y - radius);
+      const width = Math.min(canvas.width, point.x + radius + 1) - left;
+      const height = Math.min(canvas.height, point.y + radius + 1) - top;
+      const pixels = context.getImageData(left, top, width, height);
+      const rgb = averageRgb(pixels.data, width, height, point.x - left, point.y - top, radius);
+      if (!rgb) return null;
+      const color = classifyBugColour(rgb);
+      snapBug = { ...snapBug, sample: { ...rgb, hex: rgbHex(rgb), fx: point.fx, fy: point.fy }, autoColor: color };
+      snapTraits = { ...snapTraits, color };
+      renderBugs();
+      return color;
+    }
+
+    function snapSizeArt(bucket) {
+      if (!bucket.mm) {
+        return `<svg class="snap-size-art" width="44" height="18" viewBox="0 0 44 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M2 9h36M31 3l8 6-8 6"/></svg>`;
+      }
+      const width = Math.round(bucket.mm * SNAP_PX_PER_MM);
+      const height = Math.max(6, Math.round(width * .32));
+      return `<svg class="snap-size-art" width="${width}" height="${height}" viewBox="0 0 100 32" preserveAspectRatio="none" aria-hidden="true"><path d="M0 18C20 8 70 8 100 15C70 26 20 26 0 18Z" fill="currentColor"/></svg>`;
+    }
+
+    function snapChoiceButton(key, value, art, label, hint) {
+      const selected = snapTraits[key] === value;
+      return `
+        <button type="button" class="snap-choice ${selected ? "active" : ""}" data-snap-choice="${attr(key)}" data-snap-value="${attr(value)}" aria-pressed="${selected ? "true" : "false"}">
+          ${art}
+          <b>${esc(label)}</b>
+          <small>${esc(hint)}</small>
+        </button>
+      `;
+    }
+
+    function snapResultCard(result) {
+      const { bug } = result;
+      const flies = flyLibraryForBug(bug.id).slice(0, 3);
+      return `
+        <div class="snap-result">
+          <div class="snap-compare">
+            <figure>
+              <img src="${attr(snapBug.photo)}" alt="Your photo">
+              <figcaption>Your photo</figcaption>
+            </figure>
+            <figure>
+              <div class="snap-plate" style="${attr(bugImageStyle(bug))}" role="img" aria-label="${attr(bug.name)} reference plate"></div>
+              <figcaption>${esc(bug.name)}</figcaption>
+            </figure>
+          </div>
+          <strong>${esc(bug.name)}</strong>
+          <span class="snap-confidence">${esc(snapConfidenceLabel(result))}</span>
+          <ul class="snap-trait-list">
+            ${result.matched.map((key) => `<li class="hit">Matched ${esc(SNAP_TRAIT_NAMES[key].toLowerCase())}: ${esc(snapChoiceLabel(key, snapTraits[key]))}</li>`).join("")}
+            ${result.missed.map((key) => `<li class="miss">Missed ${esc(SNAP_TRAIT_NAMES[key].toLowerCase())}: you chose ${esc(snapChoiceLabel(key, snapTraits[key]))}; ${esc(bug.name)} is ${esc(snapBugTraitLabel(bug, key))}</li>`).join("")}
+          </ul>
+          ${result.prior.reasons.map((reason) => `<p class="subtle">${esc(reason)}</p>`).join("")}
+          ${flies.length ? `<span class="snap-step-label">Matching flies</span>` : ""}
+          <div class="snap-result-actions">
+            ${flies.map((fly) => `<button type="button" class="fly-badge" data-snap-fly="${attr(fly.name)}">${esc(fly.name)}</button>`).join("")}
+            <button type="button" class="ghost-btn" data-hatch-pick="${attr(bug.id)}">Open ${esc(bug.name)}</button>
+          </div>
+        </div>
+      `;
+    }
+
+    function snapResultsPanel() {
+      const answered = SNAP_TRAIT_KEYS.filter((key) => snapTraits[key]).length;
+      if (!answered) {
+        return `<p class="subtle snap-empty">Tap the bug in the photo or answer a question to see the closest bugs in the library.</p>`;
+      }
+      const results = snapBugResults(snapTraits);
+      if (!results.length) {
+        return `<p class="subtle snap-empty" role="status">Nothing in the bug library matches at least half of what you chose. Check the colour sample, or clear a trait you are unsure of.</p>`;
+      }
+      return `
+        <div class="snap-results">
+          <h4>Closest in the bug library</h4>
+          <p class="subtle">Compared on what you confirmed, not on the photo itself. Season and the predicted hatches for ${esc(getWater().name)} only reorder bugs your answers already support.</p>
+          <div class="snap-results-grid">
+            ${results.map(snapResultCard).join("")}
+          </div>
+        </div>
+      `;
+    }
+
+    function snapWorkspace() {
+      const sample = snapBug.sample;
+      const autoLabel = snapBug.autoColor ? snapChoiceLabel("color", snapBug.autoColor) : "";
+      const overridden = Boolean(sample) && snapTraits.color !== snapBug.autoColor;
+      return `
+        <div class="snap-workspace">
+          <div class="snap-photo-column">
+            <span class="snap-step-label">1. Colour - tap the bug's body</span>
+            <div class="snap-photo-frame">
+              <img class="snap-photo" src="${attr(snapBug.photo)}" data-snap-sample alt="Your bug photo. Tap the bug's body to sample its colour.">
+              ${sample ? `<i class="snap-marker" style="left:${(sample.fx * 100).toFixed(2)}%;top:${(sample.fy * 100).toFixed(2)}%"></i>` : ""}
+            </div>
+            <div class="snap-colour-row">
+              <span class="snap-swatch ${sample ? "" : "empty"}" style="${sample ? `background:${attr(sample.hex)}` : ""}" aria-hidden="true"></span>
+              <p class="subtle" data-snap-sample-status>${sample
+                ? `Sample ${esc(sample.hex)} reads as <b>${esc(autoLabel)}</b>.${overridden ? ` You changed it to ${esc(snapChoiceLabel("color", snapTraits.color) || "not set")}.` : " Change it below if the light fooled it."}`
+                : "No sample yet. Shade, glare and the background all shift a photo's colour, so check what it reads as."}</p>
+            </div>
+            <label>Colour
+              <select data-snap-trait="color">
+                <option value="" ${snapTraits.color ? "" : "selected"}>Not set</option>
+                ${SNAP_COLOURS.map(([value, label]) => `<option value="${attr(value)}" ${snapTraits.color === value ? "selected" : ""}>${esc(label)}</option>`).join("")}
+              </select>
+            </label>
+            <button type="button" class="ghost-btn" data-snap-attach>Attach photo to a catch</button>
+          </div>
+          <div class="snap-questions">
+            <div class="snap-step">
+              <span class="snap-step-label">2. Size</span>
+              <p class="subtle">Hold the bug, or the phone, beside the screen. The silhouettes are drawn at roughly actual size on an iPhone; on an iPad or other screens they are only approximate. Or compare it with your fingernail: a bug about as long as a fingernail is roughly a #12-14 body.</p>
+              <div class="snap-choice-grid">
+                ${SNAP_SIZE_BUCKETS.map((bucket) => snapChoiceButton("size", bucket.id, snapSizeArt(bucket), bucket.label, bucket.hint)).join("")}
+              </div>
+            </div>
+            <div class="snap-step">
+              <span class="snap-step-label">3. Wings and shape</span>
+              <div class="snap-choice-grid">
+                ${SNAP_SHAPES.map(([value, label, hint, art]) => snapChoiceButton("shape", value, art, label, hint)).join("")}
+              </div>
+            </div>
+            <div class="snap-step">
+              <span class="snap-step-label">4. Tails</span>
+              <div class="snap-choice-grid">
+                ${SNAP_TAILS.map(([value, label, hint, art]) => snapChoiceButton("tails", value, art, label, hint)).join("")}
+              </div>
+            </div>
+          </div>
+          ${snapResultsPanel()}
+        </div>
+      `;
+    }
+
+    function snapBugPanel() {
+      if (!proAccessActive) {
+        return `<div class="snap-bug">${proLock("Snap a bug - Pro", "Photograph a bug, tap it to sample its colour, answer three quick questions about size and shape, and compare the closest bugs side by side with your photo. The app does not recognise bugs from photos; you confirm every trait.")}</div>`;
+      }
+      return `
+        <div class="snap-bug">
+          <div class="panel-head">
+            <div>
+              <h3>Snap a Bug</h3>
+              <p class="subtle">Photo-assisted, not automatic: the app does not recognise bugs from a photo. Your photo is a reference to compare against and to sample a colour from, and you confirm every trait. It stays on this screen and is saved only if you attach it to a catch.</p>
+            </div>
+            ${snapBug.status === "idle" ? "" : `<button type="button" class="ghost-btn" data-snap-clear>Clear</button>`}
+          </div>
+          <div class="snap-pick-row">
+            <label class="primary-btn snap-pick">${icon.camera}Snap a bug<input type="file" accept="image/*" capture="environment" data-snap-photo aria-label="Snap a bug with the camera"></label>
+            <label class="ghost-btn snap-pick">Choose a photo<input type="file" accept="image/*" data-snap-photo aria-label="Choose a bug photo from your library"></label>
+          </div>
+          ${snapBug.status === "loading" ? `<p class="subtle" role="status">Reading the photo...</p>` : ""}
+          ${snapBug.status === "error" ? `<p class="subtle snap-error" role="alert">${esc(snapBug.error)}</p>` : ""}
+          ${snapBug.status === "ready" && snapBug.photo ? snapWorkspace() : ""}
         </div>
       `;
     }
@@ -8766,6 +9612,7 @@
           </div>
         </div>
         ${hatchIdAssistantPanel()}
+        ${snapBugPanel()}
         <div class="bug-layout">
           <div class="panel">
             <div class="bug-list">
@@ -9212,6 +10059,7 @@
               <label class="photo-input">Photo
                 <input name="photo" type="file" accept="image/*">
               </label>
+              <div class="log-attached-photo" data-log-attached-photo hidden></div>
               <p class="subtle" data-log-save-error role="alert" style="color:#8b2c20" ${logSaveMessage ? "" : "hidden"}>${esc(logSaveMessage)}</p>
               <div class="form-grid">
                 <label>Water
@@ -9296,7 +10144,23 @@
           error.textContent = logSaveMessage;
           error.hidden = !logSaveMessage;
         }
+        syncAttachedCatchPhoto(currentForm, editingEntry);
       }
+    }
+
+    /* A kept form keeps its draft through a repaint, so an attachment made
+       while it is open has to be written into it here rather than into the
+       markup that was thrown away. Only a new catch takes an attachment. */
+    function syncAttachedCatchPhoto(form, editingEntry) {
+      const slot = form.querySelector("[data-log-attached-photo]");
+      if (!slot) return;
+      const photo = editingEntry ? "" : pendingCatchPhoto;
+      slot.hidden = !photo;
+      slot.innerHTML = photo ? `
+        <img src="${attr(photo)}" alt="Bug photo attached to this catch">
+        <span>Bug photo from Snap a bug is attached. Choosing a photo above replaces it.</span>
+        <button type="button" class="ghost-btn" data-detach-photo>Remove</button>
+      ` : "";
     }
 
     function renderPro() {
@@ -9698,10 +10562,15 @@
       syncStatusBarChrome();
     }
 
-    function readPhotoFile(file) {
+    /* Decodes a picked photo and draws it, downscaled, onto a canvas. Shared
+       by the catch log (which keeps the JPEG) and Snap a bug (which also
+       samples colours off the same canvas), so there is one decode path and
+       one size bound for every photo the app touches. Resolves null when no
+       file was picked. */
+    function readPhotoCanvas(file) {
       return new Promise((resolve, reject) => {
         if (!file || (!file.size && !file.name)) {
-          resolve("");
+          resolve(null);
           return;
         }
         const reader = new FileReader();
@@ -9720,7 +10589,7 @@
                 return;
               }
               context.drawImage(image, 0, 0, canvas.width, canvas.height);
-              resolve(canvas.toDataURL("image/jpeg", .82));
+              resolve(canvas);
             } catch (error) {
               reject(error);
             }
@@ -9732,6 +10601,12 @@
         reader.onabort = () => reject(new Error("Photo reading was canceled"));
         reader.readAsDataURL(file);
       });
+    }
+
+    // The catch-photo JPEG: bounded by readPhotoCanvas, compressed here.
+    async function readPhotoFile(file) {
+      const canvas = await readPhotoCanvas(file);
+      return canvas ? canvas.toDataURL("image/jpeg", .82) : "";
     }
 
     /* ---------------------------------------------------------------------
@@ -9835,6 +10710,44 @@
         writeStoredObject("riseHatchIdTraits.v1", hatchIdTraits);
         renderBugs();
       }],
+      ["[data-snap-sample]", (element, event) => sampleSnapAt(element, event.clientX, event.clientY)],
+      ["[data-snap-choice]", (element) => {
+        const key = element.dataset.snapChoice;
+        if (!SNAP_TRAIT_KEYS.includes(key)) return;
+        // Tapping the chosen answer again clears it: "not sure" is an answer.
+        const value = snapTraits[key] === element.dataset.snapValue ? "" : element.dataset.snapValue;
+        snapTraits = { ...snapTraits, [key]: value };
+        renderBugs();
+      }],
+      ["[data-snap-clear]", () => {
+        clearSnapBug();
+        renderBugs();
+      }],
+      ["[data-snap-fly]", (element) => {
+        const libraryFly = findLibraryFlyByName(element.dataset.snapFly);
+        if (!libraryFly) return;
+        activeBug = libraryFly.bugId;
+        activeBugStage = libraryFly.stage;
+        activeFlyName = libraryFly.name;
+        renderBugs();
+        scrollAppTo("#bugs .bug-card.active .fly-library");
+      }],
+      ["[data-snap-attach]", () => {
+        if (!snapBug.photo) return;
+        // Held for the next new catch and stored only when it is saved, by
+        // the same storePhoto path as a photo picked in the form itself.
+        pendingCatchPhoto = snapBug.photo;
+        editingLogIndex = null;
+        logSaveMessage = "";
+        logFormOpen = true;
+        renderLog();
+        activateTab("log");
+        scrollAppTo("#logForm");
+      }],
+      ["[data-detach-photo]", () => {
+        pendingCatchPhoto = "";
+        renderLog();
+      }],
       ["[data-bug]", (element, event) => {
         if (event.target.closest("button, a, input, select, textarea")) return;
         activeBug = element.dataset.bug;
@@ -9860,6 +10773,9 @@
       ["[data-tab-jump]", (element) => activateTab(element.dataset.tabJump)],
       ["[data-new-log]", () => {
         logFormOpen = !logFormOpen;
+        // Closing the form discards its draft, and an attached bug photo is
+        // part of the draft.
+        if (!logFormOpen) pendingCatchPhoto = "";
         logSaveMessage = "";
         editingLogIndex = null;
         renderLog();
@@ -10008,6 +10924,15 @@
           hatchIdTraits[target.dataset.hatchTrait] = target.value;
           writeStoredObject("riseHatchIdTraits.v1", hatchIdTraits);
           renderBugs();
+          return;
+        }
+        if (target.matches("[data-snap-photo]")) {
+          loadSnapPhoto(target.files?.[0]);
+          return;
+        }
+        if (target.matches("[data-snap-trait]") && SNAP_TRAIT_KEYS.includes(target.dataset.snapTrait)) {
+          snapTraits = { ...snapTraits, [target.dataset.snapTrait]: target.value };
+          renderBugs();
         }
       });
 
@@ -10064,7 +10989,9 @@
         renderLog();
         return;
       }
-      const capturedPhoto = await readPhotoFile(form.get("photo"));
+      // A photo picked in the form wins over one attached from Snap a bug.
+      const attachedPhoto = existingEntry ? "" : pendingCatchPhoto;
+      const capturedPhoto = (await readPhotoFile(form.get("photo"))) || attachedPhoto;
       // Closing or switching the form while photo decoding is pending cancels
       // that draft. A late continuation must not save it or close a newer form.
       if (!logForm.isConnected) return;
@@ -10174,6 +11101,7 @@
         return;
       }
       if (photoToDelete) deleteStoredPhoto(photoToDelete);
+      if (!existingEntry) pendingCatchPhoto = "";
       if (entry.fly && flyFeedback[entry.fly] !== "worked") {
         flyFeedback[entry.fly] = "worked";
         writeStoredObject(FLY_FEEDBACK_KEY, flyFeedback);

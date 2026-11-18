@@ -270,6 +270,18 @@ def main() -> int:
             f"subscription description still advertises alerts: {product.get('productId')}",
         )
 
+    # Snap a bug has no image classifier and no server. The photo is a
+    # reference the angler samples and compares against, and the panel has to
+    # say so; every bug needs a row in the trait table or it can never match.
+    require(
+        "does not recognise bugs from a photo" in web,
+        "Snap a bug no longer says the photo is not recognised",
+    )
+    require(
+        "const BUG_SNAP_TRAITS = {" in web and "function bugsMissingSnapTraits()" in web,
+        "Snap a bug has lost its per-bug trait table or its coverage check",
+    )
+
     # --- Data honesty ---------------------------------------------------------
     require("demo cache" not in web, "fabricated cache timestamps are still shown as live data")
     require("function valueProvenance(" in web, "displayed readings do not report their origin")
@@ -862,6 +874,7 @@ def main() -> int:
     print("PASS: App Store metadata/IAP submission checklist")
     print("PASS: catch-log durability, export, and native container storage")
     print("PASS: subscription claims match shipped functionality")
+    print("PASS: Snap a bug is photo-assisted, says so, and covers every bug")
     print("PASS: data provenance labelling and single-source coordinates")
     print("PASS: season, time-of-day, and flow inputs wired into the score")
     print("PASS: no prototype or demo language in a shipping build")
