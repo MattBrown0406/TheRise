@@ -44,6 +44,7 @@ final class RiseViewController: UIViewController, WKNavigationDelegate, WKScript
         configuration.userContentController.add(messageProxy, name: "riseData")
         configuration.userContentController.add(messageProxy, name: "riseStore")
         configuration.userContentController.add(messageProxy, name: "riseChrome")
+        configuration.userContentController.add(messageProxy, name: "riseAlerts")
         configuration.setURLSchemeHandler(photoSchemeHandler, forURLScheme: RisePhotoSchemeHandler.scheme)
 
         let webView = WKWebView(frame: .zero, configuration: configuration)
@@ -64,6 +65,7 @@ final class RiseViewController: UIViewController, WKNavigationDelegate, WKScript
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "riseData")
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "riseStore")
         webView.configuration.userContentController.removeScriptMessageHandler(forName: "riseChrome")
+        webView.configuration.userContentController.removeScriptMessageHandler(forName: "riseAlerts")
     }
 
     override func viewDidLoad() {
@@ -111,6 +113,11 @@ final class RiseViewController: UIViewController, WKNavigationDelegate, WKScript
 
         if message.name == "riseChrome" {
             handleChromeMessage(message)
+            return
+        }
+
+        if message.name == "riseAlerts" {
+            handleAlertsMessage(message)
             return
         }
 
@@ -336,6 +343,65 @@ final class RiseViewController: UIViewController, WKNavigationDelegate, WKScript
         }
     }
 
+    /// Alerts for saved waters. The page sends the rules whenever the angler
+    /// changes them ("setRules", with requestPermission when an alert was just
+    /// turned on) and the planner's great days for alert waters
+    /// ("scheduleGreatDays"); "status" only asks whether notifications are
+    /// allowed. RiseAlerts validates everything that arrives here.
+    private func handleAlertsMessage(_ message: WKScriptMessage) {
+        guard let payload = message.body as? [String: Any],
+              let action = payload["action"] as? String else {
+            return
+        }
+
+        switch action {
+        case "setRules":
+            let rules = RiseAlerts.rules(fromMessage: payload)
+            let requestPermission = (payload["requestPermission"] as? Bool) ?? false
+            Task { [weak self] in
+                let status = await RiseNotifications.applyRules(rules, requestPermission: requestPermission)
+                self?.sendAlertsResult(["action": "permission", "status": status])
+            }
+        case "scheduleGreatDays":
+            let plans = RiseAlerts.greatDayPlans(fromMessage: payload)
+            Task {
+                await RiseNotifications.scheduleGreatDays(plans)
+            }
+        case "status":
+            Task { [weak self] in
+                let status = await RiseNotifications.authorizationStatusString()
+                self?.sendAlertsResult(["action": "permission", "status": status])
+            }
+        default:
+            break
+        }
+    }
+
+    private func sendAlertsResult(_ payload: [String: Any]) {
+        guard let data = try? JSONSerialization.data(withJSONObject: payload),
+              let json = String(data: data, encoding: .utf8) else {
+            return
+        }
+        DispatchQueue.main.async { [weak self] in
+            self?.webView.evaluateJavaScript("window.riseAlertsResult && window.riseAlertsResult(\(json));")
+        }
+    }
+
+    /// Hands the container's copy of the alert rules back to the page, which
+    /// adopts them only if its own storage has none - the same recovery the
+    /// catch journal gets.
+    private func restoreAlertsIfAvailable() {
+        let rules = RiseAlerts.loadRules()
+        guard !rules.isEmpty,
+              let encoded = try? JSONEncoder().encode(rules),
+              let list = try? JSONSerialization.jsonObject(with: encoded),
+              let data = try? JSONSerialization.data(withJSONObject: ["rules": list]),
+              let json = String(data: data, encoding: .utf8) else {
+            return
+        }
+        webView.evaluateJavaScript("window.riseAlertsRestore && window.riseAlertsRestore(\(json));")
+    }
+
     private func presentExport(csv: String) {
         guard let url = RiseStore.exportURL(csv: csv) else {
             let alert = UIAlertController(title: "Export failed", message: "The catch log could not be written. Free up device storage and try again.", preferredStyle: .alert)
@@ -439,6 +505,7 @@ final class RiseViewController: UIViewController, WKNavigationDelegate, WKScript
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         restoreLogIfAvailable()
+        restoreAlertsIfAvailable()
     }
 
     /// iOS kills the WebContent process under memory pressure - a journal full

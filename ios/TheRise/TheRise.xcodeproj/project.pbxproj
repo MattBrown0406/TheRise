@@ -17,6 +17,8 @@
 		0A0000010000000000000008 /* RiseStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A0000020000000000000009 /* RiseStore.swift */; };
 		0A000001000000000000000A /* RisePhotoSchemeHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A000002000000000000000A /* RisePhotoSchemeHandler.swift */; };
 		0A000001000000000000000B /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 0A000002000000000000000B /* PrivacyInfo.xcprivacy */; };
+		0A000001000000000000000C /* RiseAlerts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A000002000000000000000C /* RiseAlerts.swift */; };
+		0A000001000000000000000D /* RiseNotifications.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A000002000000000000000D /* RiseNotifications.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -31,6 +33,8 @@
 		0A0000020000000000000009 /* RiseStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RiseStore.swift; sourceTree = "<group>"; };
 		0A000002000000000000000A /* RisePhotoSchemeHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RisePhotoSchemeHandler.swift; sourceTree = "<group>"; };
 		0A000002000000000000000B /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		0A000002000000000000000C /* RiseAlerts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RiseAlerts.swift; sourceTree = "<group>"; };
+		0A000002000000000000000D /* RiseNotifications.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RiseNotifications.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -59,6 +63,8 @@
 				0A0000020000000000000001 /* AppDelegate.swift */,
 				0A0000020000000000000002 /* RiseViewController.swift */,
 				0A0000020000000000000009 /* RiseStore.swift */,
+				0A000002000000000000000C /* RiseAlerts.swift */,
+				0A000002000000000000000D /* RiseNotifications.swift */,
 				0A000002000000000000000A /* RisePhotoSchemeHandler.swift */,
 				0A0000020000000000000008 /* SubscriptionConfig.swift */,
 				0A0000020000000000000003 /* Info.plist */,
@@ -161,6 +167,8 @@
 				0A0000010000000000000006 /* SubscriptionConfig.swift in Sources */,
 				0A0000010000000000000008 /* RiseStore.swift in Sources */,
 				0A000001000000000000000A /* RisePhotoSchemeHandler.swift in Sources */,
+				0A000001000000000000000C /* RiseAlerts.swift in Sources */,
+				0A000001000000000000000D /* RiseNotifications.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

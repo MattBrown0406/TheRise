@@ -3826,6 +3826,246 @@
       line-height: 1.4;
     }
 
+    /* Plan the week. One card per water, one row per day; the best open day
+       is marked, a typically snowed-in day is greyed and never scored. */
+    .planner {
+      border: 1px solid #e0dbcf;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, .96);
+      padding: 14px;
+      box-shadow: 0 8px 18px rgba(30, 43, 34, .05);
+      margin-bottom: 18px;
+      display: grid;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .planner-head {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .planner-head > div {
+      flex: 1 1 200px;
+      min-width: 0;
+    }
+
+    .planner-head h3 {
+      margin: 0 0 6px;
+    }
+
+    .planner-head .subtle,
+    .planner-status {
+      margin: 0;
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .planner-status {
+      color: var(--muted);
+    }
+
+    .planner-status.offline,
+    .planner-status.error {
+      color: var(--danger);
+    }
+
+    .planner-waters {
+      display: grid;
+      gap: 8px;
+    }
+
+    .planner-water,
+    .planner-access,
+    .alerts-overview,
+    .alert-editor {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfaf5;
+      padding: 0 12px;
+      min-width: 0;
+    }
+
+    .planner-water summary,
+    .planner-access summary {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 4px 10px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+
+    .planner-water summary span {
+      color: var(--pine);
+      font-weight: 800;
+      font-size: 12px;
+    }
+
+    .planner-days {
+      list-style: none;
+      margin: 0 0 12px;
+      padding: 0;
+      display: grid;
+      gap: 6px;
+    }
+
+    .planner-day {
+      display: grid;
+      grid-template-columns: 38px 34px minmax(0, 1fr);
+      align-items: baseline;
+      gap: 8px;
+      font-size: 12px;
+      padding: 6px 8px;
+      border-radius: 6px;
+      background: var(--panel);
+    }
+
+    .planner-day strong {
+      font-size: 15px;
+    }
+
+    .planner-day b small {
+      display: block;
+      color: var(--pine);
+      font-size: 9px;
+      line-height: 1.1;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+
+    .planner-day span {
+      color: var(--muted);
+      overflow-wrap: anywhere;
+    }
+
+    .planner-day.best {
+      background: #f2f8f4;
+      outline: 1px solid rgba(47, 91, 69, .35);
+    }
+
+    .planner-day.closed {
+      color: var(--muted);
+      background: #f1efe8;
+    }
+
+    .planner-access table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 11px;
+      margin-bottom: 8px;
+      table-layout: fixed;
+    }
+
+    .planner-access th,
+    .planner-access td {
+      text-align: left;
+      vertical-align: top;
+      padding: 5px 4px;
+      border-top: 1px solid var(--line);
+      overflow-wrap: anywhere;
+    }
+
+    .planner-access .subtle {
+      font-size: 12px;
+      margin: 0 0 8px;
+    }
+
+    .planner-link {
+      color: var(--river);
+      font-weight: 800;
+      font-size: 12px;
+      margin-bottom: 10px;
+    }
+
+    .alerts-overview,
+    .alert-editor {
+      padding: 12px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .alerts-overview-head,
+    .alert-editor-head,
+    .alert-rule {
+      display: grid;
+      gap: 4px;
+      min-width: 0;
+    }
+
+    .alerts-overview-head span,
+    .alert-editor-head span,
+    .alert-rule small,
+    .alerts-list span {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .alerts-overview .subtle,
+    .alert-editor .subtle {
+      margin: 0;
+      font-size: 12px;
+    }
+
+    .alerts-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: grid;
+      gap: 8px;
+    }
+
+    .alerts-list li {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .alerts-list li > div {
+      display: grid;
+      gap: 2px;
+      flex: 1 1 160px;
+      min-width: 0;
+    }
+
+    .alert-toggle {
+      justify-self: start;
+    }
+
+    .alert-toggle.active {
+      background: var(--pine);
+      border-color: var(--pine);
+      color: white;
+    }
+
+    .alert-fields {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 8px;
+    }
+
+    .alert-fields label {
+      display: grid;
+      gap: 4px;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--muted);
+      min-width: 0;
+    }
+
+    .alert-fields input,
+    .alert-fields select {
+      width: 100%;
+      min-width: 0;
+    }
+
     /* Touch targets.
 
        Apple's minimum is 44x44pt, and this app is used standing in a river
@@ -3848,7 +4088,8 @@
     .hide-water,
     .primary-btn,
     .fly-trigger-chip,
-    .subscription-legal-links a {
+    .subscription-legal-links a,
+    .planner-link {
       min-height: 44px;
       display: inline-flex;
       align-items: center;
@@ -3860,6 +4101,13 @@
     .water-fly-badge {
       min-height: 44px;
       align-content: center;
+    }
+
+    /* The planner's disclosure rows lay out their own flex row; only the
+       height is set here. */
+    .planner-water summary,
+    .planner-access summary {
+      min-height: 44px;
     }
 
     /* Icon-only, so it needs the horizontal minimum as well. */
@@ -5093,6 +5341,8 @@
         ? savedWaterIds.filter((id) => id !== waterId)
         : validWaterIds([waterId, ...savedWaterIds]);
       writeStoredArray(SAVED_WATERS_KEY, savedWaterIds);
+      // Alerts belong to saved waters; unsaving one turns its alerts off.
+      if (!savedWaterIds.includes(waterId)) dropAlertRule(waterId);
     }
 
     function toggleHiddenWater(waterId) {
@@ -5431,11 +5681,11 @@
       return `Flow below reference (${percent}%)`;
     }
 
-    // Fraction of this water's listed hatches that are actually in season now.
-    function seasonFitFor(water) {
+    // Fraction of this water's listed hatches that are in season - now, or in
+    // the month the planner is scoring.
+    function seasonFitFor(water, month = currentMonth()) {
       const hatches = water.hatch || [];
       if (!hatches.length) return .5;
-      const month = currentMonth();
       const total = hatches.reduce((sum, hatch) => sum + hatchSeasonFit(hatch, month), 0);
       return total / hatches.length;
     }
@@ -7373,6 +7623,703 @@
       return results;
     }
 
+    /* ---------------------------------------------------------------------
+       Plan the week.
+
+       Every score above is for right now. The planner answers a different
+       question - which of the next seven days is worth the drive - with what
+       can honestly be known a week out: the NWS daily forecast for the
+       water's mapped coordinates, and what is in season on that date. Nobody
+       forecasts flow or water temperature for these waters, so the planner
+       does not either. A day score is forecast weather plus season, and the
+       panel says so.
+
+       It is fetched when the angler asks for it, not on every open, so a
+       daily open makes exactly the requests it made before. The forecast URL
+       comes from the grid lookup the live sync already caches (the hourly
+       URL minus "/hourly"), waters on one grid share one fetch, and a
+       fetched forecast is reused for a few hours.
+       --------------------------------------------------------------------- */
+
+    const PLANNER_CACHE_KEY = "risePlannerForecasts.v1";
+    const PLANNER_MAX_WATERS = 8;
+    const PLANNER_DAYS = 7;
+    const PLANNER_FORECAST_FRESH_HOURS = 6;
+    const PLANNER_FORECAST_MAX_AGE_HOURS = 24;
+    const TRIPCHECK_URL = "https://www.tripcheck.com/";
+    const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const SNOWED_IN_REASON = "Typically snowed in - check ODOT TripCheck / USFS";
+
+    /* Typical seasonal closures, not a road report. Snow decides the real
+       dates every year, so these windows are deliberately described as
+       typical, a closed day is never scored, and the panel links to ODOT
+       TripCheck rather than claiming to know. Months and days are inclusive
+       and wrap the new year. */
+    const SEASONAL_ACCESS_CLOSURES = [
+      {
+        id: "cascade-lakes-highway",
+        label: "Cascade Lakes Highway (OR-46) beyond Mt. Bachelor",
+        typical: "Typically closed by snow from about mid-November to late May.",
+        from: [11, 15],
+        to: [5, 25],
+        waters: ["spark-lake", "devils", "elk-lake", "hosmer", "lava", "little-lava", "cultus", "little-cultus", "crane-prairie", "todd-lake", "deer-lake", "doris-lake", "blow-lake", "lucky-lake"],
+        note: { "crane-prairie": "north access via OR-46" }
+      },
+      {
+        id: "high-hike-in-lakes",
+        label: "High lakes off Santiam Pass, Three Creek and Olallie",
+        typical: "Roads and trails are typically snowbound in winter, about mid-November to late June.",
+        from: [11, 15],
+        to: [6, 30],
+        waters: ["big-lake", "square-lake", "three-creek", "little-three-creeks", "ollalie"],
+        note: {}
+      },
+      {
+        id: "willamette-pass-hike-in",
+        label: "Hike-in lakes off Willamette Pass (Rosary, Yoran)",
+        typical: "Trails are typically snowbound in winter, about mid-November to late June.",
+        from: [11, 15],
+        to: [6, 30],
+        waters: ["rosary-lakes", "yoran-lake"],
+        note: {}
+      }
+    ];
+
+    let plannerForecasts = readPlannerForecasts();
+    let plannerStatus = { state: "idle", message: "" };
+    let plannerInFlight = null;
+
+    function readPlannerForecasts() {
+      const saved = readStoredObject(PLANNER_CACHE_KEY);
+      const kept = {};
+      Object.entries(saved).forEach(([url, entry]) => {
+        if (!dailyForecastUrlFrom(url) || !Array.isArray(entry?.days)) return;
+        const age = hoursSince(entry.fetchedAt);
+        if (age === null || age > PLANNER_FORECAST_MAX_AGE_HOURS) return;
+        kept[url] = { fetchedAt: entry.fetchedAt, days: entry.days.filter((day) => /^\d{4}-\d{2}-\d{2}$/.test(day?.date || "")) };
+      });
+      return kept;
+    }
+
+    function writePlannerForecasts() {
+      writeStoredObject(PLANNER_CACHE_KEY, plannerForecasts);
+    }
+
+    // The daily forecast lives beside the hourly one on the same grid.
+    function dailyForecastUrlFrom(url) {
+      if (typeof url !== "string" || !url.startsWith("https://api.weather.gov/gridpoints/")) return null;
+      if (/\/forecast\/hourly$/.test(url)) return url.replace(/\/hourly$/, "");
+      if (/\/forecast$/.test(url)) return url;
+      return null;
+    }
+
+    // Only answers from a grid lookup already cached; never makes a request.
+    function cachedDailyForecastUrl(water) {
+      const coordinates = waterCoordinates[water.id];
+      if (!coordinates) return null;
+      return dailyForecastUrlFrom(nwsGridCache[nwsGridKey(coordinates.lat, coordinates.lon)]);
+    }
+
+    function monthDayInWindow(month, day, window) {
+      const value = month * 100 + day;
+      const from = window.from[0] * 100 + window.from[1];
+      const to = window.to[0] * 100 + window.to[1];
+      return from <= to ? value >= from && value <= to : value >= from || value <= to;
+    }
+
+    // The typical closure covering this water on this Pacific date, if any.
+    function seasonalClosureFor(water, dateKey = pacificDateKey()) {
+      const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(dateKey || ""));
+      if (!water || !match) return null;
+      const month = Number(match[2]);
+      const day = Number(match[3]);
+      return SEASONAL_ACCESS_CLOSURES.find((closure) => closure.waters.includes(water.id) && monthDayInWindow(month, day, closure)) || null;
+    }
+
+    function weekdayLabel(dateKey) {
+      const [year, month, day] = String(dateKey).split("-").map(Number);
+      // A calendar date, not an instant: UTC keeps the device's zone out of it.
+      return WEEKDAY_LABELS[new Date(Date.UTC(year, month - 1, day)).getUTCDay()] || "";
+    }
+
+    // "5 to 10 mph" is planned on its top end; a gusty afternoon is the one
+    // that blows a lake out.
+    function windMphFromText(text) {
+      const value = String(text || "");
+      const numbers = (value.match(/\d+(\.\d+)?/g) || []).map(Number).filter(Number.isFinite);
+      if (!numbers.length) return null;
+      const top = Math.max(...numbers);
+      return Math.round(/km\/h/i.test(value) ? top / 1.609 : top);
+    }
+
+    // The daytime periods of an NWS /forecast response, one per date.
+    function plannerDaysFromForecast(json) {
+      const periods = Array.isArray(json?.properties?.periods) ? json.properties.periods : [];
+      const days = [];
+      for (const period of periods) {
+        if (period?.isDaytime !== true) continue;
+        const date = String(period.startTime || "").slice(0, 10);
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || days.some((day) => day.date === date)) continue;
+        const temperature = Number(period.temperature);
+        const celsius = period.temperatureUnit === "C";
+        const precipitation = period.probabilityOfPrecipitation?.value;
+        days.push({
+          date,
+          highF: Number.isFinite(temperature) && period.temperature !== null ? Math.round(celsius ? temperature * 9 / 5 + 32 : temperature) : null,
+          windMph: windMphFromText(period.windSpeed),
+          forecast: safeText(period.shortForecast, 80),
+          precipitation: typeof precipitation === "number" && Number.isFinite(precipitation) ? precipitation : null
+        });
+        if (days.length >= PLANNER_DAYS) break;
+      }
+      return days;
+    }
+
+    /* The same ingredients fishScore uses that can be known for a future
+       date - the water's baseline, what is in season that month, and the
+       forecast wind, sky and air temperature - with the same weights. Flow,
+       water temperature, local reports and time of day are left out because
+       nothing forecasts them; that is why today's planner score is not
+       today's live score. */
+    function plannerDayScore(water, day) {
+      const month = Number(String(day.date).slice(5, 7));
+      let score = water.score / 10;
+      score += (seasonFitFor(water, month) - .5) * 1.4;
+      const wind = typeof day.windMph === "number" ? day.windMph : null;
+      const forecast = String(day.forecast || "").toLowerCase();
+      if (water.type === "Lake") {
+        if (wind !== null && wind >= 4 && wind <= 11) score += .25;
+        if (wind !== null && wind > 16) score -= .55;
+      } else if (wind !== null && wind > 18) {
+        score -= .25;
+      }
+      if (forecast.includes("cloud") || forecast.includes("overcast")) score += .2;
+      if (forecast.includes("thunder") || forecast.includes("snow")) {
+        score -= .45;
+      } else if (forecast.includes("heavy rain")) {
+        score -= .35;
+      }
+      if (typeof day.highF === "number") {
+        // Iced guides and a frozen lake edge, or an afternoon too hot to
+        // handle a trout.
+        if (day.highF <= 32) score -= .4;
+        if (day.highF >= 90) score -= .35;
+      }
+      return Number(clampScore(score).toFixed(1));
+    }
+
+    function plannerWindPhrase(mph) {
+      if (typeof mph !== "number") return "";
+      if (mph <= 5) return "calm";
+      if (mph <= 11) return "light wind";
+      if (mph <= 18) return `breezy ${mph} mph`;
+      return `windy ${mph} mph`;
+    }
+
+    function plannerDayReason(water, day) {
+      const month = Number(String(day.date).slice(5, 7));
+      const hatch = waterAppropriateHatches(water.hatch, water, { month, fallback: false })[0];
+      const extremeAir = typeof day.highF === "number" && (day.highF <= 32 || day.highF >= 90) ? `high ${day.highF} F` : "";
+      return [
+        String(day.forecast || "").toLowerCase(),
+        hatch ? `${hatch} season` : "nothing listed in season",
+        plannerWindPhrase(day.windMph),
+        extremeAir
+      ].filter(Boolean).join(", ");
+    }
+
+    // Home water, today's top pick, waters with a great-day alert, then the
+    // rest of the saved list - capped, so the planner stays a few requests.
+    function plannerWaters() {
+      const greatDayIds = Object.keys(alertRules).filter((id) => alertRules[id]?.greatDay?.enabled && savedWaterIds.includes(id));
+      return validWaterIds([homeWaterId, topRecommendedWater()?.id, ...greatDayIds, ...savedWaterIds])
+        .filter((id) => waterCoordinates[id] && !hiddenWaterIds.includes(id))
+        .slice(0, PLANNER_MAX_WATERS)
+        .map(waterById);
+    }
+
+    function plannerForWater(water, today = pacificDateKey()) {
+      const url = cachedDailyForecastUrl(water);
+      const forecast = url ? plannerForecasts[url] : null;
+      const age = forecast ? hoursSince(forecast.fetchedAt) : null;
+      if (!forecast || age === null || age > PLANNER_FORECAST_MAX_AGE_HOURS) {
+        return { water, days: [], best: null, fetchedAt: null };
+      }
+      const days = forecast.days
+        .filter((day) => day.date >= today)
+        .slice(0, PLANNER_DAYS)
+        .map((day) => {
+          const closure = seasonalClosureFor(water, day.date);
+          return {
+            ...day,
+            label: weekdayLabel(day.date),
+            closure,
+            score: closure ? null : plannerDayScore(water, day),
+            reason: closure ? SNOWED_IN_REASON : plannerDayReason(water, day)
+          };
+        });
+      const best = days.reduce((top, day) => (day.score !== null && (!top || day.score > top.score) ? day : top), null);
+      return { water, days, best, fetchedAt: forecast.fetchedAt };
+    }
+
+    async function loadPlannerForecasts(options = {}) {
+      const { force = false, waterList = plannerWaters(), render = true } = options;
+      if (plannerInFlight) return plannerInFlight;
+      if (navigator.onLine === false) {
+        plannerStatus = { state: "offline", message: "Offline - no forecast could be loaded. Nothing is shown in its place." };
+        if (render) renderScreens("today");
+        return false;
+      }
+      plannerStatus = { state: "loading", message: "" };
+      if (render) renderScreens("today");
+      plannerInFlight = (async () => {
+        const byUrl = new Map();
+        const results = await Promise.allSettled(waterList.map(async (water) => {
+          const coordinates = waterCoordinates[water.id];
+          if (!coordinates) throw new Error("No mapped coordinates for this water");
+          const url = dailyForecastUrlFrom(await nwsForecastUrlFor(coordinates.lat, coordinates.lon));
+          if (!url) throw new Error("NWS grid has no daily forecast");
+          const age = plannerForecasts[url] ? hoursSince(plannerForecasts[url].fetchedAt) : null;
+          if (!force && age !== null && age < PLANNER_FORECAST_FRESH_HOURS) return true;
+          // Waters on one grid share one request.
+          if (!byUrl.has(url)) {
+            byUrl.set(url, fetchNwsForecast(url).then((json) => {
+              const days = plannerDaysFromForecast(json);
+              if (!days.length) throw new Error("NWS returned no daytime forecast");
+              plannerForecasts = { ...plannerForecasts, [url]: { fetchedAt: new Date().toISOString(), days } };
+              return true;
+            }));
+          }
+          return byUrl.get(url);
+        }));
+        const loaded = results.filter((result) => result.status === "fulfilled").length;
+        plannerForecasts = Object.fromEntries(Object.entries(plannerForecasts).filter(([, entry]) => {
+          const age = hoursSince(entry.fetchedAt);
+          return age !== null && age <= PLANNER_FORECAST_MAX_AGE_HOURS;
+        }).slice(-16));
+        writePlannerForecasts();
+        if (!loaded) {
+          plannerStatus = {
+            state: navigator.onLine === false ? "offline" : "error",
+            message: "No forecast could be loaded from the National Weather Service. Nothing is shown in its place."
+          };
+          return false;
+        }
+        const missing = waterList.length - loaded;
+        plannerStatus = { state: "ready", message: missing ? `${missing} of ${waterList.length} waters have no forecast right now.` : "" };
+        return true;
+      })();
+      try {
+        return await plannerInFlight;
+      } finally {
+        plannerInFlight = null;
+        if (render) renderScreens("today");
+        postGreatDaySchedule();
+      }
+    }
+
+    function plannerDayRow(day, best) {
+      const isBest = Boolean(best) && day.date === best.date;
+      return `
+        <li class="planner-day ${isBest ? "best" : ""} ${day.closure ? "closed" : ""}">
+          <b>${esc(day.label)}${isBest ? `<small>Best day</small>` : ""}</b>
+          <strong>${day.score === null ? "--" : esc(day.score.toFixed(1))}</strong>
+          <span>${esc(day.reason)}</span>
+        </li>
+      `;
+    }
+
+    function plannerAccessTable(plans) {
+      const affected = SEASONAL_ACCESS_CLOSURES.filter((closure) => plans.some((plan) => closure.waters.includes(plan.water.id)));
+      const open = plans.some((plan) => plan.days.some((day) => day.closure));
+      return `
+        <details class="planner-access" ${open ? "open" : ""}>
+          <summary>Typical seasonal closures${affected.length ? ` - ${affected.length} affect${affected.length === 1 ? "s" : ""} your waters` : ""}</summary>
+          <p class="subtle">Typical, not authoritative: snow sets the real dates every year. A day inside one of these windows is marked snowed in, not scored.</p>
+          <table>
+            <thead><tr><th>Route or area</th><th>Typically</th><th>Waters</th></tr></thead>
+            <tbody>
+              ${SEASONAL_ACCESS_CLOSURES.map((closure) => `
+                <tr>
+                  <td>${esc(closure.label)}</td>
+                  <td>${esc(closure.typical)}</td>
+                  <td>${closure.waters.map((id) => {
+                    const water = waterById(id);
+                    const note = closure.note[id];
+                    return water ? esc(`${water.name}${note ? ` (${note})` : ""}`) : "";
+                  }).filter(Boolean).join(", ")}</td>
+                </tr>
+              `).join("")}
+            </tbody>
+          </table>
+          <a class="planner-link" href="${TRIPCHECK_URL}">Check ODOT TripCheck for current road conditions</a>
+        </details>
+      `;
+    }
+
+    function plannerStatusLine(plans) {
+      const fetched = plans.map((plan) => plan.fetchedAt).filter(Boolean).sort()[0];
+      if (plannerStatus.state === "loading") return "Loading the NWS 7-day forecast...";
+      if (plannerStatus.state === "offline" || plannerStatus.state === "error") {
+        return fetched ? `${plannerStatus.message} Showing the forecast saved ${formatSavedTime(fetched)}.` : plannerStatus.message;
+      }
+      if (fetched) return `NWS forecast saved ${formatSavedTime(fetched)}.${plannerStatus.message ? ` ${plannerStatus.message}` : ""}`;
+      return `Load the NWS 7-day forecast for ${plans.length} water${plans.length === 1 ? "" : "s"}: your home water, today's top pick and your saved waters.`;
+    }
+
+    function plannerPanel() {
+      const plans = plannerWaters().map((water) => plannerForWater(water));
+      const loaded = plans.some((plan) => plan.days.length);
+      const loading = plannerStatus.state === "loading";
+      const label = loading ? "Loading..." : loaded ? "Refresh forecast" : "Plan the week";
+      return `
+        <div class="planner" role="region" aria-label="Plan the week">
+          <div class="planner-head">
+            <div>
+              <p class="eyebrow">Plan the week</p>
+              <h3>Best day this week</h3>
+              <p class="subtle">Day scores use the NWS forecast and what is in season. They are not gauge readings: nobody forecasts flow or water temperature here.</p>
+            </div>
+            <button class="ghost-btn" data-plan-week ${loading ? "disabled" : ""}>${label}</button>
+          </div>
+          <p class="planner-status ${plannerStatus.state}">${esc(plannerStatusLine(plans))}</p>
+          ${loaded ? `<div class="planner-waters">
+            ${plans.map((plan, index) => `
+              <details class="planner-water" data-planner-water="${attr(plan.water.id)}" ${index === 0 ? "open" : ""}>
+                <summary>
+                  <strong>${esc(plan.water.name)}</strong>
+                  <span>${plan.best ? `Best: ${esc(plan.best.label)} ${esc(plan.best.score.toFixed(1))}` : plan.days.length ? "Typically snowed in all week" : "No forecast"}</span>
+                </summary>
+                ${plan.days.length
+                  ? `<ol class="planner-days">${plan.days.map((day) => plannerDayRow(day, plan.best)).join("")}</ol>`
+                  : `<p class="subtle">No forecast is loaded for this water, so no day is scored.</p>`}
+              </details>
+            `).join("")}
+          </div>` : ""}
+          ${plannerAccessTable(plans)}
+          ${alertsOverview()}
+        </div>
+      `;
+    }
+
+    /* ---------------------------------------------------------------------
+       Alerts for saved waters.
+
+       Local notifications only. The rules live on this device - here in
+       localStorage and, through the riseAlerts bridge, in the app container -
+       and the decisions are made on the phone: the container re-reads the
+       public USGS gauge in the background for a flow alert, and schedules a
+       great-day alert from the planner's own day score. Nothing is sent to a
+       server, and there is no account.
+       --------------------------------------------------------------------- */
+
+    const ALERT_RULES_KEY = "riseAlertRules.v1";
+    const GREAT_DAY_DEFAULT_THRESHOLD = 8;
+    const GREAT_DAY_THRESHOLDS = [6, 6.5, 7, 7.5, 8, 8.5, 9, 9.5];
+
+    let alertRules = normalizeAlertRules(readStoredObject(ALERT_RULES_KEY));
+    let alertPermission = "unknown";
+
+    function finiteOrNull(value) {
+      if (value === null || value === undefined || value === "") return null;
+      const number = Number(value);
+      return Number.isFinite(number) && number >= 0 && number <= 1000000 ? Math.round(number) : null;
+    }
+
+    // The band the score already treats as "near reference", as a starting
+    // point the angler can change.
+    function defaultFlowRange(water) {
+      const reference = flowFromText(water.flow);
+      if (reference === null || reference <= 0) return { min: null, max: null };
+      return { min: Math.round(reference * .75), max: Math.round(reference * 1.35) };
+    }
+
+    function normalizeAlertRule(waterId, rule) {
+      const water = waterById(waterId);
+      if (!water || !rule || typeof rule !== "object") return null;
+      const threshold = Number(rule.greatDay?.threshold);
+      return {
+        flow: hasGauge(water)
+          ? { enabled: rule.flow?.enabled === true, min: finiteOrNull(rule.flow?.min), max: finiteOrNull(rule.flow?.max) }
+          : { enabled: false, min: null, max: null },
+        greatDay: {
+          enabled: rule.greatDay?.enabled === true,
+          threshold: Number.isFinite(threshold) ? Math.min(10, Math.max(5, Math.round(threshold * 2) / 2)) : GREAT_DAY_DEFAULT_THRESHOLD
+        }
+      };
+    }
+
+    function normalizeAlertRules(raw) {
+      const rules = {};
+      Object.entries(raw && typeof raw === "object" ? raw : {}).forEach(([waterId, rule]) => {
+        const normalized = normalizeAlertRule(waterId, rule);
+        if (normalized) rules[waterId] = normalized;
+      });
+      return rules;
+    }
+
+    function alertRuleFor(waterId) {
+      const water = waterById(waterId);
+      if (alertRules[waterId]) return alertRules[waterId];
+      const range = water && hasGauge(water) ? defaultFlowRange(water) : { min: null, max: null };
+      return { flow: { enabled: false, ...range }, greatDay: { enabled: false, threshold: GREAT_DAY_DEFAULT_THRESHOLD } };
+    }
+
+    function flowRangeValid(rule) {
+      return rule.flow.min !== null && rule.flow.max !== null && rule.flow.min < rule.flow.max;
+    }
+
+    // What the container needs: site id, water name and the range, per water.
+    function alertRulesForNative() {
+      return Object.entries(alertRules)
+        .filter(([waterId]) => savedWaterIds.includes(waterId))
+        .map(([waterId, rule]) => {
+          const water = waterById(waterId);
+          const flowActive = rule.flow.enabled && hasGauge(water) && flowRangeValid(rule);
+          return {
+            waterId,
+            waterName: water.name,
+            site: liveSources[waterId]?.usgs || "",
+            flow: flowActive ? { min: rule.flow.min, max: rule.flow.max } : null,
+            greatDay: rule.greatDay.enabled ? { threshold: rule.greatDay.threshold } : null
+          };
+        })
+        .filter((rule) => rule.flow || rule.greatDay);
+    }
+
+    function hasAlertsBridge() {
+      return Boolean(window.webkit?.messageHandlers?.riseAlerts);
+    }
+
+    function postAlertsMessage(payload) {
+      if (!hasAlertsBridge()) return false;
+      try {
+        window.webkit.messageHandlers.riseAlerts.postMessage(payload);
+        return true;
+      } catch {
+        return false;
+      }
+    }
+
+    function syncAlertsToNative(requestPermission = false) {
+      return postAlertsMessage({ action: "setRules", rules: alertRulesForNative(), requestPermission });
+    }
+
+    function setAlertRules(next, options = {}) {
+      alertRules = normalizeAlertRules(next);
+      writeStoredObject(ALERT_RULES_KEY, alertRules);
+      syncAlertsToNative(Boolean(options.requestPermission));
+    }
+
+    function toggleAlert(waterId, kind) {
+      const water = waterById(waterId);
+      if (!water || !savedWaterIds.includes(waterId) || !["flow", "greatDay"].includes(kind)) return;
+      if (kind === "flow" && !hasGauge(water)) return;
+      const rule = alertRuleFor(waterId);
+      const turningOn = !rule[kind].enabled;
+      setAlertRules({ ...alertRules, [waterId]: { ...rule, [kind]: { ...rule[kind], enabled: turningOn } } }, { requestPermission: turningOn });
+      if (kind === "greatDay") {
+        if (turningOn && !plannerForWater(water).days.length) {
+          loadPlannerForecasts({ waterList: [water] });
+        } else {
+          postGreatDaySchedule();
+        }
+      }
+    }
+
+    function setAlertField(waterId, field, value) {
+      if (!savedWaterIds.includes(waterId) || !waterById(waterId)) return;
+      const rule = alertRuleFor(waterId);
+      const next = {
+        flow: { ...rule.flow },
+        greatDay: { ...rule.greatDay }
+      };
+      if (field === "flowMin") next.flow.min = finiteOrNull(value);
+      else if (field === "flowMax") next.flow.max = finiteOrNull(value);
+      else if (field === "threshold") next.greatDay.threshold = Number(value);
+      else return;
+      setAlertRules({ ...alertRules, [waterId]: next });
+      if (field === "threshold") postGreatDaySchedule();
+    }
+
+    // A water that is no longer saved keeps no alert.
+    function dropAlertRule(waterId) {
+      if (!alertRules[waterId]) return;
+      const { [waterId]: _dropped, ...rest } = alertRules;
+      setAlertRules(rest);
+    }
+
+    function greatDayAlertWaters() {
+      return Object.keys(alertRules)
+        .filter((waterId) => alertRules[waterId].greatDay.enabled && savedWaterIds.includes(waterId) && waterCoordinates[waterId])
+        .map(waterById)
+        .filter(Boolean);
+    }
+
+    // The days at or above each water's threshold, for waters whose forecast
+    // is loaded. A water with no forecast is left out rather than sent as
+    // "no great days", which would clear what the container already holds.
+    function greatDaySchedule(today = pacificDateKey()) {
+      return greatDayAlertWaters()
+        .map((water) => {
+          const rule = alertRules[water.id];
+          const plan = plannerForWater(water, today);
+          return {
+            waterId: water.id,
+            waterName: water.name,
+            threshold: rule.greatDay.threshold,
+            loaded: plan.days.length > 0,
+            days: plan.days
+              .filter((day) => day.score !== null && day.score >= rule.greatDay.threshold && day.date > today)
+              .map((day) => ({ date: day.date, label: day.label, score: day.score, reason: day.reason }))
+          };
+        })
+        .filter((entry) => entry.loaded)
+        .map(({ loaded, ...entry }) => entry);
+    }
+
+    function postGreatDaySchedule() {
+      const schedule = greatDaySchedule();
+      if (!schedule.length) return false;
+      return postAlertsMessage({ action: "scheduleGreatDays", waters: schedule });
+    }
+
+    // After the daily sync: only waters with a great-day alert, and only when
+    // the angler has turned one on, so a daily open without alerts makes no
+    // extra request.
+    function refreshGreatDayForecasts() {
+      const list = greatDayAlertWaters();
+      if (!list.length || navigator.onLine === false) return Promise.resolve(false);
+      return loadPlannerForecasts({ waterList: list });
+    }
+
+    function alertPermissionLine() {
+      if (!hasAlertsBridge()) return "Rules are saved on this device. Notifications are delivered by The Rise iOS app.";
+      if (alertPermission === "denied") return "Notifications are off for The Rise in iOS Settings, so these alerts cannot be delivered.";
+      if (alertPermission === "granted" || alertPermission === "provisional") {
+        return "Notifications on. iOS decides when background checks run - usually a few times a day, not on a fixed schedule.";
+      }
+      return "iOS asks for notification permission the first time you turn an alert on.";
+    }
+
+    function alertRuleSummary(waterId) {
+      const rule = alertRuleFor(waterId);
+      const parts = [];
+      if (rule.flow.enabled) {
+        parts.push(flowRangeValid(rule)
+          ? `Flow ${rule.flow.min.toLocaleString("en-US")}-${rule.flow.max.toLocaleString("en-US")} cfs`
+          : "Flow alert needs a minimum below the maximum");
+      }
+      if (rule.greatDay.enabled) parts.push(`Great day at ${rule.greatDay.threshold.toFixed(1)}+`);
+      return parts.length ? parts.join(" - ") : "No alerts";
+    }
+
+    function alertsOverview() {
+      const saved = validWaterIds(savedWaterIds);
+      return `
+        <div class="alerts-overview">
+          <div class="alerts-overview-head">
+            <strong>Alerts for saved waters</strong>
+            <span>Local notifications worked out on this phone. Nothing is sent to a server.</span>
+          </div>
+          ${saved.length ? `
+            <ul class="alerts-list">
+              ${saved.map((waterId) => `
+                <li>
+                  <div>
+                    <b>${esc(waterById(waterId).name)}</b>
+                    <span>${esc(alertRuleSummary(waterId))}</span>
+                  </div>
+                  <button class="ghost-btn" data-edit-alerts="${attr(waterId)}">Set alerts</button>
+                </li>
+              `).join("")}
+            </ul>
+          ` : `<p class="subtle">Save a water with its star to set an alert for it.</p>`}
+          <p class="subtle">${esc(alertPermissionLine())}</p>
+        </div>
+      `;
+    }
+
+    function alertEditor(water) {
+      const id = attr(water.id);
+      if (!savedWaterIds.includes(water.id)) {
+        return `
+          <div class="alert-editor" data-alert-editor="${id}">
+            <div class="alert-editor-head">
+              <strong>Alerts</strong>
+              <span>Save this water to get a local notification when its flow is in your range or a great day is coming.</span>
+            </div>
+            <button class="ghost-btn" data-save-water="${id}">Save water</button>
+          </div>
+        `;
+      }
+      const rule = alertRuleFor(water.id);
+      const gauge = liveSources[water.id]?.usgs;
+      const flowWarning = rule.flow.enabled && !flowRangeValid(rule) ? "Set a minimum below the maximum, or this alert stays off." : "";
+      return `
+        <div class="alert-editor" data-alert-editor="${id}">
+          <div class="alert-editor-head">
+            <strong>Alerts</strong>
+            <span>Local notifications from this phone. Nothing is sent to a server.</span>
+          </div>
+          ${gauge ? `
+            <div class="alert-rule">
+              <button class="ghost-btn alert-toggle ${rule.flow.enabled ? "active" : ""}" data-alert-toggle="flow" data-alert-water="${id}" aria-pressed="${rule.flow.enabled}">Flow in my range: ${rule.flow.enabled ? "On" : "Off"}</button>
+              <div class="alert-fields">
+                <label>Min cfs<input type="number" inputmode="numeric" min="0" step="1" data-alert-field="flowMin" data-alert-water="${id}" value="${attr(rule.flow.min ?? "")}"></label>
+                <label>Max cfs<input type="number" inputmode="numeric" min="0" step="1" data-alert-field="flowMax" data-alert-water="${id}" value="${attr(rule.flow.max ?? "")}"></label>
+              </div>
+              <small>${flowWarning ? esc(flowWarning) : `Read from USGS gauge ${esc(gauge)} in the background when iOS allows. At most one alert a day, when the flow moves into your range.`}</small>
+            </div>
+          ` : `
+            <div class="alert-rule">
+              <small>Flow alerts need a USGS gauge, and none is mapped to this water.</small>
+            </div>
+          `}
+          <div class="alert-rule">
+            <button class="ghost-btn alert-toggle ${rule.greatDay.enabled ? "active" : ""}" data-alert-toggle="greatDay" data-alert-water="${id}" aria-pressed="${rule.greatDay.enabled}">Great day ahead: ${rule.greatDay.enabled ? "On" : "Off"}</button>
+            <div class="alert-fields">
+              <label>When a day scores at least<select data-alert-field="threshold" data-alert-water="${id}">
+                ${GREAT_DAY_THRESHOLDS.map((value) => `<option value="${value}" ${value === rule.greatDay.threshold ? "selected" : ""}>${value.toFixed(1)}</option>`).join("")}
+              </select></label>
+            </div>
+            <small>Uses the Plan the week day score - forecast weather and season, not gauges. Sent about 6 PM the evening before.</small>
+          </div>
+          <p class="subtle alert-editor-status">${esc(alertPermissionLine())}</p>
+        </div>
+      `;
+    }
+
+    // Answers to setRules and status requests from the container.
+    window.riseAlertsResult = function(result) {
+      if (result?.action !== "permission") return;
+      const status = String(result.status || "");
+      alertPermission = ["granted", "denied", "notDetermined", "provisional"].includes(status) ? status : "unknown";
+      renderScreens("today", "waters");
+    };
+
+    // The container keeps its own copy of the rules. If WebKit evicted this
+    // page's storage, the container's copy comes back here rather than the
+    // angler's alerts silently living on with no way to see or turn them off.
+    window.riseAlertsRestore = function(payload) {
+      if (Object.keys(alertRules).length) return;
+      const restored = {};
+      (Array.isArray(payload?.rules) ? payload.rules : []).forEach((rule) => {
+        const water = waterById(String(rule?.waterId || ""));
+        if (!water) return;
+        restored[water.id] = {
+          flow: rule.flow ? { enabled: true, min: rule.flow.min, max: rule.flow.max } : { enabled: false },
+          greatDay: rule.greatDay ? { enabled: true, threshold: rule.greatDay.threshold } : { enabled: false }
+        };
+      });
+      if (!Object.keys(restored).length) return;
+      alertRules = normalizeAlertRules(restored);
+      writeStoredObject(ALERT_RULES_KEY, alertRules);
+      savedWaterIds = validWaterIds([...savedWaterIds, ...Object.keys(alertRules)]);
+      writeStoredArray(SAVED_WATERS_KEY, savedWaterIds);
+      renderScreens("today", "waters");
+    };
+
     function numberFromText(text) {
       const match = String(text || "").match(/-?\d+(\.\d+)?/);
       return match ? Number(match[0]) : null;
@@ -8201,6 +9148,7 @@
           </div>
           ${fishPlanPanel(water, true)}
           ${flowHistoryPanel(water)}
+          ${alertEditor(water)}
           <div class="compact-note"><b>Read:</b> ${water.read}</div>
           <div class="compact-lines">
             <div class="line-row"><span>Regulations</span><b>${water.regs}</b></div>
@@ -8379,6 +9327,8 @@
             </div>
 
             ${fishPlanPanel(topPick)}
+
+            ${plannerPanel()}
 
             <div class="command-grid">
               <div class="command-card primary" role="button" tabindex="0" data-water="${topPick.id}" data-go="waters">
@@ -9348,7 +10298,7 @@
                 </div>
               `).join("")}
             </div>
-            <p class="subtle" style="margin-top:12px">Every feature above works on this device with no account. The Rise does not send notifications; water rankings, live gauge and forecast readings, hatches, fly picks, the bug library, and your catch log are free and stay free.</p>
+            <p class="subtle" style="margin-top:12px">Every feature above works on this device with no account. Water rankings, live gauge and forecast readings, the week planner, hatches, fly picks, the bug library, your catch log, and alerts for saved waters are free and stay free. Alerts are local notifications you turn on per water; they are worked out on this phone and nothing is sent to a server.</p>
           </div>
         </div>
       `;
@@ -9511,10 +10461,17 @@
       Object.keys(screenRenderers).forEach(renderScreen);
     }
 
+    // The day's sync, then - only for an angler who turned a great-day alert
+    // on - the planner forecast for those waters, so the container can
+    // schedule tomorrow's notification without the app being opened to it.
+    function runDailyOpenSync() {
+      return Promise.resolve(refreshAllWaterReports("daily-open")).finally(() => refreshGreatDayForecasts());
+    }
+
     function runInitialDataSync() {
       if (navigator.onLine === false) return;
       if (shouldRunDailyOpenSync()) {
-        refreshAllWaterReports("daily-open");
+        runDailyOpenSync();
       } else if (!liveReports.byWater[activeWater]) {
         refreshLiveReport(activeWater, { mode: "startup" });
       }
@@ -9522,7 +10479,7 @@
 
     function checkDailyOpenSync() {
       if (navigator.onLine === false || liveReports.bulkStatus) return;
-      if (shouldRunDailyOpenSync()) refreshAllWaterReports("daily-open");
+      if (shouldRunDailyOpenSync()) runDailyOpenSync();
     }
 
     function startDailyOpenSyncWatcher() {
@@ -9936,6 +10893,25 @@
         scrollAppTo("#today .score-breakdown-panel");
       }],
       ["[data-refresh-subscription]", () => syncSubscriptionStatus()],
+      ["[data-plan-week]", () => loadPlannerForecasts({ force: true })],
+      ["[data-edit-alerts]", (element) => {
+        const waterId = element.dataset.editAlerts;
+        if (!waterById(waterId)) return;
+        waterQuery = "";
+        waterFilter = "All";
+        expandedWaterId = waterId;
+        saveActiveWater(waterId);
+        renderAll();
+        activateTab("waters");
+        scrollAppTo(`#waters [data-alert-editor="${waterId}"]`);
+      }],
+      ["[data-alert-toggle]", (element) => {
+        toggleAlert(element.dataset.alertWater, element.dataset.alertToggle);
+        renderScreens("today", "waters");
+      }],
+      // Taps inside the alert editor that miss its controls stop here, so
+      // focusing a field does not collapse the water card around it.
+      ["[data-alert-editor]", () => {}],
       ["[data-water]", (element, event) => {
         const nestedControl = event.target.closest("button, a, input, select, textarea");
         if (nestedControl && nestedControl !== element) return;
@@ -10002,6 +10978,12 @@
           saveActiveWater(target.value);
           renderAll();
           if (!liveReports.byWater[homeWaterId] && navigator.onLine !== false) refreshLiveReport(homeWaterId, { mode: "manual" });
+          return;
+        }
+        if (target.matches("[data-alert-field]")) {
+          // Saved without a repaint: the next field the angler tapped would
+          // be replaced under their finger.
+          setAlertField(target.dataset.alertWater, target.dataset.alertField, target.value);
           return;
         }
         if (target.matches("[data-hatch-trait]")) {
@@ -10229,6 +11211,15 @@
       scrollAppTo("#today .first-run");
     }
     syncSubscriptionStatus();
+    // The container is told the current rules on every launch, and asked
+    // whether notifications are allowed. With no rules here it is only asked:
+    // an empty list would erase the copy it keeps for a page whose storage
+    // was evicted, which it hands back through riseAlertsRestore.
+    if (Object.keys(alertRules).length) {
+      syncAlertsToNative(false);
+    } else {
+      postAlertsMessage({ action: "status" });
+    }
     runInitialDataSync();
     startDailyOpenSyncWatcher();
   </script>

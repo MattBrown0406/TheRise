@@ -4,11 +4,14 @@
 <dict>
 	<!--
 	  The Rise does not track, does not collect, and does not transmit user data.
-	  Catch photos, the catch journal and the last saved location stay in the
-	  app container on the device. The only network traffic is anonymous reads
-	  of public USGS, NWS and ODFW endpoints, which carry no user data.
+	  Catch photos, the catch journal, the last saved location and the alert
+	  rules for saved waters stay in the app container on the device. Alerts
+	  are local notifications decided on the device. The only network traffic
+	  is anonymous reads of public USGS, NWS and ODFW endpoints, which carry no
+	  user data.
 
-	  The app target itself calls no required-reason APIs. Third-party SDKs
+	  The app target itself calls no required-reason APIs: the alert rules are
+	  a JSON file in Application Support, not UserDefaults. Third-party SDKs
 	  (RevenueCat) ship their own signed privacy manifests, which Xcode
 	  aggregates into the app's privacy report at build time.
 	-->

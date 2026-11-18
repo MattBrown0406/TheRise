@@ -155,6 +155,35 @@ const instrumentation = `
   };
 `;
 
+/* A seven-day NWS /forecast response, dated from today in Oregon, served
+   in front of the instrumentation's scripted fetch. Day and night periods
+   alternate as they do from api.weather.gov; the third day is windy and the
+   fifth snows, so the planner has something to rank. */
+const dailyForecastFixture = `
+  (() => {
+    const scripted = window.fetch;
+    window.__dailyForecasts = 0;
+    window.fetch = function (url) {
+      const href = String(url);
+      if (!/^https:\\/\\/api\\.weather\\.gov\\/gridpoints\\/.*\\/forecast$/.test(href)) return scripted.call(this, url);
+      window.__requests.push(href);
+      window.__dailyForecasts += 1;
+      if (window.__fetchPlan.mode === "offline") return Promise.reject(new TypeError("Failed to fetch"));
+      const format = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Los_Angeles", year: "numeric", month: "2-digit", day: "2-digit" });
+      const skies = ["Mostly Cloudy", "Sunny", "Chance Thunderstorms", "Partly Sunny", "Snow", "Cloudy", "Sunny"];
+      const periods = [];
+      for (let index = 0; index < 7; index += 1) {
+        const date = format.format(new Date(Date.now() + index * 86400000));
+        periods.push({ name: "Day " + index, startTime: date + "T06:00:00-08:00", isDaytime: true, temperature: 55, temperatureUnit: "F",
+          windSpeed: index === 2 ? "20 to 25 mph" : "5 to 10 mph", shortForecast: skies[index], probabilityOfPrecipitation: { value: 20 } });
+        periods.push({ name: "Night " + index, startTime: date + "T18:00:00-08:00", isDaytime: false, temperature: 35, temperatureUnit: "F",
+          windSpeed: "5 mph", shortForecast: "Clear" });
+      }
+      return Promise.resolve(new Response(JSON.stringify({ properties: { periods } }), { status: 200, headers: { "Content-Type": "application/json" } }));
+    };
+  })();
+`;
+
 /* Every page gets its own browser context.
    file:// pages share one localStorage origin, so tests used to inherit each
    other's journal and water cache. That made a fresh-install test impossible
@@ -2106,6 +2135,301 @@ try {
     assert(/seasonal reference|measured/.test(today), "the condition cards say where each number came from");
     await page.close();
   }
+
+  /* ---------------------------------------------------------------- */
+  group("Plan the week: fetched on request, scored from the forecast, honest when it cannot be");
+
+  {
+    const page = await openApp(browser, { before: dailyForecastFixture, viewport: { width: 390, height: 844 } });
+    const opened = await page.evaluate(async () => {
+      localStorage.setItem("riseSavedWaters.v1", JSON.stringify(["metolius", "hosmer", "crooked"]));
+      return true;
+    });
+    await page.reload({ waitUntil: "load" });
+    await page.evaluate(() => new Promise((done) => requestAnimationFrame(done)));
+    const idle = await page.evaluate(() => ({
+      panel: Boolean(document.querySelector("#today .planner")),
+      button: document.querySelector("#today [data-plan-week]")?.textContent.trim(),
+      rows: document.querySelectorAll("#today .planner-day").length,
+      dailyRequests: window.__requests.filter((url) => /\/forecast$/.test(url)).length
+    }));
+    assert(opened && idle.panel, "the Plan the week panel is on Today");
+    assert(idle.button === "Plan the week", `it waits to be asked (${idle.button})`);
+    assert(idle.rows === 0, "nothing is shown before a forecast is loaded");
+    assert(idle.dailyRequests === 0, `opening the app fetches no planner forecast (${idle.dailyRequests})`);
+
+    const loaded = await page.evaluate(async () => {
+      window.__fetchPlan = { mode: "online", body: "" };
+      window.__requests.length = 0;
+      window.__dailyForecasts = 0;
+      const before = window.__listenerCount(document, "click");
+      document.querySelector("#today [data-plan-week]").click();
+      await new Promise((done) => setTimeout(done, 50));
+      await (plannerInFlight || Promise.resolve());
+      await new Promise((done) => requestAnimationFrame(done));
+      const waterCards = [...document.querySelectorAll("#today .planner-water")];
+      const today = pacificDateKey();
+      return {
+        listenersAdded: window.__listenerCount(document, "click") - before,
+        waters: waterCards.map((card) => card.dataset.plannerWater),
+        dayCounts: waterCards.map((card) => card.querySelectorAll(".planner-day").length),
+        bestCounts: waterCards.map((card) => card.querySelectorAll(".planner-day.best").length),
+        openDayCounts: waterCards.map((card) => card.querySelectorAll(".planner-day:not(.closed)").length),
+        closedRows: [...document.querySelectorAll("#today .planner-day.closed")].map((row) => row.textContent.replace(/\s+/g, " ").trim()),
+        expectedClosed: plannerWaters().reduce((sum, water) => sum + plannerForWater(water, today).days.filter((day) => day.closure).length, 0),
+        firstReason: document.querySelector("#today .planner-day:not(.closed) span")?.textContent || "",
+        dailyRequests: window.__dailyForecasts,
+        tripcheck: document.querySelector("#today .planner-access a[href]")?.getAttribute("href") || "",
+        status: document.querySelector("#today .planner-status")?.textContent || "",
+        disclaimer: document.querySelector("#today .planner-head .subtle")?.textContent || ""
+      };
+    });
+    assert(loaded.listenersAdded === 0, "loading the planner attaches no listener");
+    assert(loaded.waters[0] === "lower-deschutes" && loaded.waters.includes("metolius") && loaded.waters.includes("hosmer"),
+      `home, top pick and saved waters are planned (${loaded.waters.join(", ")})`);
+    assert(loaded.waters.length <= 8, `at most eight waters (${loaded.waters.length})`);
+    assert(loaded.dayCounts.every((count) => count === 7), `each water shows seven days (${loaded.dayCounts.join(",")})`);
+    assert(loaded.bestCounts.every((count, index) => count === (loaded.openDayCounts[index] ? 1 : 0)),
+      "each water with an open day highlights exactly one best day");
+    assert(loaded.dailyRequests === 1, `waters on one NWS grid share one forecast request (${loaded.dailyRequests})`);
+    assert(loaded.closedRows.length === loaded.expectedClosed, `typically closed days are marked, not scored (${loaded.closedRows.length} of ${loaded.expectedClosed})`);
+    assert(loaded.closedRows.every((row) => /Typically snowed in - check ODOT TripCheck \/ USFS/.test(row) && /--/.test(row)),
+      "a snowed-in day carries no score and points at TripCheck");
+    assert(/season/.test(loaded.firstReason), `a scored day gives its one-line reason (${loaded.firstReason})`);
+    assert(loaded.tripcheck === "https://www.tripcheck.com/", "the closure table links to ODOT TripCheck");
+    assert(/NWS forecast saved/.test(loaded.status), `the panel says where the days came from (${loaded.status})`);
+    assert(/not gauge readings/.test(loaded.disclaimer), "and that day scores are forecast and season, not gauges");
+
+    const reopened = await page.evaluate(async () => {
+      window.__dailyForecasts = 0;
+      renderAll();
+      return { rows: document.querySelectorAll("#today .planner-day").length, requests: window.__dailyForecasts };
+    });
+    assert(reopened.rows > 0 && reopened.requests === 0, "a loaded forecast is reused on the next render without a request");
+    await page.close();
+  }
+
+  {
+    const page = await openApp(browser, { before: dailyForecastFixture });
+    const offline = await page.evaluate(async () => {
+      document.querySelector("#today [data-plan-week]").click();
+      await new Promise((done) => setTimeout(done, 50));
+      await (plannerInFlight || Promise.resolve());
+      await new Promise((done) => requestAnimationFrame(done));
+      return {
+        rows: document.querySelectorAll("#today .planner-day").length,
+        status: document.querySelector("#today .planner-status")?.textContent || "",
+        tone: document.querySelector("#today .planner-status")?.className || ""
+      };
+    });
+    assert(offline.rows === 0, "with no network no day is shown");
+    assert(/No forecast could be loaded/.test(offline.status) && /Nothing is shown in its place/.test(offline.status),
+      `and the panel says so (${offline.status})`);
+    assert(/error|offline/.test(offline.tone), "in the warning colour");
+    await page.close();
+  }
+
+  /* ---------------------------------------------------------------- */
+  group("Alerts: opt-in per saved water, persisted, and posted to the container");
+
+  {
+    const page = await openApp(browser, {
+      before: `${dailyForecastFixture}
+        window.__alerts = [];
+        window.webkit = { messageHandlers: { riseAlerts: { postMessage: (message) => window.__alerts.push(JSON.parse(JSON.stringify(message))) } } };`
+    });
+    const startup = await page.evaluate(() => window.__alerts.slice());
+    assert(startup.length === 1 && startup[0].action === "status",
+      `a launch with no rules only asks for the permission status (${JSON.stringify(startup)})`);
+
+    const unsaved = await page.evaluate(async () => {
+      expandedWaterId = "lower-deschutes";
+      saveActiveWater("lower-deschutes");
+      renderAll();
+      activateTab("waters");
+      const editor = document.querySelector('#waters [data-alert-editor="lower-deschutes"]');
+      return { text: editor?.textContent || "", toggles: editor?.querySelectorAll("[data-alert-toggle]").length ?? -1 };
+    });
+    assert(/Save this water/.test(unsaved.text) && unsaved.toggles === 0, "an unsaved water offers to save before it offers alerts");
+
+    const flow = await page.evaluate(async () => {
+      document.querySelector('#waters [data-alert-editor="lower-deschutes"] [data-save-water]').click();
+      await new Promise((done) => requestAnimationFrame(done));
+      window.__alerts.length = 0;
+      const editor = () => document.querySelector('#waters [data-alert-editor="lower-deschutes"]');
+      editor().querySelector("input[data-alert-field=flowMin]").click();
+      const stillOpen = expandedWaterId === "lower-deschutes";
+      editor().querySelector('[data-alert-toggle="flow"]').click();
+      await new Promise((done) => requestAnimationFrame(done));
+      const afterToggle = window.__alerts.slice();
+      const min = editor().querySelector("input[data-alert-field=flowMin]");
+      min.value = "3500";
+      min.dispatchEvent(new Event("change", { bubbles: true }));
+      const afterMin = window.__alerts[window.__alerts.length - 1];
+      return {
+        stillOpen,
+        afterToggle,
+        afterMin,
+        pressed: editor().querySelector('[data-alert-toggle="flow"]').getAttribute("aria-pressed"),
+        stored: JSON.parse(localStorage.getItem("riseAlertRules.v1") || "{}")
+      };
+    });
+    assert(flow.stillOpen, "tapping a field inside the alert editor does not collapse the water card");
+    assert(flow.pressed === "true", "the flow toggle shows it is on");
+    const toggleMessage = flow.afterToggle[0];
+    assert(toggleMessage?.action === "setRules" && toggleMessage.requestPermission === true,
+      "turning an alert on posts the rules and asks for permission");
+    const deschutes = toggleMessage?.rules?.find((rule) => rule.waterId === "lower-deschutes");
+    assert(deschutes && deschutes.site === "14103000" && deschutes.waterName === "Lower Deschutes"
+      && Number.isFinite(deschutes.flow?.min) && Number.isFinite(deschutes.flow?.max) && deschutes.greatDay === null,
+      `the rule carries site id, water name, min and max (${JSON.stringify(deschutes)})`);
+    assert(flow.afterMin?.action === "setRules" && flow.afterMin.requestPermission === false
+      && flow.afterMin.rules.find((rule) => rule.waterId === "lower-deschutes")?.flow?.min === 3500,
+      "editing the range re-posts it without asking for permission again");
+    assert(flow.stored["lower-deschutes"]?.flow?.enabled === true && flow.stored["lower-deschutes"].flow.min === 3500,
+      "the rule is persisted in localStorage");
+
+    const ungauged = await page.evaluate(async () => {
+      toggleSavedWater("hosmer");
+      expandedWaterId = "hosmer";
+      saveActiveWater("hosmer");
+      renderAll();
+      const editor = document.querySelector('#waters [data-alert-editor="hosmer"]');
+      return { flowToggle: Boolean(editor?.querySelector('[data-alert-toggle="flow"]')), text: editor?.textContent || "" };
+    });
+    assert(!ungauged.flowToggle && /need a USGS gauge/.test(ungauged.text), "a water with no gauge offers no flow alert, and says why");
+
+    const greatDay = await page.evaluate(async () => {
+      window.__fetchPlan = { mode: "online", body: "" };
+      toggleSavedWater("metolius");
+      expandedWaterId = "metolius";
+      saveActiveWater("metolius");
+      renderAll();
+      const editor = () => document.querySelector('#waters [data-alert-editor="metolius"]');
+      const select = editor().querySelector("select[data-alert-field=threshold]");
+      select.value = "6";
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+      window.__alerts.length = 0;
+      editor().querySelector('[data-alert-toggle="greatDay"]').click();
+      await new Promise((done) => setTimeout(done, 50));
+      await (plannerInFlight || Promise.resolve());
+      return window.__alerts.slice();
+    });
+    const setRules = greatDay.find((message) => message.action === "setRules");
+    assert(setRules?.rules?.find((rule) => rule.waterId === "metolius")?.greatDay?.threshold === 6,
+      "a great-day rule is posted with its threshold");
+    const schedule = greatDay.find((message) => message.action === "scheduleGreatDays");
+    const metolius = schedule?.waters?.find((entry) => entry.waterId === "metolius");
+    assert(metolius && metolius.waterName === "Metolius" && metolius.threshold === 6 && Array.isArray(metolius.days),
+      `turning it on loads the forecast and posts the schedule (${JSON.stringify(schedule)?.slice(0, 160)})`);
+    assert(metolius?.days.length > 0 && metolius.days.every((day) => /^\d{4}-\d{2}-\d{2}$/.test(day.date) && day.score >= 6 && day.reason && day.label),
+      "each scheduled day has a date, a score at or above the threshold, and its reason");
+
+    const permission = await page.evaluate(() => {
+      window.riseAlertsResult({ action: "permission", status: "denied" });
+      activateTab("waters");
+      return document.querySelector('#waters [data-alert-editor="metolius"]')?.textContent || "";
+    });
+    assert(/Notifications are off for The Rise in iOS Settings/.test(permission), "a refused permission is said plainly");
+
+    const overview = await page.evaluate(() => {
+      activateTab("today");
+      return [...document.querySelectorAll("#today .alerts-list li")].map((item) => item.textContent.replace(/\s+/g, " ").trim());
+    });
+    assert(overview.some((line) => /Lower Deschutes/.test(line) && /Flow 3,500/.test(line))
+      && overview.some((line) => /Metolius/.test(line) && /Great day at 6\.0\+/.test(line)),
+      `the planner lists each saved water's alerts (${overview.join(" | ")})`);
+
+    const edit = await page.evaluate(async () => {
+      document.querySelector('#today [data-edit-alerts="lower-deschutes"]').click();
+      await new Promise((done) => requestAnimationFrame(done));
+      const editor = document.querySelector('#waters [data-alert-editor="lower-deschutes"]');
+      const rect = editor?.getBoundingClientRect();
+      return { screen: activeScreenId(), visible: Boolean(rect) && rect.top >= 0 && rect.top < window.innerHeight };
+    });
+    assert(edit.screen === "waters" && edit.visible, "Set alerts opens that water's editor on screen");
+
+    const unsave = await page.evaluate(() => {
+      window.__alerts.length = 0;
+      toggleSavedWater("lower-deschutes");
+      const last = window.__alerts[window.__alerts.length - 1];
+      return { last, stored: JSON.parse(localStorage.getItem("riseAlertRules.v1") || "{}") };
+    });
+    assert(unsave.last?.action === "setRules" && !unsave.last.rules.some((rule) => rule.waterId === "lower-deschutes")
+      && !unsave.stored["lower-deschutes"], "unsaving a water withdraws its alert from storage and from the container");
+    await page.close();
+  }
+
+  {
+    const rules = { crooked: { flow: { enabled: true, min: 200, max: 300 }, greatDay: { enabled: false, threshold: 8 } } };
+    const page = await openApp(browser, {
+      before: `
+        localStorage.setItem("riseSavedWaters.v1", JSON.stringify(["crooked"]));
+        localStorage.setItem("riseAlertRules.v1", ${JSON.stringify(JSON.stringify(rules))});
+        window.__alerts = [];
+        window.webkit = { messageHandlers: { riseAlerts: { postMessage: (message) => window.__alerts.push(JSON.parse(JSON.stringify(message))) } } };`
+    });
+    const startup = await page.evaluate(() => window.__alerts.slice());
+    assert(startup.length === 1 && startup[0].action === "setRules" && startup[0].requestPermission === false
+      && startup[0].rules[0]?.waterId === "crooked" && startup[0].rules[0].flow.min === 200,
+      "a launch with rules hands them to the container without a permission prompt");
+    await page.close();
+  }
+
+  {
+    const page = await openApp(browser);
+    const restored = await page.evaluate(() => {
+      window.riseAlertsRestore({ rules: [{ waterId: "crooked", waterName: "Crooked River", site: "14080500", flow: { min: 200, max: 300 }, greatDay: null }, { waterId: "../bad" }] });
+      return {
+        rules: JSON.parse(localStorage.getItem("riseAlertRules.v1") || "{}"),
+        saved: JSON.parse(localStorage.getItem("riseSavedWaters.v1") || "[]")
+      };
+    });
+    assert(restored.rules.crooked?.flow?.enabled === true && !restored.rules["../bad"] && restored.saved.includes("crooked"),
+      "rules the container kept come back after the page's storage was cleared");
+    await page.close();
+  }
+
+  /* ---------------------------------------------------------------- */
+  group("Plan the week and alerts fit the phone and meet the 44pt minimum");
+
+  for (const width of [320, 390]) {
+    const page = await openApp(browser, { before: dailyForecastFixture, viewport: { width, height: 844 } });
+    const result = await page.evaluate(async () => {
+      window.__fetchPlan = { mode: "online", body: "" };
+      toggleSavedWater("crooked");
+      toggleSavedWater("hosmer");
+      toggleAlert("crooked", "flow");
+      toggleAlert("hosmer", "greatDay");
+      await loadPlannerForecasts();
+      document.querySelectorAll("#today details").forEach((details) => { details.open = true; });
+      const small = [];
+      const measure = (root) => root?.querySelectorAll("button, a[href], select, input, summary").forEach((element) => {
+        const rect = element.getBoundingClientRect();
+        if (!rect.width && !rect.height) return;
+        if (rect.width < 44 || rect.height < 44) small.push(`${element.className || element.tagName} ${Math.round(rect.width)}x${Math.round(rect.height)}`);
+      });
+      measure(document.querySelector("#today .planner"));
+      const overflowToday = document.documentElement.scrollWidth - window.innerWidth;
+      expandedWaterId = "crooked";
+      saveActiveWater("crooked");
+      renderAll();
+      activateTab("waters");
+      measure(document.querySelector('#waters [data-alert-editor="crooked"]'));
+      return {
+        small,
+        rows: document.querySelectorAll("#today .planner-day").length,
+        overflowToday,
+        overflowWaters: document.documentElement.scrollWidth - window.innerWidth
+      };
+    });
+    assert(result.rows > 0, `${width}pt: the loaded planner is measured (${result.rows} day rows)`);
+    assert(!result.small.length, `${width}pt: every planner and alert control is at least 44pt (${result.small.slice(0, 3).join(", ") || "none"})`);
+    assert(result.overflowToday <= 0 && result.overflowWaters <= 0,
+      `${width}pt: nothing runs off the right edge (${result.overflowToday}px, ${result.overflowWaters}px)`);
+    await page.close();
+  }
+
 
 } finally {
   for (const context of openContexts) {

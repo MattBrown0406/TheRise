@@ -77,9 +77,10 @@ Chromium is confined — it has a private `/tmp` and no access to dot-directorie
 so the file under test is staged in a plain directory inside `$HOME`. Override
 with `RISE_DOM_TEST_WORKDIR`.
 
-Native storage, compiled and run with any Swift toolchain. `RiseStore` imports
-only Foundation for exactly this reason; keep it that way. `RisePhotoSchemeHandler`
-holds the WebKit-dependent half:
+Native storage and alert decisions, compiled and run with any Swift toolchain.
+`RiseStore` and `RiseAlerts` import only Foundation for exactly this reason; keep
+it that way. `RisePhotoSchemeHandler` and `RiseNotifications` hold the WebKit,
+UserNotifications and BackgroundTasks halves:
 
 ```bash
 scripts/test-rise-store.sh
@@ -224,6 +225,65 @@ is no fallback prose, and there must never be again: the app used to run keyword
 extraction over its own placeholder text and credit the result to organizations
 the device never contacted.
 
+## Plan the week
+
+The Today screen's **Plan the week** panel scores the next seven days for a
+bounded set of waters — home, today's top pick, and saved waters, eight at most —
+and marks each water's best day with a one-line reason ("Sat 8.4 - overcast, BWO
+season, light wind").
+
+- **What a day score is.** The water's baseline, what is in season that month
+  (`seasonFitFor(water, month)`), and the NWS daytime forecast for that date:
+  wind, cloud, thunder/snow/heavy rain, and freezing or very hot highs, on the
+  same weights `fishScore` uses, clamped 1-10. Nobody forecasts flow or water
+  temperature for these waters, so the planner does not either, and the panel
+  says so. That is also why today's planner score is not today's live score.
+- **Request volume.** The forecast is fetched when the angler taps *Plan the
+  week*, never on a plain open; the DOM suite asserts that a launch makes no
+  planner request. The daily forecast URL is the cached hourly grid URL minus
+  `/hourly`, so no new `/points` lookup is needed for a water already synced,
+  waters on one grid share one request, and a forecast is reused for six hours.
+  The one automatic fetch is after the daily sync, and only for waters with a
+  great-day alert turned on.
+- **Typical closures.** `SEASONAL_ACCESS_CLOSURES` lists the Cascade Lakes
+  Highway (OR-46) beyond Mt. Bachelor, roughly mid-November to late May, and
+  the high Santiam Pass, Three Creek, Olallie and Willamette Pass hike-in lakes,
+  roughly mid-November to late June. A day inside a window reads "Typically
+  snowed in - check ODOT TripCheck / USFS", is never scored and is never the
+  best day. These are typical dates, worded as typical; snow sets the real ones.
+- **Offline or no forecast** says so and shows no day. Nothing is invented.
+
+## Alerts for saved waters
+
+Free, opt-in, local notifications; there is no server. Each saved water has an
+**Alerts** editor in its expanded card on Waters, and the planner lists every
+saved water's alerts with a *Set alerts* button.
+
+- **Flow in my range** — gauged waters only (`hasGauge`). The starting range is
+  the band the score treats as near reference; the angler edits min and max.
+- **Great day ahead** — when a planner day scores at or above a threshold
+  (default 8), a notification arrives about 6 PM Pacific the evening before.
+
+Rules are kept in localStorage (`riseAlertRules.v1`) and sent to the container
+over the `riseAlerts` handler: `setRules` (site id, water name, min/max,
+threshold; `requestPermission` only when an alert was just turned on),
+`scheduleGreatDays` (each alert water's qualifying days from the planner), and
+`status`. The container answers with `window.riseAlertsResult` and, if WebKit
+evicted the page's storage, hands its copy back with `window.riseAlertsRestore`.
+Unsaving a water removes its alert.
+
+Natively, `RiseAlerts.swift` (Foundation-only, tested by
+`scripts/test-rise-store.sh`) validates the rules, stores them as JSON in
+Application Support (not UserDefaults, so no required-reason API), parses the
+USGS response, and makes every decision: a flow alert fires when the flow moves
+into the range, at most once per water per Pacific day; great-day notifications
+are named `greatday.<water>.<date>` so a newer plan replaces an older one.
+`RiseNotifications.swift` carries them out with UNUserNotificationCenter and a
+`BGAppRefreshTask` (`com.mattbrown.therise.flowcheck`, registered in
+`AppDelegate` before launch finishes). iOS decides when a background refresh
+runs, and does not run it at all with Background App Refresh off, so flow
+alerts are best-effort and the editor says so.
+
 ## Data honesty
 
 Only 14 waters have a live feed and only 6 have a USGS gauge. Every reading is
@@ -239,8 +299,9 @@ second copy; the release checks fail if it does.
 `proAccessActive` gates flow history, the rating breakdown, the staged fish
 plan, and the hatch ID assistant. The paywall copy, the App Store description,
 and the subscription product descriptions must not claim anything beyond what is
-gated — the release checks fail on the word "alert", because the app sends no
-notifications.
+gated. The week planner and alerts for saved waters are free, so the release
+checks fail on the word "alert" in the store description or a subscription
+description, and on any mention of alerts or the planner in `PRO_FEATURES`.
 
 The App Store Connect metadata, in-app purchase submission steps, reviewer notes,
 and rejection-response copy for version 1.0 build 5 are in

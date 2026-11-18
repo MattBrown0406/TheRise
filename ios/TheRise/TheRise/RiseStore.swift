@@ -12,7 +12,8 @@ enum RiseStore {
     private static let photosDirectoryName = "CatchPhotos"
     private static let logFileName = "catch-log.json"
 
-    private static var baseDirectory: URL? {
+    /// Also where RiseAlerts keeps the alert rules.
+    static var baseDirectory: URL? {
         guard let support = supportDirectory else {
             return nil
         }

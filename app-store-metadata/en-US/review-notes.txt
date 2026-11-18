@@ -31,7 +31,7 @@ The Rise Pro unlocks four features inside the app. Each is visible in a locked s
 
 Immediately after a completed purchase or a successful Restore Purchases, the app leaves the Pro screen and opens Today with a "Four things just unlocked" panel above the now-expanded rating breakdown. Each of the four rows carries a button that opens the feature it names.
 
-The app sends no notifications and requires no account. Water rankings, live USGS and NWS readings, hatches, fly recommendations, the bug library, and the catch log are free.
+The app requires no account. Water rankings, live USGS and NWS readings, the week planner, hatches, fly recommendations, the bug library, the catch log, and alerts for saved waters are free. Alerts are opt-in local notifications computed on the device (Waters > expand a saved water > Alerts); there is no push server, and notification permission is requested only when an alert is first turned on.
 
 PHOTO PICKER
 To verify the catch-photo flow:

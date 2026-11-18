@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Compiles and runs the RiseStore behaviour tests.
+# Compiles and runs the RiseStore and RiseAlerts behaviour tests.
 #
-# RiseStore imports only Foundation, so this works on any machine with a Swift
+# Both import only Foundation, so this works on any machine with a Swift
 # toolchain — it does not need Xcode, a simulator, or a device.
 set -euo pipefail
 
@@ -20,6 +20,7 @@ cp "$root/scripts/test-rise-store.swift" "$build_dir/main.swift"
 
 swiftc -o "$build_dir/rise-store-tests" \
   "$root/ios/TheRise/TheRise/RiseStore.swift" \
+  "$root/ios/TheRise/TheRise/RiseAlerts.swift" \
   "$build_dir/main.swift"
 
 # Keep the test's writes out of the real Application Support directory. On

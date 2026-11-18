@@ -270,6 +270,66 @@ def main() -> int:
             f"subscription description still advertises alerts: {product.get('productId')}",
         )
 
+    # --- Alerts are free, local, and only what the app can deliver -------------
+    # The store listing and the subscription descriptions above still must not
+    # mention alerts: alerts are a free feature, so naming them in a Pro
+    # description would sell something the angler already has. What the app
+    # does claim has to exist natively: a registered bridge, a background task
+    # iOS will actually run, and decision logic that can be tested off-device.
+    pro_features_start = web.index("const PRO_FEATURES = [")
+    pro_features_block = web[pro_features_start:web.index("];", pro_features_start)]
+    require(
+        not re.search(r"\balert|notif|planner|plan the week", pro_features_block, re.IGNORECASE),
+        "the planner or alerts are listed as Pro features; both are free",
+    )
+    alerts_swift_path = ROOT / "ios/TheRise/TheRise/RiseAlerts.swift"
+    require(alerts_swift_path.is_file(), "RiseAlerts.swift is missing")
+    alerts_swift = alerts_swift_path.read_text(encoding="utf-8")
+    require(
+        "import UIKit" not in alerts_swift and "import UserNotifications" not in alerts_swift
+        and "import BackgroundTasks" not in alerts_swift,
+        "RiseAlerts must stay Foundation-only so its decisions can be tested off-device",
+    )
+    for name in ("RiseAlerts.swift", "RiseNotifications.swift"):
+        require(f"{name} in Sources" in project, f"{name} is not in the target's Sources build phase")
+    require(
+        'add(messageProxy, name: "riseAlerts")' in swift
+        and swift.count('removeScriptMessageHandler(forName: "riseAlerts")') == 1,
+        "the riseAlerts handler is not registered and removed like the others",
+    )
+    flow_task = "com.mattbrown.therise.flowcheck"
+    require(
+        flow_task in plist.get("BGTaskSchedulerPermittedIdentifiers", []) and flow_task in alerts_swift,
+        "the background flow check is not a permitted BGTaskScheduler identifier",
+    )
+    require("fetch" in plist.get("UIBackgroundModes", []), "background fetch is not enabled for the flow check")
+    require(
+        "RiseNotifications.registerBackgroundTasks()"
+        in (ROOT / "ios/TheRise/TheRise/AppDelegate.swift").read_text(encoding="utf-8"),
+        "the flow check is not registered at launch, so iOS will never run it",
+    )
+    require(
+        'postAlertsMessage({ action: "setRules"' in web and "window.riseAlertsRestore" in web,
+        "the page does not hand its alert rules to the container, or cannot take them back",
+    )
+    require(
+        "The Rise does not send notifications" not in web,
+        "the Pro screen still says the app sends no notifications",
+    )
+
+    # --- The planner is forecast and season, never invented water ------------
+    planner_start = web.index("function plannerDayScore(")
+    planner_score = web[planner_start:web.index("function plannerWindPhrase(", planner_start)]
+    require(
+        "usableReport" not in planner_score and "usgs" not in planner_score and "liveReports" not in planner_score,
+        "a future day is scored on today's gauge reading",
+    )
+    require(
+        "SEASONAL_ACCESS_CLOSURES" in web and "https://www.tripcheck.com/" in web
+        and "Typically snowed in - check ODOT TripCheck / USFS" in web,
+        "typically snowed-in days are scored as fishable or no longer point at TripCheck",
+    )
+
     # --- Data honesty ---------------------------------------------------------
     require("demo cache" not in web, "fabricated cache timestamps are still shown as live data")
     require("function valueProvenance(" in web, "displayed readings do not report their origin")
@@ -862,6 +922,8 @@ def main() -> int:
     print("PASS: App Store metadata/IAP submission checklist")
     print("PASS: catch-log durability, export, and native container storage")
     print("PASS: subscription claims match shipped functionality")
+    print("PASS: alerts are free, local, registered natively and testable off-device")
+    print("PASS: the week planner scores forecast and season, and marks typical closures")
     print("PASS: data provenance labelling and single-source coordinates")
     print("PASS: season, time-of-day, and flow inputs wired into the score")
     print("PASS: no prototype or demo language in a shipping build")

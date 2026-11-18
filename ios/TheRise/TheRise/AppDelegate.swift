@@ -1,8 +1,9 @@
 import UIKit
 import RevenueCat
+import UserNotifications
 
 @main
-final class AppDelegate: UIResponder, UIApplicationDelegate {
+final class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterDelegate {
     func application(
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
@@ -16,7 +17,21 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
         #endif
         Purchases.configure(withAPIKey: SubscriptionConfig.RevenueCat.publicSDKKey)
 
+        // Alerts for saved waters. BGTaskScheduler only accepts a launch
+        // handler registered before launch finishes, so this cannot wait for
+        // the web view. The delegate lets an alert show while the app is open.
+        UNUserNotificationCenter.current().delegate = self
+        RiseNotifications.registerBackgroundTasks()
+
         return true
+    }
+
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification,
+        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+    ) {
+        completionHandler([.banner, .list, .sound])
     }
 }
 
@@ -36,5 +51,11 @@ final class RiseSceneDelegate: UIResponder, UIWindowSceneDelegate {
         window.rootViewController = RiseViewController()
         self.window = window
         window.makeKeyAndVisible()
+    }
+
+    /// The flow check is a background app refresh; leaving the app is the
+    /// moment to make sure the next one is requested.
+    func sceneDidEnterBackground(_ scene: UIScene) {
+        RiseNotifications.scheduleFlowCheck()
     }
 }

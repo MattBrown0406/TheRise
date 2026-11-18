@@ -157,7 +157,12 @@ vm.runInContext(`${scriptBody}\n;globalThis.__app = {
   readingProvenanceWord, loggedReadingLabel, scoreSourceLabel,
   READING_FRESH_HOURS, READING_EXPIRY_HOURS, LOCATION_EXPIRY_HOURS,
   hatchSeasonMonths, hatchProfileFor, hatchProfiles, textFromHtml,
-  fetchUsgsReport, localIntelForWater
+  fetchUsgsReport, localIntelForWater,
+  SEASONAL_ACCESS_CLOSURES, ALERT_RULES_KEY, PLANNER_CACHE_KEY,
+  setNwsGrid(key, url) { nwsGridCache[key] = url; },
+  setPlannerForecasts(value) { plannerForecasts = value; },
+  alertRulesNow() { return alertRules; },
+  savedWatersNow() { return savedWaterIds; }
 };`, context);
 
 const app = context.__app;
@@ -846,6 +851,175 @@ group("Audit 2026-11-18: smaller honesty fixes");
   context.markDailyOpenSyncComplete();
   assert(app.liveReports.cache.localIntel.byWater.crooked, "marking the day synced does not reload over the in-memory intel");
   app.liveReports.cache = savedCache;
+}
+
+group("Plan the week: day scores from forecast weather and season");
+{
+  const metolius = app.waters.find((water) => water.id === "metolius");
+  const hosmer = app.waters.find((water) => water.id === "hosmer");
+  assert(context.dailyForecastUrlFrom("https://api.weather.gov/gridpoints/PDT/40,40/forecast/hourly") === "https://api.weather.gov/gridpoints/PDT/40,40/forecast",
+    "the daily forecast URL is the cached hourly URL without /hourly");
+  assert(context.dailyForecastUrlFrom("https://api.weather.gov/gridpoints/PDT/40,40/forecast") === "https://api.weather.gov/gridpoints/PDT/40,40/forecast",
+    "a cached daily URL is used as it is");
+  assert(context.dailyForecastUrlFrom("https://evil.example/gridpoints/PDT/40,40/forecast") === null, "only api.weather.gov grids are accepted");
+  assert(context.windMphFromText("5 to 10 mph") === 10, "a wind range is planned on its top end");
+  assert(context.windMphFromText("15 mph") === 15, "a single wind speed is read");
+  assert(context.windMphFromText("") === null, "a missing wind is unknown, not calm");
+
+  const periods = [
+    { name: "Tonight", startTime: "2026-06-19T18:00:00-07:00", isDaytime: false, temperature: 40, windSpeed: "5 mph", shortForecast: "Clear" },
+    ...Array.from({ length: 9 }, (unused, index) => ({
+      name: `Day ${index}`,
+      startTime: `2026-06-${String(20 + index).padStart(2, "0")}T06:00:00-07:00`,
+      isDaytime: true,
+      temperature: 70,
+      temperatureUnit: "F",
+      windSpeed: "5 to 10 mph",
+      shortForecast: index === 0 ? "Mostly Cloudy <b>x</b>" : "Sunny",
+      probabilityOfPrecipitation: { value: null }
+    }))
+  ];
+  const days = context.plannerDaysFromForecast({ properties: { periods } });
+  assert(days.length === 7, `seven daytime periods are kept, nights and the eighth day dropped (${days.length})`);
+  assert(days[0].date === "2026-06-20" && days[0].windMph === 10 && days[0].highF === 70, "a period becomes a dated day with wind and high");
+  assert(!/[<>]/.test(days[0].forecast), "forecast text is sanitised where it enters the app");
+  assert(days[0].precipitation === null, "a null precipitation chance stays unknown");
+  assert(context.plannerDaysFromForecast({}).length === 0, "an empty response is no forecast, not seven blank days");
+
+  const base = { date: "2026-06-20", highF: 65, windMph: 8, forecast: "Sunny" };
+  const sunny = context.plannerDayScore(metolius, base);
+  const cloudy = context.plannerDayScore(metolius, { ...base, forecast: "Mostly Cloudy" });
+  const storm = context.plannerDayScore(metolius, { ...base, forecast: "Chance Thunderstorms" });
+  const heavy = context.plannerDayScore(metolius, { ...base, forecast: "Heavy Rain" });
+  assert(cloudy > sunny, `overcast lifts a day (${sunny} -> ${cloudy})`);
+  assert(storm < sunny && heavy < sunny, `thunder and heavy rain lower it (${storm}, ${heavy})`);
+  const calmLake = context.plannerDayScore(hosmer, { ...base, windMph: 8 });
+  const windyLake = context.plannerDayScore(hosmer, { ...base, windMph: 25 });
+  assert(windyLake < calmLake, `a 25 mph day scores below a light-wind day on a lake (${windyLake} < ${calmLake})`);
+  const frozen = context.plannerDayScore(metolius, { ...base, highF: 28 });
+  assert(frozen < sunny, `a high below freezing lowers the day (${frozen})`);
+  const june = context.plannerDayScore(metolius, base);
+  const january = context.plannerDayScore(metolius, { ...base, date: "2026-01-20" });
+  assert(june > january, `the same weather scores higher in Green Drake season than in January (${june} > ${january})`);
+  const scores = [sunny, cloudy, storm, heavy, calmLake, windyLake, frozen, january];
+  assert(scores.every((score) => score >= 1 && score <= 10), "every day score is clamped to 1-10");
+  const reason = context.plannerDayReason(metolius, { ...base, forecast: "Mostly Cloudy", windMph: 8 });
+  assert(/mostly cloudy/.test(reason) && /season/.test(reason) && /light wind/.test(reason), `the reason names sky, season and wind (${reason})`);
+  assert(!/cfs|water temp/i.test(reason), "the reason invents no flow or water temperature");
+}
+
+group("Plan the week: typical seasonal closures");
+{
+  const water = (id) => app.waters.find((item) => item.id === id);
+  const closureIds = app.SEASONAL_ACCESS_CLOSURES.flatMap((closure) => closure.waters);
+  assert(closureIds.every((id) => water(id)), `every water in the closure table exists (${closureIds.filter((id) => !water(id)).join(", ") || "all found"})`);
+  for (const id of ["spark-lake", "devils", "elk-lake", "hosmer", "lava", "little-lava", "cultus", "little-cultus", "crane-prairie", "todd-lake"]) {
+    assert(context.seasonalClosureFor(water(id), "2026-01-10")?.id === "cascade-lakes-highway", `${id} is typically cut off by OR-46 in January`);
+  }
+  assert(context.seasonalClosureFor(water("hosmer"), "2026-11-14") === null, "OR-46 lakes are open the day before the window");
+  assert(context.seasonalClosureFor(water("hosmer"), "2026-11-15") !== null, "and typically closed from mid-November");
+  assert(context.seasonalClosureFor(water("hosmer"), "2026-05-25") !== null, "still closed on May 25");
+  assert(context.seasonalClosureFor(water("hosmer"), "2026-05-26") === null, "open again after late May");
+  assert(context.seasonalClosureFor(water("hosmer"), "2026-07-04") === null, "open in July");
+  assert(context.seasonalClosureFor(water("three-creek"), "2026-06-15") !== null, "Three Creek Lake is typically snowbound into June");
+  assert(context.seasonalClosureFor(water("ollalie"), "2026-02-01") !== null, "Olallie is typically snowbound in winter");
+  assert(context.seasonalClosureFor(water("metolius"), "2026-01-10") === null, "a low-elevation river is never marked snowed in");
+  assert(context.seasonalClosureFor(water("hosmer"), "not-a-date") === null, "a malformed date closes nothing");
+  assert(app.SEASONAL_ACCESS_CLOSURES.every((closure) => /typically/i.test(closure.typical)), "every closure is worded as typical, not authoritative");
+  assert(/tripcheck\.com/.test(html) && /Typically snowed in - check ODOT TripCheck \/ USFS/.test(html), "closed days point at TripCheck and USFS");
+
+  const hourly = "https://api.weather.gov/gridpoints/PDT/23,40/forecast/hourly";
+  const coords = app.waterCoordinates.hosmer;
+  app.setNwsGrid(`${coords.lat.toFixed(4)},${coords.lon.toFixed(4)}`, hourly);
+  const forecastDays = ["2026-11-13", "2026-11-14", "2026-11-15", "2026-11-16"].map((date) => ({ date, highF: 45, windMph: 6, forecast: "Cloudy" }));
+  app.setPlannerForecasts({ "https://api.weather.gov/gridpoints/PDT/23,40/forecast": { fetchedAt: new Date().toISOString(), days: forecastDays } });
+  const plan = context.plannerForWater(water("hosmer"), "2026-11-13");
+  assert(plan.days.length === 4, `the cached forecast is planned (${plan.days.length} days)`);
+  assert(plan.days[0].score !== null && plan.days[1].score !== null, "days before the window are scored");
+  assert(plan.days[2].score === null && plan.days[2].reason.startsWith("Typically snowed in"), "a day inside the window is not scored as fishable");
+  assert(plan.best && plan.best.date <= "2026-11-14", `the best day is never a snowed-in day (${plan.best?.date})`);
+  const later = context.plannerForWater(water("hosmer"), "2026-11-15");
+  assert(later.days.length === 2 && later.best === null, "past days drop off, and an all-closed week has no best day");
+  app.setPlannerForecasts({});
+  assert(context.plannerForWater(water("hosmer")).days.length === 0, "with no forecast nothing is invented");
+}
+
+group("Alerts: rules persist on the device and reach the container");
+{
+  localStorage.removeItem(app.ALERT_RULES_KEY);
+  const normalized = context.normalizeAlertRules({
+    "lower-deschutes": { flow: { enabled: true, min: "3000", max: 5200 }, greatDay: { enabled: true, threshold: 12 } },
+    hosmer: { flow: { enabled: true, min: 1, max: 2 }, greatDay: { enabled: false, threshold: 7.3 } },
+    "not-a-water": { flow: { enabled: true, min: 1, max: 2 } }
+  });
+  assert(!normalized["not-a-water"], "a rule for an unknown water is dropped");
+  assert(normalized["lower-deschutes"].flow.min === 3000 && normalized["lower-deschutes"].flow.enabled, "a gauged water keeps its flow range");
+  assert(normalized["lower-deschutes"].greatDay.threshold === 10, "a threshold is clamped to the 1-10 scale");
+  assert(normalized.hosmer.flow.enabled === false, "a water with no gauge cannot hold a flow alert");
+  assert(normalized.hosmer.greatDay.threshold === 7.5, "a threshold is kept to half points");
+
+  const range = context.defaultFlowRange(app.waters.find((item) => item.id === "crooked"));
+  assert(range.min === Math.round(235 * .75) && range.max === Math.round(235 * 1.35), `the starting range is the score's near-reference band (${range.min}-${range.max})`);
+
+  if (!app.savedWatersNow().includes("crooked")) context.toggleSavedWater("crooked");
+  if (!app.savedWatersNow().includes("hosmer")) context.toggleSavedWater("hosmer");
+  context.toggleAlert("crooked", "flow");
+  const stored = JSON.parse(localStorage.getItem(app.ALERT_RULES_KEY));
+  assert(stored.crooked?.flow?.enabled === true, "turning an alert on writes it to localStorage");
+  context.setAlertField("crooked", "flowMin", "180");
+  context.setAlertField("crooked", "flowMax", "320");
+  const native = context.alertRulesForNative();
+  const crookedRule = native.find((rule) => rule.waterId === "crooked");
+  assert(crookedRule && crookedRule.site === "14080500" && crookedRule.waterName === "Crooked River"
+    && crookedRule.flow.min === 180 && crookedRule.flow.max === 320 && crookedRule.greatDay === null,
+    `the container is sent site id, water name and range (${JSON.stringify(crookedRule)})`);
+  context.setAlertField("crooked", "flowMin", "400");
+  assert(context.alertRulesForNative().find((rule) => rule.waterId === "crooked") === undefined,
+    "a minimum above the maximum sends no flow rule rather than an impossible one");
+  context.setAlertField("crooked", "flowMin", "180");
+  context.toggleAlert("hosmer", "flow");
+  assert(app.alertRulesNow().hosmer?.flow?.enabled !== true, "the flow toggle does nothing on a water with no gauge");
+  context.toggleAlert("hosmer", "greatDay");
+  assert(context.alertRulesForNative().some((rule) => rule.waterId === "hosmer" && rule.greatDay?.threshold === 8),
+    "a great-day alert defaults to a threshold of 8");
+  context.toggleAlert("metolius", "flow");
+  assert(!app.alertRulesNow().metolius, "a water that is not saved cannot hold an alert");
+
+  context.toggleSavedWater("crooked");
+  assert(!app.alertRulesNow().crooked && !JSON.parse(localStorage.getItem(app.ALERT_RULES_KEY)).crooked,
+    "unsaving a water removes its alert from memory and storage");
+  context.toggleSavedWater("hosmer");
+  assert(Object.keys(app.alertRulesNow()).length === 0, "no alert outlives its saved water");
+}
+
+group("Alerts: great-day schedule");
+{
+  if (!app.savedWatersNow().includes("metolius")) context.toggleSavedWater("metolius");
+  context.toggleAlert("metolius", "greatDay");
+  context.setAlertField("metolius", "threshold", "6");
+  const today = context.pacificDateKey();
+  const addDays = (count) => {
+    const [y, m, d] = today.split("-").map(Number);
+    return new Date(Date.UTC(y, m - 1, d + count)).toISOString().slice(0, 10);
+  };
+  const coords = app.waterCoordinates.metolius;
+  app.setNwsGrid(`${coords.lat.toFixed(4)},${coords.lon.toFixed(4)}`, "https://api.weather.gov/gridpoints/PDT/30,60/forecast/hourly");
+  app.setPlannerForecasts({ "https://api.weather.gov/gridpoints/PDT/30,60/forecast": {
+    fetchedAt: new Date().toISOString(),
+    days: [0, 1, 2].map((offset) => ({ date: addDays(offset), highF: 55, windMph: 8, forecast: "Cloudy" }))
+  } });
+  const schedule = context.greatDaySchedule(today);
+  const entry = schedule.find((item) => item.waterId === "metolius");
+  assert(entry && entry.threshold === 6 && entry.waterName === "Metolius", "a great-day water is scheduled with its threshold");
+  assert(entry && entry.days.length === 2 && entry.days.every((day) => day.date > today && day.score >= 6 && typeof day.reason === "string" && day.label),
+    `only future days at or above the threshold are sent, each with its reason (${entry?.days.length})`);
+  context.setAlertField("metolius", "threshold", "9.5");
+  assert(context.greatDaySchedule(today).find((item) => item.waterId === "metolius")?.days.length === 0,
+    "a threshold nothing reaches sends an empty list, which clears stale notifications");
+  app.setPlannerForecasts({});
+  assert(context.greatDaySchedule(today).length === 0, "a water with no forecast is left out rather than cleared");
+  context.toggleSavedWater("metolius");
+  assert(app.PRO_FEATURES.every(([title, body]) => !/week|planner|alert|notif/i.test(`${title} ${body}`)), "the planner and alerts are free, not Pro features");
 }
 
 console.log(`\n${checks - failures}/${checks} checks passed`);
