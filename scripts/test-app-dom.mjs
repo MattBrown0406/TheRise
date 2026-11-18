@@ -2721,6 +2721,213 @@ try {
   }
 
   /* ---------------------------------------------------------------- */
+  group("ODFW regulations: the block on the water card, Trip and On the water");
+
+  {
+    const page = await openApp(browser);
+    const result = await page.evaluate(() => {
+      const allowed = (href) => {
+        try {
+          const url = new URL(href);
+          return url.protocol === "https:" && /(^|\.)(myodfw\.com|eregulations\.com)$/.test(url.hostname);
+        } catch {
+          return false;
+        }
+      };
+      const linksOf = (block) => [...block.querySelectorAll("a")].map((link) => ({
+        href: link.href, target: link.target, rel: link.rel, text: link.textContent.trim(), allowed: allowed(link.href)
+      }));
+      // Text that would be markup if it reached innerHTML unescaped.
+      const hostile = `<img src=x onerror="window.__regsInjected = true">Barbless <b>only</b>`;
+      ODFW_REGULATIONS.metolius.summary = [...ODFW_REGULATIONS.metolius.summary, hostile];
+      ODFW_REGULATIONS["bridge-creek"].uncertain = `${ODFW_REGULATIONS["bridge-creek"].uncertain} <script>window.__regsInjected = true</script>`;
+
+      // Waters: tap the card open, the way an angler does.
+      activateTab("waters");
+      waterSortMode = "Best";
+      renderWaters();
+      document.querySelector('#waters .waters-main-list [data-water="metolius"]').click();
+      const card = document.querySelector('#waters .waters-main-list [data-water="metolius"]');
+      const block = card?.querySelector(".accordion-detail .regs-block");
+      const cardOut = block ? {
+        checked: block.querySelector(".regs-checked")?.textContent.trim(),
+        disclaimer: block.querySelector(".regs-disclaimer")?.textContent.trim(),
+        items: [...block.querySelectorAll(".regs-list li")].map((item) => item.textContent),
+        injectedNodes: block.querySelectorAll("img, script, .regs-list li *").length,
+        links: linksOf(block),
+        oldLine: [...card.querySelectorAll(".line-row span")].some((span) => span.textContent.trim() === "Regulations")
+      } : null;
+      // A tap on the block's text does not collapse the card around it.
+      block?.querySelector(".regs-list li")?.click();
+      const stillOpen = Boolean(document.querySelector('#waters .waters-main-list [data-water="metolius"] .accordion-detail .regs-block'));
+
+      // Verify note on an unconfirmed water.
+      expandedWaterId = "bridge-creek";
+      saveActiveWater("bridge-creek");
+      renderWaters();
+      const verifyBlock = document.querySelector('#waters .waters-main-list [data-water="bridge-creek"] .regs-block');
+      const verify = verifyBlock ? {
+        note: verifyBlock.querySelector(".regs-verify")?.textContent.trim(),
+        status: verifyBlock.querySelector(".regs-status")?.textContent.trim(),
+        scripts: verifyBlock.querySelectorAll("script").length
+      } : null;
+
+      // Trip.
+      saveActiveWater("crooked");
+      activateTab("trip");
+      renderTrip();
+      const tripBlock = document.querySelector("#trip .regs-block");
+      const trip = tripBlock ? {
+        checked: tripBlock.querySelector(".regs-checked")?.textContent.trim(),
+        disclaimer: tripBlock.querySelector(".regs-disclaimer")?.textContent.trim(),
+        status: tripBlock.querySelector(".regs-status")?.textContent.trim(),
+        links: linksOf(tripBlock)
+      } : null;
+
+      // On the water: compact, season status and gear.
+      saveActiveWater("whychus");
+      renderTrip();
+      document.querySelector("#trip [data-on-water-open]").click();
+      const compact = document.querySelector("#trip [data-on-water-view] .regs-compact");
+      const onWater = compact ? {
+        status: compact.querySelector(".regs-status")?.textContent.trim(),
+        gear: compact.querySelector("small")?.textContent.trim(),
+        checked: compact.querySelector(".regs-checked")?.textContent.trim(),
+        links: linksOf(compact),
+        linkHeights: [...compact.querySelectorAll("a")].map((link) => Math.round(link.getBoundingClientRect().height)),
+        closedToday: regulationSeasonStatus(waterById("whychus")) === "closed"
+      } : null;
+      document.querySelector("#trip [data-on-water-close]").click();
+      return { cardOut, stillOpen, verify, trip, onWater, injected: Boolean(window.__regsInjected) };
+    });
+
+    const goodLinks = (links) => links.length >= 2 && links.every((link) => link.allowed && link.target === "_blank" && /noopener/.test(link.rel));
+    assert(result.cardOut, "the expanded water card has a Regulations block");
+    assert(result.cardOut && result.cardOut.checked.startsWith("2026 ODFW regulations - checked Nov 18, 2026"), `it says which booklet and when it was checked (${result.cardOut?.checked})`);
+    assert(result.cardOut && /^Summary only\. Regulations change and in-season rules apply - check ODFW before you fish\.$/.test(result.cardOut.disclaimer), "and that it is a summary, not the law");
+    assert(result.cardOut && result.cardOut.items.some((item) => /Catch-and-release for trout, including bull trout/.test(item)), "the Metolius bullets are the ODFW summary");
+    assert(result.cardOut && result.cardOut.items.some((item) => item.includes('<img src=x onerror="window.__regsInjected = true">Barbless <b>only</b>')), "regulation text is escaped: markup shows as text");
+    assert(result.cardOut && result.cardOut.injectedNodes === 0 && !result.injected, `and creates no element and runs nothing (${result.cardOut?.injectedNodes})`);
+    assert(result.cardOut && goodLinks(result.cardOut.links), `its links go to ODFW or eRegulations and open outside the app (${JSON.stringify(result.cardOut?.links.map((link) => link.href))})`);
+    assert(result.cardOut && result.cardOut.links.some((link) => /myodfw\.com\/articles\/regulation-updates/.test(link.href)), "one of them is ODFW's in-season changes page");
+    assert(result.cardOut && !result.cardOut.oldLine, "the old generic Regulations line is gone");
+    assert(result.stillOpen, "tapping the block's text leaves the card open");
+    assert(result.verify && /^Verify with ODFW:/.test(result.verify.note) && result.verify.status === "Season not confirmed - check ODFW",
+      `an unconfirmed water says to verify, and why (${result.verify?.note?.slice(0, 60)})`);
+    assert(result.verify && result.verify.scripts === 0, "and its note is escaped too");
+    assert(result.trip && result.trip.checked.startsWith("2026 ODFW regulations - checked Nov 18, 2026") && /Summary only/.test(result.trip.disclaimer), "Trip shows the Regulations block");
+    assert(result.trip && goodLinks(result.trip.links), "with links that open outside the app");
+    assert(result.onWater, "On the water shows the compact Regulations block");
+    assert(result.onWater && /Artificial flies and lures only/.test(result.onWater.gear), `with the gear rule (${result.onWater?.gear})`);
+    assert(result.onWater && result.onWater.status === (result.onWater.closedToday ? "Closed season (ODFW)" : "Open season (ODFW)"), `and today's season status (${result.onWater?.status})`);
+    assert(result.onWater && /2026 ODFW regulations - checked Nov 18, 2026/.test(result.onWater.checked) && goodLinks(result.onWater.links), "and the checked date and ODFW links");
+    assert(result.onWater && result.onWater.linkHeights.every((height) => height >= 44), `its links are at least 44pt tall (${result.onWater?.linkHeights.join(", ")})`);
+    await page.close();
+  }
+
+  {
+    // A closed season, stubbed to today whatever today is: the water with the
+    // best conditions in the app is closed, and must not be the top pick.
+    const page = await openApp(browser);
+    const result = await page.evaluate(() => {
+      const today = pacificDateKey().slice(5);
+      const other = today === "01-01" ? "01-02" : "01-01";
+      ODFW_REGULATIONS.crooked = { ...ODFW_REGULATIONS.crooked, season: { from: other, to: other } };
+      waters.find((water) => water.id === "crooked").score = 100;
+      waterSortMode = "Best";
+      waterFilter = "All";
+      waterQuery = "";
+      activateTab("today");
+      renderEverything();
+      const bestOption = [...document.querySelectorAll("#today .command-card")].find((card) => /Best option now/.test(card.textContent));
+      const cards = [...document.querySelectorAll("#waters .waters-main-list [data-water]")];
+      const order = cards.map((card) => card.dataset.water);
+      const crookedCard = cards.find((card) => card.dataset.water === "crooked");
+      const closedIndex = order.indexOf("crooked");
+      const openAfter = order.slice(closedIndex + 1).filter((id) => regulationSeasonStatus(waterById(id)) !== "closed");
+      return {
+        top: topRecommendedWater().id,
+        bestOption: bestOption?.querySelector("strong")?.textContent.trim(),
+        headline: document.querySelector("#watersHeadline h1")?.textContent.trim(),
+        label: crookedCard?.querySelector(".water-rank-label")?.textContent.trim(),
+        openAfter,
+        status: regulationSeasonStatus(waterById("crooked"))
+      };
+    });
+    assert(result.status === "closed", "the stubbed season closes the Crooked River today");
+    assert(result.top !== "crooked" && result.bestOption !== "Crooked River", `a closed water is not Today's top pick (${result.bestOption})`);
+    assert(result.headline !== "Crooked River", `nor the top of the Waters list (${result.headline})`);
+    assert(/Closed season \(ODFW\)/.test(result.label || ""), `its card is labelled (${result.label})`);
+    assert(!result.openAfter.length, `and no open water ranks below it (${result.openAfter.slice(0, 3).join(", ") || "none"})`);
+    await page.close();
+  }
+
+  {
+    // The March 1 check reads ODFW's page once and warns when a newer booklet
+    // is named. Launch is on or after Mar 1 of the year the suite runs in, so
+    // the check runs at startup; the page is served from the start.
+    const before = `window.__fetchPlan = { mode: "online", body: "<h1>Fishing regulation updates</h1><p>Changes to the 2026 Oregon Sport Fishing Regulations.</p><p>The 2027 Oregon Sport Fishing Regulations are now available.</p>" };`;
+    const page = await openApp(browser, { before });
+    const result = await page.evaluate(async () => {
+      const today = regulationDateParts(pacificDateKey());
+      if (today.month < 3) {
+        // Before March the check is not due; run it as March would.
+        await runRegulationsAnnualCheck({ dateKey: `${today.year}-03-01` });
+      }
+      for (let tries = 0; tries < 50 && !readRegulationsCheck().ok; tries += 1) {
+        await new Promise((done) => setTimeout(done, 50));
+      }
+      saveActiveWater("crooked");
+      activateTab("trip");
+      renderTrip();
+      const block = document.querySelector("#trip .regs-block");
+      return {
+        record: readRegulationsCheck(),
+        checks: window.__requests.filter((url) => url === REGS_CHECK_URL).length,
+        warning: block?.querySelector(".regs-stale")?.textContent.trim(),
+        status: block?.querySelector(".regs-status")?.textContent.trim(),
+        line: block?.querySelector(".regs-check-line")?.textContent.trim(),
+        link: [...(block?.querySelectorAll("a") || [])].some((link) => /myodfw\.com/.test(link.href))
+      };
+    });
+    assert(result.record.ok && result.record.publishedYear === 2027, `the check stored the newest booklet the page names (${JSON.stringify(result.record)})`);
+    assert(result.checks === 1, `with one request to ODFW (${result.checks})`);
+    assert(result.warning === "Verify with ODFW: ODFW has published 2027 regulations. This summary is from 2026 and may be out of date - check ODFW before you fish.",
+      `the Regulations block warns that the summary may be out of date (${result.warning})`);
+    assert(/\(2026 rules\)$/.test(result.status || ""), `the season label names the bundled year (${result.status})`);
+    assert(/^Checked for new ODFW regulations /.test(result.line || "") && result.link, `and says when it checked, with the ODFW link (${result.line})`);
+    await page.close();
+  }
+
+  {
+    const page = await openApp(browser);
+    const result = await page.evaluate(async () => {
+      for (let tries = 0; tries < 50 && regulationsCheckInFlight; tries += 1) {
+        await new Promise((done) => setTimeout(done, 50));
+      }
+      saveActiveWater("crooked");
+      activateTab("trip");
+      renderTrip();
+      const block = document.querySelector("#trip .regs-block");
+      return {
+        record: readRegulationsCheck(),
+        month: regulationDateParts(pacificDateKey()).month,
+        calendar: regulationsStaleness()?.kind === "calendar",
+        stale: block?.querySelectorAll(".regs-stale").length,
+        text: block?.textContent || "",
+        line: block?.querySelector(".regs-check-line")?.textContent.trim()
+      };
+    });
+    if (result.month >= 3) {
+      assert(!result.record.ok && result.record.attemptedOn, `offline, the check is recorded as attempted, not done (${JSON.stringify(result.record)})`);
+      assert(result.line === "Couldn't check for new ODFW regulations yet - will retry", `and the block says it will retry (${result.line})`);
+    }
+    assert(!/ODFW has published/.test(result.text), "an offline launch claims no new booklet");
+    assert(result.stale === (result.calendar ? 1 : 0), `and shows no warning beyond the calendar's own (${result.stale})`);
+    await page.close();
+  }
+
+  /* ---------------------------------------------------------------- */
   group("On the water: Fish on! writes one catch, with its provenance, through setLogs");
 
   // A measured reading for the Crooked River, so provenance is "measured".

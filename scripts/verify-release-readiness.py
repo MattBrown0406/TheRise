@@ -12,6 +12,7 @@ import struct
 import subprocess
 import sys
 import urllib.request
+from datetime import date
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -370,6 +371,48 @@ def main() -> int:
         "<title>The Rise - Central Oregon Fly Fishing</title>" in web,
         "the window title is not a shipping title",
     )
+
+    # --- ODFW regulations ------------------------------------------------------
+    # Every water carries a sourced ODFW summary with the date it was checked.
+    # A wrong regulation can get an angler ticketed, so a summary more than
+    # about 13 months old blocks a release until every water is re-verified
+    # against the current booklet (README, "Fishing regulations").
+    seed_block = web[web.index("const waterSeed = ["):web.index("const waters = waterSeed.map")]
+    seed_ids = re.findall(r'^\s*\["([a-z0-9-]+)", ', seed_block, re.MULTILINE)
+    require(len(seed_ids) > 0, "could not read the water ids from waterSeed")
+    regs_start = web.index("const ODFW_REGULATIONS = {")
+    regs_block = web[regs_start:web.index("\n    };\n", regs_start)]
+    regs_ids = re.findall(r'^      "?([a-z0-9-]+)"?: odfw', regs_block, re.MULTILINE)
+    missing_regs = sorted(set(seed_ids) - set(regs_ids))
+    require(not missing_regs, f"waters with no ODFW_REGULATIONS entry: {', '.join(missing_regs)}")
+    require(len(regs_ids) == len(set(regs_ids)), "ODFW_REGULATIONS lists a water twice")
+    meta_block = web[web.index("const ODFW_REGULATIONS_META = {"):regs_start]
+    year_match = re.search(r"^      year: (\d{4}),$", meta_block, re.MULTILINE)
+    checked_dates = re.findall(r'checked: "(\d{4}-\d{2}-\d{2})"', meta_block + regs_block)
+    require(year_match is not None, "ODFW_REGULATIONS_META has no regulation year")
+    require(bool(checked_dates), "ODFW_REGULATIONS_META has no checked date")
+    oldest_checked = min(date.fromisoformat(value) for value in checked_dates)
+    regs_age_days = (date.today() - oldest_checked).days
+    require(
+        regs_age_days <= 396,
+        f"ODFW regulations were last checked {oldest_checked.isoformat()} ({regs_age_days} days ago, over 13 months). "
+        "Stale regulations block a release: re-verify every water in ODFW_REGULATIONS against the current ODFW booklet, "
+        "update docs/odfw-regulations-<year>.md, and set the new year and checked date.",
+    )
+    for source in re.findall(r'source: "([^"]+)"', regs_block):
+        require(
+            re.match(r"^https://(www\.)?(myodfw\.com|eregulations\.com)/", source) is not None,
+            f"ODFW regulation source is not on myodfw.com or eregulations.com: {source}",
+        )
+    require("async function runRegulationsAnnualCheck(" in web, "the March 1 ODFW regulations check is missing")
+    require('const REGS_CHECK_KEY = "riseRegsCheck.v1";' in web, "the regulations check has no storage key")
+    require(
+        re.search(r'const REGS_CHECK_URL = "https://(www\.)?myodfw\.com/', web) is not None,
+        "the regulations check must fetch a myodfw.com page (already on the native allow-list)",
+    )
+    require("checkRegulationsAnnual();" in web, "the regulations check is never triggered")
+    require((ROOT / "docs/odfw-regulations-2026.md").is_file() or any((ROOT / "docs").glob("odfw-regulations-*.md")),
+            "the ODFW regulations research notes are missing from docs/")
 
     # --- Event binding --------------------------------------------------------
     # bindDynamic() attached a listener to every matching element on every
@@ -936,6 +979,8 @@ def main() -> int:
     print("PASS: subscription claims match shipped functionality")
     print("PASS: alerts are free, local, registered natively and testable off-device")
     print("PASS: the week planner scores forecast and season, and marks typical closures")
+    print(f"PASS: ODFW regulations cover every water, cite ODFW, and were checked within 13 months ({oldest_checked.isoformat()})")
+    print("PASS: the March 1 check for new ODFW regulations is present, stored, and triggered")
     print("PASS: Snap a bug is photo-assisted, says so, and covers every bug")
     print("PASS: data provenance labelling and single-source coordinates")
     print("PASS: season, time-of-day, and flow inputs wired into the score")

@@ -2967,6 +2967,140 @@
       color: rgba(255, 255, 255, .72);
     }
 
+    /* ODFW regulations block: water card, Trip, and (compact) On the water. */
+    .regs-block {
+      border: 1px solid #e0dbcf;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, .94);
+      padding: 12px 14px;
+      min-width: 0;
+      color: var(--ink);
+      font-size: 13px;
+      line-height: 1.4;
+      overflow-wrap: anywhere;
+    }
+
+    .regs-head {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 4px 10px;
+    }
+
+    .regs-head strong {
+      font-size: 15px;
+    }
+
+    .regs-status {
+      font-weight: 900;
+      color: var(--pine);
+    }
+
+    .regs-closed .regs-status {
+      color: #a23a1d;
+    }
+
+    .regs-partial .regs-status,
+    .regs-unknown .regs-status {
+      color: #8a5a12;
+    }
+
+    .regs-checked,
+    .regs-note,
+    .regs-sections,
+    .regs-disclaimer {
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .regs-check-line {
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .regs-disclaimer {
+      font-weight: 800;
+      color: #5c4f38;
+    }
+
+    .regs-verify {
+      margin: 8px 0 0;
+      padding: 8px 10px;
+      border-radius: 8px;
+      border: 1px solid rgba(138, 122, 92, .38);
+      background: rgba(214, 196, 156, .22);
+      color: #5c4f38;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .regs-list {
+      margin: 8px 0 0;
+      padding-left: 18px;
+    }
+
+    .regs-list li + li {
+      margin-top: 3px;
+    }
+
+    .regs-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0 16px;
+      margin-top: 4px;
+    }
+
+    .regs-link {
+      color: var(--river);
+      font-weight: 800;
+      font-size: 13px;
+    }
+
+    .regs-flag {
+      margin-top: 2px;
+      color: #8a5a12;
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .regs-closed-card .water-rank-label {
+      color: #a23a1d;
+    }
+
+    /* On the water keeps its own black-on-white block for sun. */
+    .on-water .regs-compact {
+      border: 3px solid #0b0f0c;
+      border-radius: 12px;
+      background: #fff;
+      padding: 14px 16px;
+      color: #0b0f0c;
+    }
+
+    .on-water .regs-compact.regs-closed {
+      background: #fbe9e3;
+    }
+
+    .regs-compact .regs-status {
+      font-size: 24px;
+    }
+
+    .regs-compact .regs-checked,
+    .regs-compact .regs-check-line,
+    .regs-compact .regs-sections,
+    .regs-compact .regs-verify {
+      color: #2b332d;
+      font-size: 15px;
+    }
+
+    .regs-compact .regs-link {
+      color: #0f4552;
+      font-size: 17px;
+      text-decoration: underline;
+    }
+
     .data-provenance-notice {
       margin-bottom: 12px;
       padding: 10px 12px;
@@ -4658,7 +4792,8 @@
     .primary-btn,
     .fly-trigger-chip,
     .subscription-legal-links a,
-    .planner-link {
+    .planner-link,
+    .regs-link {
       min-height: 44px;
       display: inline-flex;
       align-items: center;
@@ -4831,72 +4966,72 @@
     };
 
     const waterSeed = [
-      ["lower-deschutes", "Lower Deschutes", "River", "Pelton Reregulating Dam to Maupin", 86, "4,160 cfs", "53 F", ["Caddis", "PMD", "Yellow Sally"], ["Elk Hair Caddis #14", "PMD Sparkle Dun #16", "Yellow Sally Nymph #14"], "Evening caddis is the cleanest surface window. Nymph riffles before shade hits the canyon walls.", "Lower Deschutes corridor has its own trout and steelhead rule table, boat-pass/access constraints, and seasonal closures by reach.", "Not stocked", "78 F", "12 mph W", "Seasonal reference values"],
-      ["middle-deschutes", "Middle Deschutes", "River", "Bend to Lake Billy Chinook", 71, "1,020 cfs", "56 F", ["Caddis", "PMD", "Stonefly"], ["X-Caddis #16", "PMD Cripple #16", "Pat's Rubber Legs #8"], "Pocket water and canyon access reward short drifts and fast line control.", "Middle Deschutes has reach-specific wild trout rules, access constraints, and closures that differ from the Lower river.", "Not stocked", "72 F", "9 mph NW", "Seasonal reference values"],
-      ["upper-deschutes", "Upper Deschutes", "River", "Wickiup Reservoir to Bend", 64, "680 cfs", "57 F", ["Caddis", "Damsel", "Callibaetis"], ["Damsel Nymph #12", "Elk Hair Caddis #16", "Callibaetis Emerger #16"], "Meadow water changes quickly with irrigation flows. Search undercut banks and soft bends.", "Upper Deschutes rules vary around Wickiup, Crane Prairie, Benham Falls, and Bend-area reaches; treat this as a separate ruleset.", "Not stocked", "66 F", "11 mph SW", "Seasonal reference values"],
-      ["metolius", "Metolius", "River", "Camp Sherman", 73, "1,470 cfs", "47 F", ["Green Drake", "BWO", "Caddis"], ["Green Drake Cripple #10", "BWO Emerger #18", "CDC Caddis #16"], "Watch soft edges and back seams. Cold, clear water rewards long leaders and small profile changes.", "Fly fishing only in key sections. Wild trout and bull trout protections apply.", "Not stocked"],
-      ["crooked", "Crooked River", "River", "Below Bowman Dam", 79, "235 cfs", "55 F", ["BWO", "Midge", "PMD"], ["Zebra Midge #20", "BWO Comparadun #18", "Split Case PMD #16"], "Good flow for pocket water. Midges early, then small mayflies if clouds hold.", "Wild trout fishery below Bowman Dam. Barbless and special regulations may apply by section.", "Not stocked"],
-      ["fall-river", "Fall River", "River", "Headwaters to hatchery", 68, "119 cfs", "49 F", ["PMD", "BWO", "Midge"], ["PMD Parachute #18", "RS2 #20", "Zebra Midge #20"], "Spring-creek clarity. Sight-fish slowly and change fly size before changing pattern.", "Fly fishing only in designated reaches. Respect hatchery boundaries and posted closures.", "Stocked by ODFW in season"],
-      ["whychus", "Whychus Creek", "River", "Sisters area", 58, "74 cfs", "51 F", ["BWO", "Caddis", "Yellow Sally"], ["BWO Soft Hackle #18", "Tan Caddis #16", "Yellow Sally Stimulator #14"], "Small-water restoration stream with intimate cover and limited public access.", "Access is patchy; verify public entry and current protections.", "Not stocked"],
-      ["tumalo", "Tumalo Creek", "River", "Tumalo Falls corridor", 55, "62 cfs", "50 F", ["Caddis", "BWO", "Yellow Sally"], ["BWO Comparadun #18", "Elk Hair Caddis #16", "Yellow Sally Nymph #14"], "Cold pocket water is best treated as a small-stream dry/dropper walk.", "Small-stream rules and seasonal access conditions apply.", "Not stocked"],
-      ["little-deschutes", "Little Deschutes", "River", "La Pine meadow water", 52, "210 cfs", "59 F", ["Damsel", "Caddis", "Callibaetis"], ["Damsel Nymph #12", "X-Caddis #16", "Callibaetis Spinner #16"], "Slow meadow bends favor stealth, terrestrials, and small streamers near shade.", "Mixed public/private access; check current reach rules.", "Not stocked"],
-      ["crane-prairie", "Crane Prairie Reservoir", "Lake", "Cascade Lakes", 81, "Stillwater", "60 F", ["Chironomid", "Damsel", "Callibaetis"], ["Chromie #14", "Damsel Nymph #12", "Balanced Leech #10"], "Fish weed lanes and channels. Chronomid depth control is the first adjustment.", "Lake regulations and harvest limits change by species and season.", "Managed reservoir; check ODFW updates"],
-      ["east-lake", "East Lake", "Lake", "Newberry Caldera", 82, "Stillwater", "56 F", ["Callibaetis", "Chironomid", "Damsel"], ["Callibaetis Spinner #16", "Balanced Leech #10", "Chromie #14"], "Light wind keeps the east shore fishable. Look for cruisers over weed edges before noon.", "Lake regulations vary by species and season. Confirm limits before harvest.", "Scheduled: rainbow trout, ODFW weekly list"],
-      ["paulina", "Paulina Lake", "Lake", "Newberry Caldera", 76, "Stillwater", "55 F", ["Callibaetis", "Chironomid", "Damsel"], ["Callibaetis Nymph #16", "Ice Cream Cone #14", "Olive Leech #8"], "Troll or strip leeches along shelves, then switch to suspended chironomids when fish pod up.", "Multi-species lake rules apply; verify kokanee and trout limits.", "Scheduled: rainbow trout, ODFW weekly list"],
-      ["hosmer", "Hosmer Lake", "Lake", "Cascade Lakes", 77, "Stillwater", "58 F", ["Damsel", "Callibaetis", "Chironomid"], ["Damsel Nymph #12", "Callibaetis Emerger #16", "Ice Cream Cone #14"], "Sight fishing is strongest in the channels when wind stays under 10 mph.", "Check current gear and harvest rules; low-impact handling matters here.", "Managed stillwater; check ODFW updates"],
-      ["lava", "Lava Lake", "Lake", "Cascade Lakes", 69, "Stillwater", "59 F", ["Damsel", "Callibaetis", "Chironomid"], ["Olive Willy #10", "Callibaetis Spinner #16", "Black Chironomid #16"], "Wind lanes and weed edges are the daily map. Cover water until you find cruising fish.", "Lake regulations and seasonal access apply.", "ODFW stocking varies by season"],
-      ["little-lava", "Little Lava Lake", "Lake", "Headwaters of the Deschutes", 62, "Stillwater", "57 F", ["Damsel", "Callibaetis", "Caddis"], ["Damsel Nymph #12", "Callibaetis Parachute #16", "Mini Leech #12"], "Quiet edges and small-water presentations beat long blind casts.", "Check lake-specific limits and access conditions.", "ODFW stocking varies by season"],
-      ["wickiup", "Wickiup Reservoir", "Lake", "Upper Deschutes basin", 57, "Stillwater", "61 F", ["Callibaetis", "Chironomid", "Damsel"], ["Balanced Leech #8", "Callibaetis Nymph #16", "Bloodworm #18"], "Levels and wind define the day. Focus on channels and structure near remaining depth.", "Reservoir access and boating conditions can change quickly.", "Managed reservoir; check ODFW updates"],
-      ["davis", "Davis Lake", "Lake", "Lava-flow bass and trout water", 72, "Stillwater", "62 F", ["Damsel", "Callibaetis", "Dragonfly"], ["Damsel Nymph #10", "Marabou Damsel #10", "Olive Bugger #8"], "Damsel migration can put trout tight to reeds; bass options make windy afternoons useful.", "Special regulations and species rules apply.", "Managed stillwater; check ODFW updates"],
-      ["three-creek", "Three Creek Lake", "Lake", "Sisters high lake", 74, "Stillwater", "54 F", ["Callibaetis", "Chironomid", "Caddis"], ["Callibaetis Dun #16", "Black Chironomid #18", "Callibaetis Parachute #16"], "High-elevation timing runs later. Fish calm mornings and shaded inlet edges.", "Seasonal road access and lake rules apply.", "Scheduled: ODFW weekly list"],
-      ["north-twin", "North Twin Lake", "Lake", "South of Bend", 67, "Stillwater", "59 F", ["Chironomid", "Callibaetis", "Damsel"], ["Chromie #16", "Callibaetis Nymph #16", "Balanced Leech #10"], "A friendly stillwater for testing depth, indicator distance, and slow retrieves.", "Stocked lake regulations apply.", "Scheduled: ODFW weekly list"],
-      ["south-twin", "South Twin Lake", "Lake", "South of Bend", 66, "Stillwater", "60 F", ["Chironomid", "Damsel", "Callibaetis"], ["Ice Cream Cone #16", "Damsel Nymph #12", "Callibaetis Emerger #16"], "Fish the drop-offs and windward food lanes before switching flies.", "Stocked lake regulations apply.", "Scheduled: ODFW weekly list"],
-      ["cultus", "Cultus Lake", "Lake", "Cascade Lakes", 61, "Stillwater", "56 F", ["Callibaetis", "Caddis", "Chironomid"], ["Callibaetis Spinner #16", "Tan Caddis #16", "Black Chironomid #16"], "Bigger water rewards boat positioning. Look for sheltered shorelines when afternoon wind rises.", "Lake regulations vary by species; confirm current rules.", "Scheduled: ODFW weekly list"],
-      ["devils", "Devils Lake", "Lake", "Cascade Lakes Highway", 63, "Stillwater", "57 F", ["Chironomid", "Callibaetis", "Damsel"], ["Small Leech #12", "Callibaetis Emerger #16", "Midge Pupa #18"], "Clear, shallow water makes this a stealth and sight-fishing stop.", "Stocked lake regulations and seasonal access apply.", "Scheduled: ODFW weekly list"],
-      ["suttle", "Suttle Lake", "Lake", "Santiam corridor", 59, "Stillwater", "58 F", ["Chironomid", "Callibaetis", "Caddis"], ["Chromie #14", "Callibaetis Nymph #16", "Soft Hackle #14"], "Search drop-offs and wind lanes; boat traffic can push fish deeper.", "Check current lake and species regulations.", "Managed lake; check ODFW updates"],
-      ["shevlin", "Shevlin Pond", "Lake", "Bend community water", 49, "Stillwater", "61 F", ["Chironomid", "Caddis", "Terrestrial"], ["Midge Pupa #18", "Elk Hair Caddis #16", "Foam Ant #16"], "Quick local option for simple dry/dropper practice and family fishing.", "Community water rules and youth/family opportunities may apply.", "Scheduled: ODFW weekly list"],
-      ["lake-billy-chinook", "Lake Billy Chinook", "Lake", "Crooked, Deschutes, Metolius arms", 64, "Reservoir", "58 F", ["Chironomid", "Callibaetis", "Caddis"], ["Balanced Leech #8", "Chromie #14", "Soft Hackle #14"], "Fish points, arms, and wind lanes; trout, kokanee, and warmwater options change the fly plan.", "Large reservoir with species-specific limits and tribal/park access considerations.", "Managed reservoir; check ODFW updates"],
-      ["simtustus", "Lake Simtustus", "Lake", "Below Pelton Dam", 58, "Reservoir", "57 F", ["Chironomid", "Caddis", "Callibaetis"], ["Black Chironomid #16", "Olive Bugger #8", "Callibaetis Parachute #16"], "Steep banks and reservoir currents make boat positioning matter more than long casts.", "Reservoir rules and boating/access rules apply.", "Managed reservoir; check ODFW updates"],
-      ["prineville-reservoir", "Prineville Reservoir", "Lake", "Crooked River impoundment", 60, "Reservoir", "63 F", ["Chironomid", "Damsel", "Terrestrial"], ["Balanced Leech #8", "Damsel Nymph #12", "Foam Beetle #12"], "Warmwater and trout overlap; focus on coves, points, and shaded banks when wind rises.", "Reservoir rules vary by species; check current advisories and limits.", "Managed reservoir; check ODFW updates"],
-      ["ochoco-reservoir", "Ochoco Reservoir", "Lake", "Prineville area", 56, "Reservoir", "62 F", ["Chironomid", "Damsel", "Callibaetis"], ["Chromie #16", "Olive Leech #8", "Callibaetis Nymph #16"], "Good local reservoir option when river flows are off; fish structure and inlet color changes.", "Reservoir rules and warmwater/trout limits apply.", "Managed reservoir; check ODFW updates"],
-      ["haystack", "Haystack Reservoir", "Lake", "Culver / Madras area", 54, "Reservoir", "64 F", ["Chironomid", "Damsel", "Terrestrial"], ["Black Chironomid #16", "Foam Ant #14", "Olive Bugger #8"], "A practical close-in water for stocked trout and warmwater prospecting.", "Reservoir rules and stocking updates apply.", "ODFW stocking varies by season"],
-      ["blue-lake", "Blue Lake", "Lake", "Santiam Pass high lake", 51, "Stillwater", "52 F", ["Callibaetis", "Chironomid", "Caddis"], ["Callibaetis Parachute #16", "Black Chironomid #18", "Mini Leech #12"], "High-lake timing runs late; carry small dries, midge pupa, and a compact leech.", "High lake access and regulations vary by season.", "Stocking varies by season"],
-      ["big-lake", "Big Lake", "Lake", "Santiam Pass", 50, "Stillwater", "53 F", ["Callibaetis", "Caddis", "Chironomid"], ["Callibaetis Spinner #16", "Elk Hair Caddis #16", "Chromie #16"], "Wind can dominate; use sheltered shorelines and evening caddis windows.", "High lake rules and seasonal access apply.", "Stocking varies by season"],
-      ["scout-lake", "Scout Lake", "Lake", "Metolius basin", 48, "Stillwater", "54 F", ["Caddis", "Chironomid", "Terrestrial"], ["Elk Hair Caddis #16", "Midge Pupa #18", "Foam Ant #16"], "Small-water family option; stealth and compact casts beat heavy rigs.", "Small lake rules and stocking updates apply.", "Stocking varies by season"],
-      ["clear-lake", "Clear Lake", "Lake", "McKenzie headwaters", 63, "Stillwater", "51 F", ["Chironomid", "Callibaetis", "Caddis"], ["Black Chironomid #18", "Callibaetis Emerger #16", "Soft Hackle Caddis #14"], "Cold clear water rewards long leaders and subtle retrieves.", "Lake rules and boating/access restrictions apply.", "Managed lake; check ODFW updates"],
-      ["walton", "Walton Lake", "Lake", "Ochoco Mountains", 57, "Stillwater", "56 F", ["Chironomid", "Caddis", "Terrestrial"], ["Midge Pupa #18", "Elk Hair Caddis #16", "Foam Beetle #14"], "Quiet forest lake with stocked trout windows and good bank access.", "Stocked lake rules and seasonal access apply.", "Scheduled: ODFW weekly list"],
-      ["ollalie", "Olallie Lake", "Lake", "Cascade high lake", 55, "Stillwater", "52 F", ["Callibaetis", "Caddis", "Chironomid"], ["Callibaetis Dun #16", "Tan Caddis #16", "Black Chironomid #18"], "High-country hatches run later; fish noon warmth and evening slicks.", "High lake access and rule exceptions may apply.", "Scheduled: ODFW weekly list"],
-      ["deer-lake", "Deer Lake", "Lake", "Cascade high lake", 46, "Stillwater", "51 F", ["Chironomid", "Callibaetis", "Terrestrial"], ["Midge Pupa #18", "Callibaetis Parachute #16", "Foam Ant #16"], "Small high-lake playbook: one dry, one midge, one small leech.", "High lake rules and seasonal access apply.", "Scheduled: ODFW weekly list"],
-      ["elkhorn-lake", "Elkhorn Lake", "Lake", "Ochoco / Crooked River country", 44, "Stillwater", "55 F", ["Chironomid", "Caddis", "Terrestrial"], ["Black Chironomid #18", "Elk Hair Caddis #16", "Foam Beetle #14"], "Best treated as a compact stillwater stop when stocked trout are fresh.", "Check stocking and access before driving.", "Stocking varies by season"],
-      ["antelope-flat", "Antelope Flat Reservoir", "Lake", "Maury Mountains", 53, "Reservoir", "60 F", ["Chironomid", "Damsel", "Callibaetis"], ["Chromie #16", "Damsel Nymph #12", "Olive Bugger #8"], "Remote reservoir water; wind, water level, and turbidity set the plan.", "Reservoir rules, access, and water-level conditions vary.", "Managed reservoir; check ODFW updates"],
-      ["shelvock-pond", "Shelvock Pond", "Lake", "Redmond area", 42, "Stillwater", "62 F", ["Chironomid", "Terrestrial", "Caddis"], ["Midge Pupa #18", "Foam Ant #16", "Elk Hair Caddis #16"], "Close-to-town stocked pond option for beginners and quick sessions.", "Community pond rules and stocking updates apply.", "Scheduled: ODFW weekly list"],
-      ["pine-nursery", "Pine Nursery Pond", "Lake", "Bend community water", 43, "Stillwater", "63 F", ["Chironomid", "Caddis", "Terrestrial"], ["Midge Pupa #18", "Elk Hair Caddis #16", "Foam Beetle #14"], "Beginner-friendly pond where visible fly references matter more than perfect hatch timing.", "Community pond rules and stocking updates apply.", "Scheduled: ODFW weekly list"],
-      ["hat-rock-pond", "Hat Rock Pond", "Lake", "Redmond community water", 41, "Stillwater", "63 F", ["Chironomid", "Terrestrial", "Caddis"], ["Black Chironomid #16", "Foam Ant #16", "Soft Hackle Caddis #14"], "Short-session stocked pond with simple dry/dropper utility.", "Community pond rules and stocking updates apply.", "Scheduled: ODFW weekly list"],
-      ["spark-lake", "Sparks Lake", "Lake", "Cascade Lakes", 47, "Stillwater", "55 F", ["Callibaetis", "Damsel", "Chironomid"], ["Callibaetis Spinner #16", "Damsel Nymph #12", "Chromie #16"], "Shallow, scenic, and wind-sensitive; stealth matters more than heavy rigs.", "Special lake rules and seasonal access apply.", "Not stocked"],
-      ["elk-lake", "Elk Lake", "Lake", "Cascade Lakes", 52, "Stillwater", "56 F", ["Callibaetis", "Caddis", "Chironomid"], ["Callibaetis Nymph #16", "Tan Caddis #16", "Black Chironomid #16"], "Fish early and late around boat traffic; wind lanes can concentrate food.", "Lake rules and seasonal access apply.", "Managed lake; check ODFW updates"],
-      ["little-cultus", "Little Cultus Lake", "Lake", "Cascade Lakes", 50, "Stillwater", "55 F", ["Callibaetis", "Caddis", "Chironomid"], ["Callibaetis Parachute #16", "Elk Hair Caddis #16", "Midge Pupa #18"], "Smaller, quieter Cultus option with standard high-lake tactics.", "Lake rules and seasonal access apply.", "Stocking varies by season"],
-      ["crescent-lake", "Crescent Lake", "Lake", "South Cascades", 58, "Stillwater", "55 F", ["Callibaetis", "Chironomid", "Caddis"], ["Callibaetis Nymph #16", "Chromie #14", "Olive Bugger #8"], "Bigger water and deeper edges make leeches and suspended midges useful.", "Lake rules vary by species; verify current limits.", "Managed lake; check ODFW updates"],
-      ["odell-lake", "Odell Lake", "Lake", "South Cascades", 56, "Stillwater", "52 F", ["Chironomid", "Callibaetis", "Caddis"], ["Black Chironomid #16", "Callibaetis Emerger #16", "Olive Leech #8"], "Cold, large lake where wind, depth, and boat access shape the day.", "Species-specific rules apply.", "Managed lake; check ODFW updates"],
-      ["crescent-creek", "Crescent Creek", "River", "Below Crescent Lake", 46, "95 cfs", "50 F", ["BWO", "Caddis", "PMD"], ["BWO Emerger #18", "Tan Caddis #16", "PMD Nymph #16"], "Small cold outlet water; fish dry/dropper rigs carefully around wood and shade.", "Stream rules and access constraints apply.", "Not stocked"],
-      ["spring-river", "Spring River", "River", "Sunriver spring creek", 45, "Spring creek", "48 F", ["BWO", "PMD", "Midge"], ["RS2 #20", "PMD Sparkle Dun #18", "Zebra Midge #20"], "Ultra-clear spring creek conditions make fly size and approach the whole game.", "Special access and spring creek rules apply.", "Not stocked"],
-      ["paulina-creek", "Paulina Creek", "River", "Newberry outlet", 39, "Outlet creek", "49 F", ["Caddis", "BWO", "Yellow Sally"], ["Elk Hair Caddis #16", "BWO Soft Hackle #18", "Yellow Sally Nymph #14"], "Small creek option with pocket water and seasonal access limits.", "Creek rules and access vary through the season.", "Not stocked"],
-      ["bridge-creek", "Bridge Creek", "River", "Ochoco Mountains", 38, "Creek", "50 F", ["BWO", "Caddis", "Terrestrial"], ["BWO Comparadun #18", "Foam Ant #16", "BWO Nymph #18"], "Tiny-water tactics: keep low, cover close, and use simple visible flies.", "Small-stream rules and private/public boundaries apply.", "Not stocked"],
-      ["ochoco-creek", "Ochoco Creek", "River", "Prineville area", 37, "Creek", "53 F", ["Caddis", "BWO", "Terrestrial"], ["Elk Hair Caddis #16", "BWO Emerger #18", "Foam Beetle #14"], "A local creek read where access and flow are the first questions.", "Creek rules and access vary by reach.", "Not stocked"],
-      ["firemans-pond", "Fireman's Pond", "Lake", "Redmond kids' pond", 40, "Stillwater", "63 F", ["Chironomid", "Terrestrial", "Caddis"], ["Midge Pupa #18", "Foam Ant #16", "Elk Hair Caddis #16"], "Close-to-town stocked pond suited to first fish, short leaders, and visual fly choices.", "Kids/community pond rules and stocking updates apply.", "Scheduled: ODFW weekly list"],
-      ["prineville-youth", "Prineville Youth Pond", "Lake", "Prineville kids' pond", 40, "Stillwater", "64 F", ["Chironomid", "Terrestrial", "Caddis"], ["Black Chironomid #18", "Foam Beetle #14", "Soft Hackle Caddis #14"], "A beginner pond where simple midge and terrestrial patterns are easiest to understand.", "Youth/community pond rules and stocking updates apply.", "Scheduled: ODFW weekly list"],
-      ["jefferson-county-pond", "Jefferson County Pond", "Lake", "Madras community water", 39, "Stillwater", "65 F", ["Chironomid", "Caddis", "Terrestrial"], ["Midge Pupa #18", "Elk Hair Caddis #16", "Foam Ant #16"], "Short-session stocked water for families and new fly anglers.", "Community pond rules and stocking updates apply.", "Scheduled: ODFW weekly list"],
-      ["todd-lake", "Todd Lake", "Lake", "Cascade hike-in lake", 44, "Stillwater", "50 F", ["Callibaetis", "Caddis", "Terrestrial"], ["Callibaetis Parachute #16", "Elk Hair Caddis #16", "Foam Ant #16"], "Short hike-in lake with cold water and simple high-lake dry fly windows.", "High lake access, wilderness rules, and seasonal road conditions apply.", "Not stocked recently; check ODFW"],
-      ["blow-lake", "Blow Lake", "Lake", "Cascade hike-in lake", 42, "Stillwater", "51 F", ["Callibaetis", "Chironomid", "Terrestrial"], ["Callibaetis Parachute #16", "Black Chironomid #18", "Foam Beetle #14"], "Good hike-and-fish candidate for compact fly boxes and slow bank approaches.", "High lake rules and trail conditions apply.", "Stocking varies by season"],
-      ["doris-lake", "Doris Lake", "Lake", "Cascade hike-in lake", 43, "Stillwater", "50 F", ["Callibaetis", "Caddis", "Terrestrial"], ["Callibaetis Spinner #16", "Tan Caddis #16", "Foam Ant #16"], "A day-trip lake where afternoon warmth often matters more than clock time.", "High lake rules and trail conditions apply.", "Stocking varies by season"],
-      ["lucky-lake", "Lucky Lake", "Lake", "Cascade hike-in lake", 42, "Stillwater", "51 F", ["Callibaetis", "Caddis", "Chironomid"], ["Callibaetis Parachute #16", "Elk Hair Caddis #16", "Midge Pupa #18"], "Brook trout water where small dries and tiny midges keep the setup simple.", "High lake rules and trail conditions apply.", "Stocking varies by season"],
-      ["rosary-lakes", "Rosary Lakes", "Lake", "Cascade hike-in lake chain", 41, "Stillwater", "50 F", ["Callibaetis", "Chironomid", "Terrestrial"], ["Callibaetis Dun #16", "Black Chironomid #18", "Foam Beetle #14"], "Series of lakes with classic high-country timing and compact fly selection.", "High lake rules and trail conditions apply.", "Stocking varies by season"],
-      ["square-lake", "Square Lake", "Lake", "Santiam Pass hike-in lake", 41, "Stillwater", "50 F", ["Callibaetis", "Caddis", "Terrestrial"], ["Callibaetis Parachute #16", "Tan Caddis #16", "Foam Ant #16"], "A popular hike-in lake where visible dries help new anglers track takes.", "High lake rules and trail conditions apply.", "Stocking varies by season"],
-      ["little-three-creeks", "Little Three Creeks Lake", "Lake", "Sisters hike-in lake", 40, "Stillwater", "51 F", ["Caddis", "Callibaetis", "Terrestrial"], ["Elk Hair Caddis #16", "Callibaetis Parachute #16", "Foam Beetle #14"], "Short hike from Three Creek Lake with simple brook-trout fly tactics.", "High lake rules and trail conditions apply.", "Naturally reproducing brook trout"],
-      ["yoran-lake", "Yoran Lake", "Lake", "Odell-area hike-in lake", 39, "Stillwater", "49 F", ["Callibaetis", "Chironomid", "Terrestrial"], ["Callibaetis Spinner #16", "Black Chironomid #18", "Foam Ant #16"], "Longer hike-in option; pack light, fish close, and watch afternoon wind.", "High lake rules and trail conditions apply.", "Stocking varies by season"]
+      ["lower-deschutes", "Lower Deschutes", "River", "Pelton Reregulating Dam to Maupin", 86, "4,160 cfs", "53 F", ["Caddis", "PMD", "Yellow Sally"], ["Elk Hair Caddis #14", "PMD Sparkle Dun #16", "Yellow Sally Nymph #14"], "Evening caddis is the cleanest surface window. Nymph riffles before shade hits the canyon walls.", "Not stocked", "78 F", "12 mph W", "Seasonal reference values"],
+      ["middle-deschutes", "Middle Deschutes", "River", "Bend to Lake Billy Chinook", 71, "1,020 cfs", "56 F", ["Caddis", "PMD", "Stonefly"], ["X-Caddis #16", "PMD Cripple #16", "Pat's Rubber Legs #8"], "Pocket water and canyon access reward short drifts and fast line control.", "Not stocked", "72 F", "9 mph NW", "Seasonal reference values"],
+      ["upper-deschutes", "Upper Deschutes", "River", "Wickiup Reservoir to Bend", 64, "680 cfs", "57 F", ["Caddis", "Damsel", "Callibaetis"], ["Damsel Nymph #12", "Elk Hair Caddis #16", "Callibaetis Emerger #16"], "Meadow water changes quickly with irrigation flows. Search undercut banks and soft bends.", "Not stocked", "66 F", "11 mph SW", "Seasonal reference values"],
+      ["metolius", "Metolius", "River", "Camp Sherman", 73, "1,470 cfs", "47 F", ["Green Drake", "BWO", "Caddis"], ["Green Drake Cripple #10", "BWO Emerger #18", "CDC Caddis #16"], "Watch soft edges and back seams. Cold, clear water rewards long leaders and small profile changes.", "Not stocked"],
+      ["crooked", "Crooked River", "River", "Below Bowman Dam", 79, "235 cfs", "55 F", ["BWO", "Midge", "PMD"], ["Zebra Midge #20", "BWO Comparadun #18", "Split Case PMD #16"], "Good flow for pocket water. Midges early, then small mayflies if clouds hold.", "Not stocked"],
+      ["fall-river", "Fall River", "River", "Headwaters to hatchery", 68, "119 cfs", "49 F", ["PMD", "BWO", "Midge"], ["PMD Parachute #18", "RS2 #20", "Zebra Midge #20"], "Spring-creek clarity. Sight-fish slowly and change fly size before changing pattern.", "Stocked by ODFW in season"],
+      ["whychus", "Whychus Creek", "River", "Sisters area", 58, "74 cfs", "51 F", ["BWO", "Caddis", "Yellow Sally"], ["BWO Soft Hackle #18", "Tan Caddis #16", "Yellow Sally Stimulator #14"], "Small-water restoration stream with intimate cover and limited public access.", "Not stocked"],
+      ["tumalo", "Tumalo Creek", "River", "Tumalo Falls corridor", 55, "62 cfs", "50 F", ["Caddis", "BWO", "Yellow Sally"], ["BWO Comparadun #18", "Elk Hair Caddis #16", "Yellow Sally Nymph #14"], "Cold pocket water is best treated as a small-stream dry/dropper walk.", "Not stocked"],
+      ["little-deschutes", "Little Deschutes", "River", "La Pine meadow water", 52, "210 cfs", "59 F", ["Damsel", "Caddis", "Callibaetis"], ["Damsel Nymph #12", "X-Caddis #16", "Callibaetis Spinner #16"], "Slow meadow bends favor stealth, terrestrials, and small streamers near shade.", "Not stocked"],
+      ["crane-prairie", "Crane Prairie Reservoir", "Lake", "Cascade Lakes", 81, "Stillwater", "60 F", ["Chironomid", "Damsel", "Callibaetis"], ["Chromie #14", "Damsel Nymph #12", "Balanced Leech #10"], "Fish weed lanes and channels. Chronomid depth control is the first adjustment.", "Managed reservoir; check ODFW updates"],
+      ["east-lake", "East Lake", "Lake", "Newberry Caldera", 82, "Stillwater", "56 F", ["Callibaetis", "Chironomid", "Damsel"], ["Callibaetis Spinner #16", "Balanced Leech #10", "Chromie #14"], "Light wind keeps the east shore fishable. Look for cruisers over weed edges before noon.", "Scheduled: rainbow trout, ODFW weekly list"],
+      ["paulina", "Paulina Lake", "Lake", "Newberry Caldera", 76, "Stillwater", "55 F", ["Callibaetis", "Chironomid", "Damsel"], ["Callibaetis Nymph #16", "Ice Cream Cone #14", "Olive Leech #8"], "Troll or strip leeches along shelves, then switch to suspended chironomids when fish pod up.", "Scheduled: rainbow trout, ODFW weekly list"],
+      ["hosmer", "Hosmer Lake", "Lake", "Cascade Lakes", 77, "Stillwater", "58 F", ["Damsel", "Callibaetis", "Chironomid"], ["Damsel Nymph #12", "Callibaetis Emerger #16", "Ice Cream Cone #14"], "Sight fishing is strongest in the channels when wind stays under 10 mph.", "Managed stillwater; check ODFW updates"],
+      ["lava", "Lava Lake", "Lake", "Cascade Lakes", 69, "Stillwater", "59 F", ["Damsel", "Callibaetis", "Chironomid"], ["Olive Willy #10", "Callibaetis Spinner #16", "Black Chironomid #16"], "Wind lanes and weed edges are the daily map. Cover water until you find cruising fish.", "ODFW stocking varies by season"],
+      ["little-lava", "Little Lava Lake", "Lake", "Headwaters of the Deschutes", 62, "Stillwater", "57 F", ["Damsel", "Callibaetis", "Caddis"], ["Damsel Nymph #12", "Callibaetis Parachute #16", "Mini Leech #12"], "Quiet edges and small-water presentations beat long blind casts.", "ODFW stocking varies by season"],
+      ["wickiup", "Wickiup Reservoir", "Lake", "Upper Deschutes basin", 57, "Stillwater", "61 F", ["Callibaetis", "Chironomid", "Damsel"], ["Balanced Leech #8", "Callibaetis Nymph #16", "Bloodworm #18"], "Levels and wind define the day. Focus on channels and structure near remaining depth.", "Managed reservoir; check ODFW updates"],
+      ["davis", "Davis Lake", "Lake", "Lava-flow bass and trout water", 72, "Stillwater", "62 F", ["Damsel", "Callibaetis", "Dragonfly"], ["Damsel Nymph #10", "Marabou Damsel #10", "Olive Bugger #8"], "Damsel migration can put trout tight to reeds; bass options make windy afternoons useful.", "Managed stillwater; check ODFW updates"],
+      ["three-creek", "Three Creek Lake", "Lake", "Sisters high lake", 74, "Stillwater", "54 F", ["Callibaetis", "Chironomid", "Caddis"], ["Callibaetis Dun #16", "Black Chironomid #18", "Callibaetis Parachute #16"], "High-elevation timing runs later. Fish calm mornings and shaded inlet edges.", "Scheduled: ODFW weekly list"],
+      ["north-twin", "North Twin Lake", "Lake", "South of Bend", 67, "Stillwater", "59 F", ["Chironomid", "Callibaetis", "Damsel"], ["Chromie #16", "Callibaetis Nymph #16", "Balanced Leech #10"], "A friendly stillwater for testing depth, indicator distance, and slow retrieves.", "Scheduled: ODFW weekly list"],
+      ["south-twin", "South Twin Lake", "Lake", "South of Bend", 66, "Stillwater", "60 F", ["Chironomid", "Damsel", "Callibaetis"], ["Ice Cream Cone #16", "Damsel Nymph #12", "Callibaetis Emerger #16"], "Fish the drop-offs and windward food lanes before switching flies.", "Scheduled: ODFW weekly list"],
+      ["cultus", "Cultus Lake", "Lake", "Cascade Lakes", 61, "Stillwater", "56 F", ["Callibaetis", "Caddis", "Chironomid"], ["Callibaetis Spinner #16", "Tan Caddis #16", "Black Chironomid #16"], "Bigger water rewards boat positioning. Look for sheltered shorelines when afternoon wind rises.", "Scheduled: ODFW weekly list"],
+      ["devils", "Devils Lake", "Lake", "Cascade Lakes Highway", 63, "Stillwater", "57 F", ["Chironomid", "Callibaetis", "Damsel"], ["Small Leech #12", "Callibaetis Emerger #16", "Midge Pupa #18"], "Clear, shallow water makes this a stealth and sight-fishing stop.", "Scheduled: ODFW weekly list"],
+      ["suttle", "Suttle Lake", "Lake", "Santiam corridor", 59, "Stillwater", "58 F", ["Chironomid", "Callibaetis", "Caddis"], ["Chromie #14", "Callibaetis Nymph #16", "Soft Hackle #14"], "Search drop-offs and wind lanes; boat traffic can push fish deeper.", "Managed lake; check ODFW updates"],
+      ["shevlin", "Shevlin Pond", "Lake", "Bend community water", 49, "Stillwater", "61 F", ["Chironomid", "Caddis", "Terrestrial"], ["Midge Pupa #18", "Elk Hair Caddis #16", "Foam Ant #16"], "Quick local option for simple dry/dropper practice and family fishing.", "Scheduled: ODFW weekly list"],
+      ["lake-billy-chinook", "Lake Billy Chinook", "Lake", "Crooked, Deschutes, Metolius arms", 64, "Reservoir", "58 F", ["Chironomid", "Callibaetis", "Caddis"], ["Balanced Leech #8", "Chromie #14", "Soft Hackle #14"], "Fish points, arms, and wind lanes; trout, kokanee, and warmwater options change the fly plan.", "Managed reservoir; check ODFW updates"],
+      ["simtustus", "Lake Simtustus", "Lake", "Below Pelton Dam", 58, "Reservoir", "57 F", ["Chironomid", "Caddis", "Callibaetis"], ["Black Chironomid #16", "Olive Bugger #8", "Callibaetis Parachute #16"], "Steep banks and reservoir currents make boat positioning matter more than long casts.", "Managed reservoir; check ODFW updates"],
+      ["prineville-reservoir", "Prineville Reservoir", "Lake", "Crooked River impoundment", 60, "Reservoir", "63 F", ["Chironomid", "Damsel", "Terrestrial"], ["Balanced Leech #8", "Damsel Nymph #12", "Foam Beetle #12"], "Warmwater and trout overlap; focus on coves, points, and shaded banks when wind rises.", "Managed reservoir; check ODFW updates"],
+      ["ochoco-reservoir", "Ochoco Reservoir", "Lake", "Prineville area", 56, "Reservoir", "62 F", ["Chironomid", "Damsel", "Callibaetis"], ["Chromie #16", "Olive Leech #8", "Callibaetis Nymph #16"], "Good local reservoir option when river flows are off; fish structure and inlet color changes.", "Managed reservoir; check ODFW updates"],
+      ["haystack", "Haystack Reservoir", "Lake", "Culver / Madras area", 54, "Reservoir", "64 F", ["Chironomid", "Damsel", "Terrestrial"], ["Black Chironomid #16", "Foam Ant #14", "Olive Bugger #8"], "A practical close-in water for stocked trout and warmwater prospecting.", "ODFW stocking varies by season"],
+      ["blue-lake", "Blue Lake", "Lake", "Santiam Pass high lake", 51, "Stillwater", "52 F", ["Callibaetis", "Chironomid", "Caddis"], ["Callibaetis Parachute #16", "Black Chironomid #18", "Mini Leech #12"], "High-lake timing runs late; carry small dries, midge pupa, and a compact leech.", "Stocking varies by season"],
+      ["big-lake", "Big Lake", "Lake", "Santiam Pass", 50, "Stillwater", "53 F", ["Callibaetis", "Caddis", "Chironomid"], ["Callibaetis Spinner #16", "Elk Hair Caddis #16", "Chromie #16"], "Wind can dominate; use sheltered shorelines and evening caddis windows.", "Stocking varies by season"],
+      ["scout-lake", "Scout Lake", "Lake", "Metolius basin", 48, "Stillwater", "54 F", ["Caddis", "Chironomid", "Terrestrial"], ["Elk Hair Caddis #16", "Midge Pupa #18", "Foam Ant #16"], "Small-water family option; stealth and compact casts beat heavy rigs.", "Stocking varies by season"],
+      ["clear-lake", "Clear Lake", "Lake", "McKenzie headwaters", 63, "Stillwater", "51 F", ["Chironomid", "Callibaetis", "Caddis"], ["Black Chironomid #18", "Callibaetis Emerger #16", "Soft Hackle Caddis #14"], "Cold clear water rewards long leaders and subtle retrieves.", "Managed lake; check ODFW updates"],
+      ["walton", "Walton Lake", "Lake", "Ochoco Mountains", 57, "Stillwater", "56 F", ["Chironomid", "Caddis", "Terrestrial"], ["Midge Pupa #18", "Elk Hair Caddis #16", "Foam Beetle #14"], "Quiet forest lake with stocked trout windows and good bank access.", "Scheduled: ODFW weekly list"],
+      ["ollalie", "Olallie Lake", "Lake", "Cascade high lake", 55, "Stillwater", "52 F", ["Callibaetis", "Caddis", "Chironomid"], ["Callibaetis Dun #16", "Tan Caddis #16", "Black Chironomid #18"], "High-country hatches run later; fish noon warmth and evening slicks.", "Scheduled: ODFW weekly list"],
+      ["deer-lake", "Deer Lake", "Lake", "Cascade high lake", 46, "Stillwater", "51 F", ["Chironomid", "Callibaetis", "Terrestrial"], ["Midge Pupa #18", "Callibaetis Parachute #16", "Foam Ant #16"], "Small high-lake playbook: one dry, one midge, one small leech.", "Scheduled: ODFW weekly list"],
+      ["elkhorn-lake", "Elkhorn Lake", "Lake", "Ochoco / Crooked River country", 44, "Stillwater", "55 F", ["Chironomid", "Caddis", "Terrestrial"], ["Black Chironomid #18", "Elk Hair Caddis #16", "Foam Beetle #14"], "Best treated as a compact stillwater stop when stocked trout are fresh.", "Stocking varies by season"],
+      ["antelope-flat", "Antelope Flat Reservoir", "Lake", "Maury Mountains", 53, "Reservoir", "60 F", ["Chironomid", "Damsel", "Callibaetis"], ["Chromie #16", "Damsel Nymph #12", "Olive Bugger #8"], "Remote reservoir water; wind, water level, and turbidity set the plan.", "Managed reservoir; check ODFW updates"],
+      ["shelvock-pond", "Shelvock Pond", "Lake", "Redmond area", 42, "Stillwater", "62 F", ["Chironomid", "Terrestrial", "Caddis"], ["Midge Pupa #18", "Foam Ant #16", "Elk Hair Caddis #16"], "Close-to-town stocked pond option for beginners and quick sessions.", "Scheduled: ODFW weekly list"],
+      ["pine-nursery", "Pine Nursery Pond", "Lake", "Bend community water", 43, "Stillwater", "63 F", ["Chironomid", "Caddis", "Terrestrial"], ["Midge Pupa #18", "Elk Hair Caddis #16", "Foam Beetle #14"], "Beginner-friendly pond where visible fly references matter more than perfect hatch timing.", "Scheduled: ODFW weekly list"],
+      ["hat-rock-pond", "Hat Rock Pond", "Lake", "Redmond community water", 41, "Stillwater", "63 F", ["Chironomid", "Terrestrial", "Caddis"], ["Black Chironomid #16", "Foam Ant #16", "Soft Hackle Caddis #14"], "Short-session stocked pond with simple dry/dropper utility.", "Scheduled: ODFW weekly list"],
+      ["spark-lake", "Sparks Lake", "Lake", "Cascade Lakes", 47, "Stillwater", "55 F", ["Callibaetis", "Damsel", "Chironomid"], ["Callibaetis Spinner #16", "Damsel Nymph #12", "Chromie #16"], "Shallow, scenic, and wind-sensitive; stealth matters more than heavy rigs.", "Not stocked"],
+      ["elk-lake", "Elk Lake", "Lake", "Cascade Lakes", 52, "Stillwater", "56 F", ["Callibaetis", "Caddis", "Chironomid"], ["Callibaetis Nymph #16", "Tan Caddis #16", "Black Chironomid #16"], "Fish early and late around boat traffic; wind lanes can concentrate food.", "Managed lake; check ODFW updates"],
+      ["little-cultus", "Little Cultus Lake", "Lake", "Cascade Lakes", 50, "Stillwater", "55 F", ["Callibaetis", "Caddis", "Chironomid"], ["Callibaetis Parachute #16", "Elk Hair Caddis #16", "Midge Pupa #18"], "Smaller, quieter Cultus option with standard high-lake tactics.", "Stocking varies by season"],
+      ["crescent-lake", "Crescent Lake", "Lake", "South Cascades", 58, "Stillwater", "55 F", ["Callibaetis", "Chironomid", "Caddis"], ["Callibaetis Nymph #16", "Chromie #14", "Olive Bugger #8"], "Bigger water and deeper edges make leeches and suspended midges useful.", "Managed lake; check ODFW updates"],
+      ["odell-lake", "Odell Lake", "Lake", "South Cascades", 56, "Stillwater", "52 F", ["Chironomid", "Callibaetis", "Caddis"], ["Black Chironomid #16", "Callibaetis Emerger #16", "Olive Leech #8"], "Cold, large lake where wind, depth, and boat access shape the day.", "Managed lake; check ODFW updates"],
+      ["crescent-creek", "Crescent Creek", "River", "Below Crescent Lake", 46, "95 cfs", "50 F", ["BWO", "Caddis", "PMD"], ["BWO Emerger #18", "Tan Caddis #16", "PMD Nymph #16"], "Small cold outlet water; fish dry/dropper rigs carefully around wood and shade.", "Not stocked"],
+      ["spring-river", "Spring River", "River", "Sunriver spring creek", 45, "Spring creek", "48 F", ["BWO", "PMD", "Midge"], ["RS2 #20", "PMD Sparkle Dun #18", "Zebra Midge #20"], "Ultra-clear spring creek conditions make fly size and approach the whole game.", "Not stocked"],
+      ["paulina-creek", "Paulina Creek", "River", "Newberry outlet", 39, "Outlet creek", "49 F", ["Caddis", "BWO", "Yellow Sally"], ["Elk Hair Caddis #16", "BWO Soft Hackle #18", "Yellow Sally Nymph #14"], "Small creek option with pocket water and seasonal access limits.", "Not stocked"],
+      ["bridge-creek", "Bridge Creek", "River", "Ochoco Mountains", 38, "Creek", "50 F", ["BWO", "Caddis", "Terrestrial"], ["BWO Comparadun #18", "Foam Ant #16", "BWO Nymph #18"], "Tiny-water tactics: keep low, cover close, and use simple visible flies.", "Not stocked"],
+      ["ochoco-creek", "Ochoco Creek", "River", "Prineville area", 37, "Creek", "53 F", ["Caddis", "BWO", "Terrestrial"], ["Elk Hair Caddis #16", "BWO Emerger #18", "Foam Beetle #14"], "A local creek read where access and flow are the first questions.", "Not stocked"],
+      ["firemans-pond", "Fireman's Pond", "Lake", "Redmond kids' pond", 40, "Stillwater", "63 F", ["Chironomid", "Terrestrial", "Caddis"], ["Midge Pupa #18", "Foam Ant #16", "Elk Hair Caddis #16"], "Close-to-town stocked pond suited to first fish, short leaders, and visual fly choices.", "Scheduled: ODFW weekly list"],
+      ["prineville-youth", "Prineville Youth Pond", "Lake", "Prineville kids' pond", 40, "Stillwater", "64 F", ["Chironomid", "Terrestrial", "Caddis"], ["Black Chironomid #18", "Foam Beetle #14", "Soft Hackle Caddis #14"], "A beginner pond where simple midge and terrestrial patterns are easiest to understand.", "Scheduled: ODFW weekly list"],
+      ["jefferson-county-pond", "Jefferson County Pond", "Lake", "Madras community water", 39, "Stillwater", "65 F", ["Chironomid", "Caddis", "Terrestrial"], ["Midge Pupa #18", "Elk Hair Caddis #16", "Foam Ant #16"], "Short-session stocked water for families and new fly anglers.", "Scheduled: ODFW weekly list"],
+      ["todd-lake", "Todd Lake", "Lake", "Cascade hike-in lake", 44, "Stillwater", "50 F", ["Callibaetis", "Caddis", "Terrestrial"], ["Callibaetis Parachute #16", "Elk Hair Caddis #16", "Foam Ant #16"], "Short hike-in lake with cold water and simple high-lake dry fly windows.", "Not stocked recently; check ODFW"],
+      ["blow-lake", "Blow Lake", "Lake", "Cascade hike-in lake", 42, "Stillwater", "51 F", ["Callibaetis", "Chironomid", "Terrestrial"], ["Callibaetis Parachute #16", "Black Chironomid #18", "Foam Beetle #14"], "Good hike-and-fish candidate for compact fly boxes and slow bank approaches.", "Stocking varies by season"],
+      ["doris-lake", "Doris Lake", "Lake", "Cascade hike-in lake", 43, "Stillwater", "50 F", ["Callibaetis", "Caddis", "Terrestrial"], ["Callibaetis Spinner #16", "Tan Caddis #16", "Foam Ant #16"], "A day-trip lake where afternoon warmth often matters more than clock time.", "Stocking varies by season"],
+      ["lucky-lake", "Lucky Lake", "Lake", "Cascade hike-in lake", 42, "Stillwater", "51 F", ["Callibaetis", "Caddis", "Chironomid"], ["Callibaetis Parachute #16", "Elk Hair Caddis #16", "Midge Pupa #18"], "Brook trout water where small dries and tiny midges keep the setup simple.", "Stocking varies by season"],
+      ["rosary-lakes", "Rosary Lakes", "Lake", "Cascade hike-in lake chain", 41, "Stillwater", "50 F", ["Callibaetis", "Chironomid", "Terrestrial"], ["Callibaetis Dun #16", "Black Chironomid #18", "Foam Beetle #14"], "Series of lakes with classic high-country timing and compact fly selection.", "Stocking varies by season"],
+      ["square-lake", "Square Lake", "Lake", "Santiam Pass hike-in lake", 41, "Stillwater", "50 F", ["Callibaetis", "Caddis", "Terrestrial"], ["Callibaetis Parachute #16", "Tan Caddis #16", "Foam Ant #16"], "A popular hike-in lake where visible dries help new anglers track takes.", "Stocking varies by season"],
+      ["little-three-creeks", "Little Three Creeks Lake", "Lake", "Sisters hike-in lake", 40, "Stillwater", "51 F", ["Caddis", "Callibaetis", "Terrestrial"], ["Elk Hair Caddis #16", "Callibaetis Parachute #16", "Foam Beetle #14"], "Short hike from Three Creek Lake with simple brook-trout fly tactics.", "Naturally reproducing brook trout"],
+      ["yoran-lake", "Yoran Lake", "Lake", "Odell-area hike-in lake", 39, "Stillwater", "49 F", ["Callibaetis", "Chironomid", "Terrestrial"], ["Callibaetis Spinner #16", "Black Chironomid #18", "Foam Ant #16"], "Longer hike-in option; pack light, fish close, and watch afternoon wind.", "Stocking varies by season"]
     ];
 
     const waters = waterSeed.map((item) => {
-      const [id, name, type, section, score, flow, temp, hatch, flies, read, regs, stocking, airOverride, windOverride, sourceOverride] = item;
+      const [id, name, type, section, score, flow, temp, hatch, flies, read, stocking, airOverride, windOverride, sourceOverride] = item;
       return {
         id,
         name,
@@ -4910,7 +5045,6 @@
         hatch,
         flies,
         read,
-        regs: `${regs} Always confirm current ODFW regulations before fishing.`,
         stocking,
         source: sourceOverride || waterDefaults[type].source,
         color: type === "Lake" ? "blue" : "pine"
@@ -5003,6 +5137,710 @@
       "little-three-creeks": { lat: 44.10, lon: -121.64 },
       "yoran-lake": { lat: 43.57, lon: -122.08 }
     };
+
+    /* ---------------------------------------------------------------------
+       ODFW fishing regulations, per water.
+
+       A summary of the 2026 Oregon Sport Fishing Regulations as ODFW
+       publishes them on eRegulations, read and checked water by water on the
+       date in `checked`. Every line is traceable to the cited page; the audit
+       trail (water -> facts -> source) is docs/odfw-regulations-2026.md.
+
+       Rules for this table:
+       - Only what the source says. A water that just follows its zone's
+         general rules says so. Nothing is filled in from memory.
+       - A water whose rule could not be confirmed is `confidence: "verify"`
+         with `uncertain` saying what is unconfirmed. Its season status is
+         always "unknown": the app never calls a verify water open or closed.
+       - Temporary in-season changes are not encoded; the app links to
+         ODFW's updates page instead.
+       - A season is { allYear: true }, { from: "MM-DD", to: "MM-DD" }
+         (inclusive, and may wrap the new year), or { sections: [...] } where
+         each section is { name, allYear } or { name, from, to }. null means
+         the season was not recorded.
+       - Re-verify every water when ODFW publishes a new booklet. The release
+         check fails once `checked` is more than 13 months old.
+       --------------------------------------------------------------------- */
+    const ODFW_REGULATIONS_META = {
+      year: 2026,
+      checked: "2026-11-18",
+      booklet: "2026 Oregon Sport Fishing Regulations",
+      zoneRules: {
+        Central: [
+          "Lakes: open all year. 5 trout per day, 8 inch minimum length, only 1 over 20 inches.",
+          "Streams: open May 22 - Oct 31 unless an exception says otherwise. 2 trout per day, 8 inch minimum length, only 1 over 20 inches.",
+          "Streams: artificial flies and lures only unless an exception allows bait.",
+          "Closed to angling for bull trout unless an exception says otherwise.",
+          "Kokanee: 10 per day, no size limit, unless an exception says otherwise.",
+          "Released trout must be unharmed and should not be removed from the water."
+        ],
+        Willamette: [
+          "Lakes: open all year. 5 trout per day, 8 inch minimum length, only 1 over 20 inches.",
+          "Closed to angling for bull trout."
+        ]
+      },
+      links: {
+        regulations: "https://myodfw.com/articles/oregon-fishing-hunting-regulations-and-updates",
+        centralZone: "https://www.eregulations.com/oregon/fishing/central-zone",
+        updates: "https://myodfw.com/articles/regulation-updates",
+        recreationReport: "https://myodfw.com/recreation-report/fishing-report/central-zone"
+      },
+      disclaimer: "Summary only. Regulations change and in-season rules apply - check ODFW before you fish."
+    };
+
+    const ODFW_CZ_LAKE = "Central Zone lake rules: 5 trout per day, 8 inch minimum, only 1 over 20 inches; bull trout closed.";
+    const ODFW_CZ_STREAM = "Central Zone stream rules: 2 trout per day, 8 inch minimum, only 1 over 20 inches; bull trout closed.";
+    const ODFW_CZ_STREAM_GEAR = "Artificial flies and lures only (Central Zone streams).";
+    const ODFW_CZ_TABLE = "https://www.eregulations.com/oregon/fishing/central-zone#:~:text=Central%20Zone%20Regulations";
+
+    function odfwEntry(entry) {
+      return { year: ODFW_REGULATIONS_META.year, checked: ODFW_REGULATIONS_META.checked, zone: "Central", notes: "", ...entry };
+    }
+
+    // A Central Zone lake not listed under the zone's exceptions.
+    function odfwZoneLake(extra = {}) {
+      return odfwEntry({
+        season: { allYear: true },
+        summary: ["Not listed under Central Zone exceptions: zone rules apply.", "Open all year (Central Zone lakes).", ODFW_CZ_LAKE],
+        gear: "No special gear rule (Central Zone lakes).",
+        harvest: "5 trout per day, 8 inch minimum, only 1 over 20 inches.",
+        source: ODFW_CZ_TABLE,
+        confidence: "confirmed",
+        ...extra
+      });
+    }
+
+    // A Central Zone stream not listed under the zone's exceptions.
+    function odfwZoneStream(extra = {}) {
+      return odfwEntry({
+        season: { from: "05-22", to: "10-31" },
+        summary: ["Not listed under Central Zone exceptions: zone rules apply.", "Open May 22 - Oct 31 (Central Zone streams).", ODFW_CZ_STREAM_GEAR, ODFW_CZ_STREAM],
+        gear: ODFW_CZ_STREAM_GEAR,
+        harvest: "2 trout per day, 8 inch minimum, only 1 over 20 inches.",
+        source: ODFW_CZ_TABLE,
+        confidence: "confirmed",
+        ...extra
+      });
+    }
+
+    // Lakes the source does not let us place with certainty. The season is
+    // the one both candidate zones give a lake, recorded for the auditor; the
+    // status is still "unknown" because the entry is not confirmed.
+    function odfwVerifyLake(uncertain, extra = {}) {
+      return odfwZoneLake({
+        summary: ["Not listed under the Central Zone exceptions.", "If zone rules apply: open all year, 5 trout per day, 8 inch minimum, only 1 over 20 inches."],
+        gear: "Not confirmed - check ODFW.",
+        harvest: "Not confirmed - check ODFW.",
+        confidence: "verify",
+        uncertain,
+        ...extra
+      });
+    }
+
+    function odfwUnlisted(uncertain, extra = {}) {
+      return odfwEntry({
+        zone: "Not confirmed",
+        season: null,
+        summary: ["Not named in the 2026 ODFW regulations booklet."],
+        gear: "Not confirmed - check ODFW.",
+        harvest: "Not confirmed - check ODFW.",
+        source: ODFW_REGULATIONS_META.links.centralZone,
+        confidence: "verify",
+        uncertain,
+        ...extra
+      });
+    }
+
+    const ODFW_REGULATIONS = {
+      "lower-deschutes": odfwEntry({
+        season: { sections: [
+          { name: "Sherars Falls to the northern boundary of the Warm Springs Reservation", allYear: true },
+          { name: "Northern boundary of the Warm Springs Reservation to the Pelton Regulating Reservoir", from: "04-22", to: "12-31" }
+        ] },
+        summary: [
+          "Sherars Falls up to the northern boundary of the Warm Springs Reservation: open all year for trout and hatchery steelhead.",
+          "Reservation boundary up to the Pelton Regulating Reservoir: open Apr 22 - Dec 31 for trout and hatchery steelhead.",
+          "2 rainbow trout per day, 10 inch minimum and 13 inch maximum length.",
+          "No angling from a floating device.",
+          "Closed from Pelton Regulating Dam downstream about 600 ft to ODFW markers.",
+          "Where the river borders the Warm Springs Reservation, anglers are restricted to the eastern half of the river."
+        ],
+        gear: "Artificial flies and lures only; no angling from a floating device.",
+        harvest: "2 rainbow trout per day, 10-13 inches.",
+        notes: "Salmon and steelhead rules on this river differ by reach and change in season.",
+        source: "https://www.eregulations.com/oregon/fishing/central-zone#:~:text=Sherars%20Falls%20to%20Northern%20Boundary",
+        confidence: "confirmed"
+      }),
+      "middle-deschutes": odfwEntry({
+        season: { allYear: true },
+        summary: [
+          "Lake Billy Chinook to Benham Falls: open all year for trout.",
+          "No harvest of rainbow trout over 20 inches.",
+          ODFW_CZ_STREAM_GEAR,
+          ODFW_CZ_STREAM
+        ],
+        gear: ODFW_CZ_STREAM_GEAR,
+        harvest: "2 trout per day, 8 inch minimum; no rainbow over 20 inches.",
+        source: "https://www.eregulations.com/oregon/fishing/central-zone#:~:text=Lake%20Billy%20Chinook%20to%20Benham%20Falls",
+        confidence: "confirmed"
+      }),
+      "upper-deschutes": odfwEntry({
+        season: { sections: [
+          { name: "Benham Falls down to Bend", allYear: true },
+          { name: "Wickiup Reservoir down to Benham Falls", from: "05-22", to: "09-30" }
+        ] },
+        summary: [
+          "Below Benham Falls (Lake Billy Chinook to Benham Falls): open all year for trout; no harvest of rainbow trout over 20 inches.",
+          "Benham Falls up to Little Lava Lake: open May 22 - Sep 30; 2 trout per day, 8 inch minimum; wild rainbow trout must be released.",
+          ODFW_CZ_STREAM_GEAR
+        ],
+        gear: ODFW_CZ_STREAM_GEAR,
+        harvest: "2 trout per day, 8 inch minimum; wild rainbow released above Benham Falls.",
+        source: "https://www.eregulations.com/oregon/fishing/central-zone#:~:text=Benham%20Falls%20to%20Little%20Lava%20Lake",
+        confidence: "confirmed"
+      }),
+      metolius: odfwEntry({
+        season: { sections: [
+          { name: "Cable car crossing near the mouth to Bridge 99 / Lower Bridge", allYear: true },
+          { name: "Bridge 99 / Lower Bridge to Allingham Campground Bridge", allYear: true },
+          { name: "Above Allingham Campground Bridge", from: "05-22", to: "10-31" }
+        ] },
+        summary: [
+          "Catch-and-release for trout, including bull trout.",
+          "Cable car crossing near the mouth to Bridge 99 / Lower Bridge (NF-1270): open all year; artificial flies and lures only.",
+          "Bridge 99 to Allingham Campground Bridge (NF-1217): open all year; fly fishing only, barbless hooks required.",
+          "Above Allingham Campground Bridge: open May 22 - Oct 31; fly fishing only, barbless hooks required.",
+          "Tributaries closed, except Lake Creek (zone rules)."
+        ],
+        gear: "Fly fishing only, barbless hooks, above Bridge 99; artificial flies and lures below.",
+        harvest: "Catch-and-release for trout, including bull trout.",
+        source: "https://www.eregulations.com/oregon/fishing/central-zone#:~:text=Metolius%20River",
+        confidence: "confirmed"
+      }),
+      crooked: odfwEntry({
+        season: { allYear: true },
+        summary: [
+          "Below Bowman Dam: open all year.",
+          "No harvest of rainbow trout over 20 inches.",
+          ODFW_CZ_STREAM_GEAR,
+          ODFW_CZ_STREAM
+        ],
+        gear: ODFW_CZ_STREAM_GEAR,
+        harvest: "2 trout per day, 8 inch minimum; no rainbow over 20 inches.",
+        source: "https://www.eregulations.com/oregon/fishing/central-zone#:~:text=Below%20Bowman%20Dam",
+        confidence: "confirmed"
+      }),
+      "fall-river": odfwEntry({
+        season: { sections: [
+          { name: "Above Fall River Falls", allYear: true },
+          { name: "Below Fall River Falls", from: "05-22", to: "09-30" }
+        ] },
+        summary: [
+          "Above Fall River Falls: open all year.",
+          "Below Fall River Falls: open May 22 - Sep 30.",
+          "Fly fishing only, barbless hooks required.",
+          "Wild rainbow trout must be released."
+        ],
+        gear: "Fly fishing only, barbless hooks required.",
+        harvest: "Wild rainbow trout must be released.",
+        source: "https://www.eregulations.com/oregon/fishing/central-zone#:~:text=Above%20Fall%20River%20Falls",
+        confidence: "confirmed"
+      }),
+      whychus: odfwZoneStream({
+        summary: ["Open May 22 - Oct 31 (Central Zone streams).", "No harvest of rainbow trout over 20 inches.", ODFW_CZ_STREAM_GEAR, ODFW_CZ_STREAM],
+        harvest: "2 trout per day, 8 inch minimum; no rainbow over 20 inches.",
+        source: "https://www.eregulations.com/oregon/fishing/central-zone#:~:text=Whychus%20Creek"
+      }),
+      tumalo: odfwZoneStream(),
+      "little-deschutes": odfwZoneStream(),
+      "crane-prairie": odfwEntry({
+        season: { from: "04-22", to: "10-31" },
+        summary: ["Open Apr 22 - Oct 31.", "Wild rainbow trout must be released.", ODFW_CZ_LAKE, "Kokanee: 10 per day."],
+        gear: "No special gear rule.",
+        harvest: "Wild rainbow released; 5 trout per day, 8 inch minimum.",
+        source: "https://www.eregulations.com/oregon/fishing/central-zone#:~:text=Crane%20Prairie%20Reservoir",
+        confidence: "confirmed"
+      }),
+      "east-lake": odfwZoneLake({
+        summary: ["Open all year (Central Zone lakes).", "Catch-and-release for tiger trout.", ODFW_CZ_LAKE, "Kokanee: 10 per day."],
+        harvest: "5 trout per day, 8 inch minimum; tiger trout released.",
+        source: "https://www.eregulations.com/oregon/fishing/central-zone#:~:text=East%20Lake"
+      }),
+      paulina: odfwZoneLake({
+        summary: ["Open all year (Central Zone lakes).", "Catch-and-release for tiger trout.", ODFW_CZ_LAKE, "Kokanee: 10 per day."],
+        harvest: "5 trout per day, 8 inch minimum; tiger trout released.",
+        source: "https://www.eregulations.com/oregon/fishing/central-zone#:~:text=Paulina%20Lake"
+      }),
+      hosmer: odfwZoneLake({
+        summary: ["Open all year (Central Zone lakes).", "Catch-and-release for all species.", "Fly fishing only, barbless hooks required."],
+        gear: "Fly fishing only, barbless hooks required.",
+        harvest: "Catch-and-release for all species.",
+        source: "https://www.eregulations.com/oregon/fishing/central-zone#:~:text=Hosmer%20Lake"
+      }),
+      lava: odfwZoneLake(),
+      "little-lava": odfwZoneLake({
+        notes: "The Deschutes River below the lake (Benham Falls to Little Lava Lake) is open May 22 - Sep 30."
+      }),
+      wickiup: odfwEntry({
+        season: { from: "04-22", to: "10-31" },
+        summary: [
+          "Open Apr 22 - Oct 31.",
+          "Deschutes River Arm closed from the Gull Point Campground boat ramp to ODFW markers near Sheeps Bridge, Sep 1 - Apr 21; Deschutes River rules apply above those markers.",
+          ODFW_CZ_LAKE
+        ],
+        gear: "No special gear rule.",
+        harvest: "5 trout per day, 8 inch minimum, only 1 over 20 inches.",
+        source: "https://www.eregulations.com/oregon/fishing/central-zone#:~:text=Wickiup%20Reservoir",
+        confidence: "confirmed"
+      }),
+      davis: odfwZoneLake({
+        summary: [
+          "Open all year (Central Zone lakes).",
+          "Catch-and-release for trout.",
+          "Fly fishing only, barbless hooks required.",
+          "No limit on size or number of bass.",
+          "Includes the Odell Creek channel, upstream to the boat ramp at West Davis Lake Campground."
+        ],
+        gear: "Fly fishing only, barbless hooks required.",
+        harvest: "Catch-and-release for trout.",
+        source: "https://www.eregulations.com/oregon/fishing/central-zone#:~:text=Davis%20Lake%20and%20Odell%20Creek%20Channel"
+      }),
+      "three-creek": odfwZoneLake(),
+      "north-twin": odfwZoneLake(),
+      "south-twin": odfwZoneLake(),
+      cultus: odfwZoneLake(),
+      devils: odfwZoneLake(),
+      suttle: odfwZoneLake({
+        summary: ["Open all year (Central Zone lakes).", "25 kokanee per day; kokanee and sockeye over 16 inches must be released.", "No limit on the number or size of bass.", ODFW_CZ_LAKE],
+        harvest: "5 trout per day; 25 kokanee per day, none over 16 inches.",
+        source: "https://www.eregulations.com/oregon/fishing/central-zone#:~:text=Suttle%20Lake"
+      }),
+      shevlin: odfwZoneLake({
+        summary: ["Youth (17 and under) and disabled anglers only.", "2 fish per day.", "Open all year (Central Zone lakes)."],
+        harvest: "2 fish per day.",
+        notes: "Youth and disabled anglers only.",
+        source: "https://www.eregulations.com/oregon/fishing/central-zone#:~:text=Shevlin%20Pond"
+      }),
+      "lake-billy-chinook": odfwEntry({
+        season: { sections: [
+          { name: "Balance of the reservoir", allYear: true },
+          { name: "Metolius Arm", from: "03-01", to: "10-31" }
+        ] },
+        summary: [
+          "Metolius Arm: open Mar 1 - Oct 31; tribal angling permit required.",
+          "Rest of the reservoir: open all year (Central Zone lakes).",
+          "Trout limit may include 1 bull trout, 24 inch minimum; release all other bull trout unharmed.",
+          "Rainbow trout over 20 inches and kokanee/sockeye over 16 inches must be released.",
+          "No limit on size or number of bass or brown trout.",
+          "Closed from the cable car crossing on the Metolius River to markers downstream.",
+          "Stream rules apply above ODFW markers on the Crooked River and Deschutes River arms."
+        ],
+        gear: "No special gear rule on the reservoir.",
+        harvest: "5 trout per day (may include 1 bull trout, 24 inch min.); no rainbow over 20 or kokanee over 16 inches.",
+        source: "https://www.eregulations.com/oregon/fishing/central-zone#:~:text=Lake%20Billy%20Chinook",
+        confidence: "confirmed"
+      }),
+      simtustus: odfwZoneLake({
+        summary: ["Confederated Tribes of Warm Springs angling permit required.", "No limit on the size or number of bass.", "No season exception listed: open all year (Central Zone lakes).", ODFW_CZ_LAKE],
+        source: "https://www.eregulations.com/oregon/fishing/central-zone#:~:text=Lake%20Simtustus",
+        notes: "Tribal angling permit required as well as an Oregon license."
+      }),
+      "prineville-reservoir": odfwZoneLake({
+        summary: ["Open all year (Central Zone lakes).", "5 bass per day, only 1 over 15 inches.", ODFW_CZ_LAKE],
+        source: "https://www.eregulations.com/oregon/fishing/central-zone#:~:text=Prineville%20Reservoir"
+      }),
+      "ochoco-reservoir": odfwZoneLake(),
+      haystack: odfwZoneLake(),
+      "blue-lake": odfwVerifyLake("Two lakes share the name: a Blue Lake by Suttle Lake (Central Zone, zone rules) and a Willamette National Forest Blue Lake with its own Willamette Zone rules. Confirm which water and its rules with ODFW.", {
+        zone: "Not confirmed"
+      }),
+      "big-lake": odfwVerifyLake("Big Lake is not named in the Central or Willamette Zone exceptions and its zone is not stated. Confirm its zone and rules with ODFW.", {
+        zone: "Not confirmed"
+      }),
+      "scout-lake": odfwZoneLake(),
+      "clear-lake": odfwEntry({
+        zone: "Willamette",
+        season: { allYear: true },
+        summary: [
+          "McKenzie River above Tamolitch Falls, including Clear Lake: Willamette Zone rules apply, with no limit on size or number of brook trout.",
+          "Open all year (Willamette Zone lakes).",
+          "5 trout per day, 8 inch minimum, only 1 over 20 inches; bull trout closed."
+        ],
+        gear: "No special gear rule (Willamette Zone lakes).",
+        harvest: "5 trout per day, 8 inch minimum; no limit on brook trout.",
+        source: "https://www.eregulations.com/oregon/fishing/willamette-zone#:~:text=Above%20Tamolitch%20Falls",
+        confidence: "confirmed"
+      }),
+      walton: odfwZoneLake(),
+      ollalie: odfwZoneLake({
+        notes: "Shown on ODFW's Central Zone map; not listed under Central or Willamette Zone exceptions."
+      }),
+      "deer-lake": odfwZoneLake(),
+      "elkhorn-lake": odfwUnlisted("No Elkhorn Lake appears in the 2026 booklet, and its location and zone could not be confirmed."),
+      "antelope-flat": odfwZoneLake(),
+      "shelvock-pond": odfwUnlisted("Shelvock Pond is not named in the 2026 booklet. Community ponds are often limited to youth anglers - confirm with ODFW."),
+      "pine-nursery": odfwZoneLake({
+        summary: ["Bend Pine Nursery Pond: 2 fish per day.", "Open all year (Central Zone lakes)."],
+        harvest: "2 fish per day.",
+        source: "https://www.eregulations.com/oregon/fishing/central-zone#:~:text=Bend%20Pine%20Nursery%20Pond"
+      }),
+      "hat-rock-pond": odfwUnlisted("Hat Rock Pond is not named in the 2026 booklet, and its zone could not be confirmed."),
+      "spark-lake": odfwZoneLake({
+        summary: ["Sparks Lake and tributaries, mouth to Cascade Lakes Hwy: fly fishing only, barbless hooks required.", "Open all year (Central Zone lakes).", ODFW_CZ_LAKE],
+        gear: "Fly fishing only, barbless hooks required.",
+        source: "https://www.eregulations.com/oregon/fishing/central-zone#:~:text=Sparks%20Lake%20and%20Tributaries"
+      }),
+      "elk-lake": odfwZoneLake({
+        summary: ["Open all year (Central Zone lakes).", "25 kokanee per day, no size limits.", ODFW_CZ_LAKE],
+        harvest: "5 trout per day, 8 inch minimum; 25 kokanee per day.",
+        source: "https://www.eregulations.com/oregon/fishing/central-zone#:~:text=Elk%20Lake"
+      }),
+      "little-cultus": odfwZoneLake(),
+      "crescent-lake": odfwZoneLake({
+        summary: ["Open all year (Central Zone lakes).", "1 lake trout per day, 24 inch minimum length.", ODFW_CZ_LAKE],
+        harvest: "5 trout per day, 8 inch minimum; 1 lake trout, 24 inch minimum.",
+        source: "https://www.eregulations.com/oregon/fishing/central-zone#:~:text=Crescent%20Lake"
+      }),
+      "odell-lake": odfwEntry({
+        season: { from: "04-22", to: "10-31" },
+        summary: [
+          "Open Apr 22 - Oct 31.",
+          "25 kokanee per day, no size limits.",
+          "1 lake trout per day, 24 inch minimum length.",
+          "Harvest of bull trout prohibited.",
+          "Closed between ODFW markers and the mouth of Trapper Creek, and between markers and the Odell Creek outlet.",
+          "Closed to angling on tributaries."
+        ],
+        gear: "No special gear rule.",
+        harvest: "25 kokanee; 1 lake trout over 24 inches; no bull trout.",
+        source: "https://www.eregulations.com/oregon/fishing/central-zone#:~:text=Odell%20Lake",
+        confidence: "confirmed"
+      }),
+      "crescent-creek": odfwZoneStream(),
+      "spring-river": odfwZoneStream(),
+      "paulina-creek": odfwZoneStream(),
+      "bridge-creek": odfwUnlisted("Not named in the Central or Northeast Zone exceptions. A Bridge Creek in the Ochocos may drain to the John Day (Northeast Zone); confirm which creek and its zone with ODFW."),
+      "ochoco-creek": odfwEntry({
+        season: { allYear: true },
+        summary: [
+          "Mouth to Ochoco Dam: open all year.",
+          "No harvest of rainbow trout over 20 inches.",
+          ODFW_CZ_STREAM_GEAR,
+          ODFW_CZ_STREAM
+        ],
+        gear: ODFW_CZ_STREAM_GEAR,
+        harvest: "2 trout per day, 8 inch minimum; no rainbow over 20 inches.",
+        notes: "Above Ochoco Reservoir the Central Zone stream season (May 22 - Oct 31) applies.",
+        source: "https://www.eregulations.com/oregon/fishing/central-zone#:~:text=Ochoco%20Creek",
+        confidence: "confirmed"
+      }),
+      "firemans-pond": odfwUnlisted("Fireman's Pond is not named in the 2026 booklet. Community ponds are often limited to youth anglers - confirm with ODFW."),
+      "prineville-youth": odfwZoneLake({
+        summary: ["Youth anglers (17 and under) only.", "2 fish per day.", "Open all year (Central Zone lakes)."],
+        harvest: "2 fish per day.",
+        notes: "Youth anglers only.",
+        source: "https://www.eregulations.com/oregon/fishing/central-zone#:~:text=Prineville%20Youth%20Pond"
+      }),
+      "jefferson-county-pond": odfwZoneLake({
+        summary: ["Youth (17 and under) and disabled anglers only.", "2 fish per day.", "Open all year (Central Zone lakes)."],
+        harvest: "2 fish per day.",
+        notes: "Youth and disabled anglers only.",
+        source: "https://www.eregulations.com/oregon/fishing/central-zone#:~:text=Jefferson%20County%20Pond"
+      }),
+      "todd-lake": odfwZoneLake(),
+      "blow-lake": odfwZoneLake(),
+      "doris-lake": odfwZoneLake(),
+      "lucky-lake": odfwZoneLake(),
+      "rosary-lakes": odfwVerifyLake("Not listed. Odell Lake's rules close its tributaries; whether that reaches lakes in Odell's drainage is not stated. Confirm with ODFW.", {
+        source: "https://www.eregulations.com/oregon/fishing/central-zone#:~:text=Odell%20Lake"
+      }),
+      "square-lake": odfwVerifyLake("Not listed. The Metolius River's tributaries are closed except Lake Creek; Square Lake's drainage and whether that applies are not confirmed. Confirm with ODFW.", {
+        source: "https://www.eregulations.com/oregon/fishing/central-zone#:~:text=Metolius%20River"
+      }),
+      "little-three-creeks": odfwZoneLake(),
+      "yoran-lake": odfwVerifyLake("Not listed. Odell Lake's rules close its tributaries; whether that reaches Yoran Lake is not stated. Confirm with ODFW.", {
+        source: "https://www.eregulations.com/oregon/fishing/central-zone#:~:text=Odell%20Lake"
+      })
+    };
+
+    /* ---------------------------------------------------------------------
+       The March 1 check for new ODFW regulations.
+
+       There is no server, and the app must never rewrite a rule it has not
+       verified, so this does not update ODFW_REGULATIONS. Once a year, on the
+       first open on or after March 1 (Oregon's calendar), it fetches ODFW's
+       regulation-updates page - one request, on a host the container already
+       allows - and reads the newest "20XX Oregon Sport Fishing Regulations"
+       it names. Nothing else on the page is used. If that year is newer than
+       the bundled summary, or the calendar says it must be, every Regulations
+       block says the summary may be out of date and points at ODFW. Refreshing
+       the rules themselves means re-verifying ODFW_REGULATIONS and shipping
+       an update; the release check refuses a summary over 13 months old.
+
+       A check is marked done only when it read a year. Offline or failed
+       attempts retry on a later open, at most once per Pacific day.
+       --------------------------------------------------------------------- */
+    const REGS_CHECK_KEY = "riseRegsCheck.v1";
+    const REGS_CHECK_URL = "https://myodfw.com/articles/regulation-updates";
+    const REGS_CHECK_MONTH = 3;
+    let regulationsCheckInFlight = null;
+
+    function readRegulationsCheck() {
+      const saved = readStoredObject(REGS_CHECK_KEY);
+      const year = Number.isInteger(saved.year) ? saved.year : null;
+      const publishedYear = Number.isInteger(saved.publishedYear) ? saved.publishedYear : null;
+      return {
+        year,
+        ok: saved.ok === true,
+        checkedAt: typeof saved.checkedAt === "string" && !Number.isNaN(Date.parse(saved.checkedAt)) ? saved.checkedAt : null,
+        attemptedOn: /^\d{4}-\d{2}-\d{2}$/.test(String(saved.attemptedOn || "")) ? saved.attemptedOn : null,
+        publishedYear
+      };
+    }
+
+    function writeRegulationsCheck(record) {
+      writeStoredObject(REGS_CHECK_KEY, record);
+    }
+
+    function regulationDateParts(dateKey) {
+      const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(dateKey || ""));
+      return match ? { year: Number(match[1]), month: Number(match[2]), day: Number(match[3]) } : null;
+    }
+
+    // Due on or after March 1 (Pacific) until this year's check succeeds,
+    // and never twice on one Pacific day.
+    function regulationsCheckDue(record = readRegulationsCheck(), dateKey = pacificDateKey()) {
+      const today = regulationDateParts(dateKey);
+      if (!today || today.month < REGS_CHECK_MONTH) return false;
+      if (record?.year === today.year && record.ok) return false;
+      return record?.attemptedOn !== dateKey;
+    }
+
+    // The newest "20XX Oregon Sport Fishing Regulations" a page names. The
+    // page is read as plain text and only that phrase counts: a copyright
+    // line or a season date is not a booklet.
+    function extractPublishedRegulationsYear(html, currentYear = regulationDateParts(pacificDateKey())?.year) {
+      const text = safeText(textFromHtml(html), 400000);
+      const years = [...text.matchAll(/\b(20\d{2})\s+Oregon\s+Sport\s+Fishing\s+Regulations\b/gi)]
+        .map((match) => Number(match[1]))
+        .filter((year) => year >= 2000 && (!currentYear || year <= currentYear + 1));
+      return years.length ? Math.max(...years) : null;
+    }
+
+    async function runRegulationsAnnualCheck({ dateKey = pacificDateKey(), render = true } = {}) {
+      if (regulationsCheckInFlight) return regulationsCheckInFlight;
+      const today = regulationDateParts(dateKey);
+      // Offline is not an attempt: the `online` event tries again.
+      if (!today || navigator.onLine === false) return false;
+      const previous = readRegulationsCheck();
+      writeRegulationsCheck({ ...previous, year: today.year, ok: previous.year === today.year && previous.ok, attemptedOn: dateKey });
+      if (render) renderRegulationScreens();
+      regulationsCheckInFlight = (async () => {
+        let found = null;
+        try {
+          found = extractPublishedRegulationsYear(await fetchTextWithTimeout(REGS_CHECK_URL, "ODFW regulations check"), today.year);
+        } catch {
+          found = null;
+        }
+        const current = readRegulationsCheck();
+        writeRegulationsCheck(found
+          ? { ...current, year: today.year, ok: true, checkedAt: new Date().toISOString(), attemptedOn: dateKey, publishedYear: Math.max(found, current.publishedYear || 0) }
+          : { ...current, year: today.year, ok: false, attemptedOn: dateKey });
+        return Boolean(found);
+      })();
+      try {
+        return await regulationsCheckInFlight;
+      } finally {
+        regulationsCheckInFlight = null;
+        if (render) renderRegulationScreens();
+      }
+    }
+
+    function checkRegulationsAnnual() {
+      if (navigator.onLine === false || regulationsCheckInFlight) return;
+      if (regulationsCheckDue()) runRegulationsAnnualCheck();
+    }
+
+    function renderRegulationScreens() {
+      if (typeof renderScreens === "function") renderScreens("today", "waters", "trip");
+    }
+
+    /* Whether the bundled summary may be out of date: ODFW names a newer
+       booklet, or the calendar is past the next booklet's March whether or
+       not a check ever got through. */
+    function regulationsStaleness(dateKey = pacificDateKey(), record = readRegulationsCheck()) {
+      const bundled = ODFW_REGULATIONS_META.year;
+      const today = regulationDateParts(dateKey);
+      if (record?.publishedYear && record.publishedYear > bundled) {
+        return {
+          kind: "newer",
+          message: `ODFW has published ${record.publishedYear} regulations. This summary is from ${bundled} and may be out of date - check ODFW before you fish.`
+        };
+      }
+      if (today && (today.year > bundled + 1 || (today.year > bundled && today.month >= REGS_CHECK_MONTH))) {
+        return {
+          kind: "calendar",
+          message: `This summary is from ${bundled}; ODFW's current rules may differ. Check ODFW before you fish.`
+        };
+      }
+      return null;
+    }
+
+    function regulationsCheckLine(record = readRegulationsCheck(), dateKey = pacificDateKey()) {
+      const today = regulationDateParts(dateKey);
+      const checked = record?.checkedAt ? regulationCheckedLabel(pacificDateKey(new Date(record.checkedAt))) : "";
+      if (regulationsCheckInFlight) return "Checking for new ODFW regulations...";
+      if (today && record?.year === today.year && record.ok) return `Checked for new ODFW regulations ${checked}`;
+      if (today && today.month < REGS_CHECK_MONTH) {
+        return `${checked ? `Checked for new ODFW regulations ${checked}. ` : ""}Next check for new ODFW regulations: Mar 1, ${today.year}`;
+      }
+      return "Couldn't check for new ODFW regulations yet - will retry";
+    }
+
+    const ODFW_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+    function regulationFor(water) {
+      return (water && ODFW_REGULATIONS[water.id]) || null;
+    }
+
+    // "2026-11-18" -> "Nov 18, 2026". A calendar date, so no time zone.
+    function regulationCheckedLabel(value) {
+      const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(value || ""));
+      if (!match) return "";
+      return `${ODFW_MONTHS[Number(match[2]) - 1]} ${Number(match[3])}, ${match[1]}`;
+    }
+
+    // "MM-DD" for a Date (read on Oregon's clock) or a "YYYY-MM-DD" key.
+    function regulationMonthDay(date = new Date()) {
+      const key = typeof date === "string" ? date : pacificDateKey(date);
+      const match = /^\d{4}-(\d{2})-(\d{2})$/.exec(String(key || ""));
+      return match ? `${match[1]}-${match[2]}` : null;
+    }
+
+    // A season window { allYear } or { from, to }, inclusive, wrapping the
+    // new year when from is later than to. A malformed window is null, never
+    // silently open or closed.
+    function seasonWindowOpen(window, monthDay) {
+      if (!window || !monthDay) return null;
+      if (window.allYear === true) return true;
+      const valid = (value) => /^(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/.test(String(value || ""));
+      if (!valid(window.from) || !valid(window.to)) return null;
+      return window.from <= window.to
+        ? monthDay >= window.from && monthDay <= window.to
+        : monthDay >= window.from || monthDay <= window.to;
+    }
+
+    /* open / closed / partial (some sections open) / unknown, for a date on
+       Oregon's clock. "unknown" covers a verify entry, a missing season and a
+       malformed one: the app never claims a water is open or closed on a rule
+       it could not confirm. */
+    function regulationSeasonDetail(water, date = new Date()) {
+      const entry = regulationFor(water);
+      const unknown = { status: "unknown", open: [], closed: [] };
+      if (!entry || entry.confidence !== "confirmed" || !entry.season) return unknown;
+      const monthDay = regulationMonthDay(date);
+      if (!monthDay) return unknown;
+      if (Array.isArray(entry.season.sections)) {
+        const states = entry.season.sections.map((section) => ({ name: section.name, open: seasonWindowOpen(section, monthDay) }));
+        if (!states.length || states.some((state) => state.open === null)) return unknown;
+        const open = states.filter((state) => state.open).map((state) => state.name);
+        const closed = states.filter((state) => !state.open).map((state) => state.name);
+        return { status: !closed.length ? "open" : !open.length ? "closed" : "partial", open, closed };
+      }
+      const state = seasonWindowOpen(entry.season, monthDay);
+      if (state === null) return unknown;
+      return { status: state ? "open" : "closed", open: [], closed: [] };
+    }
+
+    function regulationSeasonStatus(water, date = new Date()) {
+      return regulationSeasonDetail(water, date).status;
+    }
+
+    const REGULATION_STATUS_LABELS = {
+      open: "Open season (ODFW)",
+      closed: "Closed season (ODFW)",
+      partial: "Some sections closed (ODFW)",
+      unknown: "Season not confirmed - check ODFW"
+    };
+
+    // While the summary may be out of date, the gate still runs on the
+    // bundled rules and its labels say whose rules they are.
+    function regulationStatusLabel(status, stale = regulationsStaleness()) {
+      const label = REGULATION_STATUS_LABELS[status] || REGULATION_STATUS_LABELS.unknown;
+      if (!stale || !REGULATION_STATUS_LABELS[status] || status === "unknown") return label;
+      return label.replace("(ODFW)", `(${ODFW_REGULATIONS_META.year} rules)`);
+    }
+
+    function regulationCheckedLine(entry) {
+      const year = entry?.year || ODFW_REGULATIONS_META.year;
+      const checked = regulationCheckedLabel(entry?.checked || ODFW_REGULATIONS_META.checked);
+      return `${year} ODFW regulations - checked ${checked}`;
+    }
+
+    function regulationLink(href, label, extraClass = "") {
+      return `<a class="regs-link ${extraClass}" href="${attr(href)}" target="_blank" rel="noopener">${esc(label)}</a>`;
+    }
+
+    /* The Regulations block on the water card, Trip and On the water. A
+       summary, said to be one, with the source and ODFW's current changes a
+       tap away. Links open in Safari (RiseViewController decidePolicyFor). */
+    function regulationsBlock(water, { compact = false } = {}) {
+      const entry = regulationFor(water);
+      const detail = regulationSeasonDetail(water);
+      const status = detail.status;
+      const verify = !entry || entry.confidence !== "confirmed";
+      const links = ODFW_REGULATIONS_META.links;
+      const sectionLine = status === "partial"
+        ? `<p class="regs-sections"><b>Open today:</b> ${esc(detail.open.join("; "))}. <b>Closed today:</b> ${esc(detail.closed.join("; "))}.</p>`
+        : "";
+      const stale = regulationsStaleness();
+      // A newer booklet makes every entry a verify entry for display; the
+      // calendar warning reads the same. Neither invents a rule.
+      const verifyNote = [
+        stale ? `<p class="regs-verify regs-stale" role="note"><b>Verify with ODFW:</b> ${esc(stale.message)}</p>` : "",
+        verify ? `<p class="regs-verify"><b>Verify with ODFW:</b> ${esc(entry?.uncertain || "This water's rules could not be confirmed.")}</p>` : ""
+      ].join("");
+      const checkLine = `<p class="regs-check-line">${esc(regulationsCheckLine())}</p>`;
+      if (compact) {
+        return `
+          <section class="on-water-block regs-block regs-compact regs-${status}" data-regs-block="${attr(water.id)}" aria-label="${attr(`ODFW regulations for ${water.name}`)}">
+            <span class="on-water-label">Regulations</span>
+            <strong class="regs-status">${esc(regulationStatusLabel(status))}</strong>
+            ${sectionLine}
+            <small>${esc(entry?.gear || "Gear rule not confirmed - check ODFW.")}</small>
+            ${verifyNote}
+            <p class="regs-checked">${esc(regulationCheckedLine(entry))}. ${esc(ODFW_REGULATIONS_META.disclaimer)}</p>
+            ${checkLine}
+            <div class="regs-links">
+              ${regulationLink(entry?.source || links.centralZone, "ODFW rules for this water")}
+              ${regulationLink(links.updates, "ODFW in-season changes")}
+            </div>
+          </section>
+        `;
+      }
+      return `
+        <section class="regs-block regs-${status}" data-regs-block="${attr(water.id)}" aria-label="${attr(`ODFW regulations for ${water.name}`)}">
+          <div class="regs-head">
+            <strong>Regulations</strong>
+            <span class="regs-status">${esc(regulationStatusLabel(status))}</span>
+          </div>
+          <p class="regs-checked">${esc(regulationCheckedLine(entry))}${entry && entry.zone !== "Central" ? ` - ${esc(entry.zone === "Not confirmed" ? "zone not confirmed" : `${entry.zone} Zone`)}` : ""}</p>
+          ${verifyNote}
+          ${sectionLine}
+          <ul class="regs-list">
+            ${(entry?.summary || []).map((line) => `<li>${esc(line)}</li>`).join("")}
+          </ul>
+          ${entry?.notes ? `<p class="regs-note">${esc(entry.notes)}</p>` : ""}
+          <p class="regs-disclaimer">${esc(ODFW_REGULATIONS_META.disclaimer)}</p>
+          ${checkLine}
+          <div class="regs-links">
+            ${regulationLink(entry?.source || links.centralZone, "Source: ODFW regulations for this water")}
+            ${regulationLink(links.updates, "ODFW in-season changes")}
+            ${regulationLink(links.regulations, "ODFW regulations home")}
+          </div>
+        </section>
+      `;
+    }
 
     /* ---------------------------------------------------------------------
        Local reports.
@@ -6858,6 +7696,7 @@
     }
 
     function fishabilitySummary(water) {
+      if (regulationSeasonStatus(water) === "closed") return regulationStatusLabel("closed");
       const score = Number(fishScore(water));
       if (score >= 8) return "Strong day to fish";
       if (score >= 6.5) return "Good, with windows";
@@ -6883,8 +7722,15 @@
       return `${hatch} hatch building on seasonal timing`;
     }
 
+    /* A water in a closed ODFW season is never ranked as fishable: it sorts
+       after every water that is open, partly open or not confirmed, in its
+       own score order. "unknown" is not closed. */
     function rankedWatersForCurrentMode(list = visibleWaters()) {
+      const today = pacificDateKey();
+      const closed = new Map(list.map((water) => [water.id, regulationSeasonStatus(water, today) === "closed"]));
       return visibleWaters(list).sort((a, b) => {
+        const closedDelta = Number(closed.get(a.id)) - Number(closed.get(b.id));
+        if (closedDelta) return closedDelta;
         const scoreDelta = rankedScore(b) - rankedScore(a);
         if (Math.abs(scoreDelta) > .05) return scoreDelta;
         if (waterSortMode === "Near" && userLocation) return (distanceToWater(a) ?? 9999) - (distanceToWater(b) ?? 9999);
@@ -8492,12 +9338,16 @@
         .slice(0, PLANNER_DAYS)
         .map((day) => {
           const closure = seasonalClosureFor(water, day.date);
+          // A day outside the ODFW season is closed to fishing, whatever the
+          // weather: no score, never the best day.
+          const regulationClosed = regulationSeasonStatus(water, day.date) === "closed";
           return {
             ...day,
             label: weekdayLabel(day.date),
             closure,
-            score: closure ? null : plannerDayScore(water, day),
-            reason: closure ? SNOWED_IN_REASON : plannerDayReason(water, day)
+            regulationClosed,
+            score: closure || regulationClosed ? null : plannerDayScore(water, day),
+            reason: regulationClosed ? regulationStatusLabel("closed") : closure ? SNOWED_IN_REASON : plannerDayReason(water, day)
           };
         });
       const best = days.reduce((top, day) => (day.score !== null && (!top || day.score > top.score) ? day : top), null);
@@ -8563,7 +9413,7 @@
     function plannerDayRow(day, best) {
       const isBest = Boolean(best) && day.date === best.date;
       return `
-        <li class="planner-day ${isBest ? "best" : ""} ${day.closure ? "closed" : ""}">
+        <li class="planner-day ${isBest ? "best" : ""} ${day.closure || day.regulationClosed ? "closed" : ""}">
           <b>${esc(day.label)}${isBest ? `<small>Best day</small>` : ""}</b>
           <strong>${day.score === null ? "--" : esc(day.score.toFixed(1))}</strong>
           <span>${esc(day.reason)}</span>
@@ -9172,7 +10022,14 @@
       const timeText = window
         ? `Best window ${formatHour(window[0])}-${formatHour(window[1])}; it is ${formatHour(currentHour())} now`
         : "Wind is deciding the window today";
+      const regulation = regulationSeasonDetail(water);
+      const regulationRows = regulation.status === "closed"
+        ? [["ODFW season", "Closed today", `Closed season under the ${regulationCheckedLine(regulationFor(water))}. Ranked after every open water; the rating below is conditions only.${regulationsStaleness() ? ` ${regulationsStaleness().message}` : ""}`]]
+        : regulation.status === "partial"
+          ? [["ODFW season", "Some sections closed", `Open today: ${regulation.open.join("; ")}. Closed today: ${regulation.closed.join("; ")}.`]]
+          : [];
       return [
+        ...regulationRows,
         ["Season", seasonLabelFor(inSeason[0] || water.hatch?.[0]) || "Year-round", seasonText],
         ["Time of day", `${Math.round(timeOfDayFit(water) * 100)}% of window`, timeText],
         ["Water temp", liveDisplayValue(water, "temp"), tempText],
@@ -10547,8 +11404,8 @@
           ${flowHistoryPanel(water)}
           ${alertEditor(water)}
           <div class="compact-note"><b>Read:</b> ${water.read}</div>
+          ${regulationsBlock(water)}
           <div class="compact-lines">
-            <div class="line-row"><span>Regulations</span><b>${water.regs}</b></div>
             <div class="line-row"><span>Stocking</span><b>${water.stocking}</b></div>
             <div class="line-row"><span>Source</span><b>${liveSource}</b></div>
           </div>
@@ -10582,12 +11439,14 @@
       const feedback = flyFeedbackLabel(selectedFly);
       const reason = flyRecommendationReason(water, selectedFly);
       const visibleFlies = uniqueItems([selectedFly, ...flies]).slice(0, 3);
+      const seasonStatus = regulationSeasonStatus(water);
       return `
-        <div class="${cardClass} water-type-${water.type.toLowerCase()} ${water.id === activeWater ? "active" : ""} ${isHidden ? "hidden-water" : ""}" data-water="${water.id}">
+        <div class="${cardClass} ${seasonStatus === "closed" ? "regs-closed-card" : ""} water-type-${water.type.toLowerCase()} ${water.id === activeWater ? "active" : ""} ${isHidden ? "hidden-water" : ""}" data-water="${water.id}">
           <div class="water-card-main">
             <div class="water-top">
               <div>
-                <div class="water-rank-label">${isTop ? "Top Water Today" : `#${rank} Today`}</div>
+                <div class="water-rank-label">${seasonStatus === "closed" ? `${isTop ? "" : `#${rank} - `}${regulationStatusLabel("closed")}` : isTop ? "Top Water Today" : `#${rank} Today`}</div>
+                ${seasonStatus === "partial" || seasonStatus === "unknown" ? `<div class="regs-flag regs-${seasonStatus}">${esc(regulationStatusLabel(seasonStatus))}</div>` : ""}
                 ${isTop ? `<h2>${water.name}</h2>` : `<strong>${water.name}</strong>`}
                 <div class="subtle">${water.section}</div>
               </div>
@@ -10844,7 +11703,7 @@
         <div>
           <p class="eyebrow">Waters</p>
           <h1>${esc(state.topWater.name)}</h1>
-          <p class="subtle">${waterSortMode === "Near" && userLocation ? "Best nearby water" : "Highest rated today"} - ${esc(state.topWater.section)}</p>
+          <p class="subtle">${regulationSeasonStatus(state.topWater) === "closed" ? regulationStatusLabel("closed") : waterSortMode === "Near" && userLocation ? "Best nearby water" : "Highest rated today"} - ${esc(state.topWater.section)}</p>
         </div>
         <div class="waters-score-badge"><strong>${fishScore(state.topWater)}</strong><span>Fishability</span></div>
       `;
@@ -10986,6 +11845,8 @@
               <p>${liveDisplayValue(water, "flow")} - ${liveDisplayValue(water, "wind")} - clarity ${clarity.label}</p>
             </div>
           </div>
+
+          ${regulationsBlock(water)}
 
           <div class="insight-grid">
             ${whyThisWaterCard(water)}
@@ -11467,6 +12328,8 @@
             <strong data-on-water-countdown>${esc(countdown.text)}</strong>
             <small>${esc(countdown.range)}</small>
           </section>
+
+          ${regulationsBlock(water, { compact: true })}
 
           <button class="on-water-btn fish-on" data-fish-on="${attr(water.id)}" data-fish-on-fly="${attr(fly)}">Fish on!</button>
 
@@ -12402,6 +13265,7 @@
     }
 
     function checkDailyOpenSync() {
+      checkRegulationsAnnual();
       if (navigator.onLine === false || liveReports.bulkStatus) return;
       if (shouldRunDailyOpenSync()) runDailyOpenSync();
     }
@@ -12891,6 +13755,10 @@
       // Taps inside the alert editor that miss its controls stop here, so
       // focusing a field does not collapse the water card around it.
       ["[data-alert-editor]", () => {}],
+      // The same for the Regulations block: reading it, or missing a link by
+      // a finger, must not collapse the card. Links still open (no
+      // preventDefault), in Safari via the container.
+      ["[data-regs-block]", () => {}],
       ["[data-on-water-open]", () => openOnWater()],
       ["[data-on-water-close]", () => closeOnWater()],
       ["[data-on-water-locate]", () => locateOnWater()],
@@ -13219,6 +14087,7 @@
       postAlertsMessage({ action: "status" });
     }
     runInitialDataSync();
+    checkRegulationsAnnual();
     startDailyOpenSyncWatcher();
     startOnWaterLifecycleWatcher();
   </script>

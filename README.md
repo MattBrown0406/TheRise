@@ -278,6 +278,51 @@ season, light wind").
   best day. These are typical dates, worded as typical; snow sets the real ones.
 - **Offline or no forecast** says so and shows no day. Nothing is invented.
 
+## Fishing regulations
+
+Every water's Regulations block (the expanded Waters card, Trip, and a compact
+version on On the water) is a summary of ODFW's published rules for that water,
+not the law, and says so: "Summary only. Regulations change and in-season rules
+apply - check ODFW before you fish."
+
+- **Provenance.** `ODFW_REGULATIONS` in the app holds, per water id, the
+  booklet year, the date checked, zone, season, summary bullets, gear,
+  harvest, notes, a source link and `confidence`. It was read water by water
+  from the 2026 Oregon Sport Fishing Regulations on eRegulations (ODFW's
+  booklet) on 2026-11-18. The audit trail, water -> facts -> source line, is
+  [`docs/odfw-regulations-2026.md`](docs/odfw-regulations-2026.md). Nothing
+  is filled in from memory: a water the source does not settle is `verify`,
+  with `uncertain` saying what is unconfirmed, and the block tells the angler
+  to verify with ODFW. Sources must be on `myodfw.com` or `eregulations.com`.
+  Temporary in-season changes are never encoded; the block links to ODFW's
+  regulation-updates page.
+- **Season gating.** `regulationSeasonStatus(water, date)` is open, closed,
+  partial (some sections open) or unknown, on Oregon's calendar. A `verify`
+  entry is always unknown - not closed, but labelled "Season not confirmed".
+  A closed water ranks after every other water, is never Today's top pick,
+  reads "Closed season (ODFW)", gets an "ODFW season" row in the rating
+  breakdown, and a closed day in the week planner is not scored.
+- **The March 1 check.** The app cannot update the rules itself, and must
+  not. On the first open on or after March 1 (Pacific) each year,
+  `runRegulationsAnnualCheck` fetches ODFW's regulation-updates page on
+  myodfw.com - one request, a host the container already allows - and stores
+  the newest "20XX Oregon Sport Fishing Regulations" it names in
+  `riseRegsCheck.v1`. It is marked done only when it read a year; a failed or
+  offline attempt retries on a later open, at most once a day. If ODFW names a
+  newer booklet, or it is past March 1 of the year after the bundled booklet
+  whether or not a check got through, every Regulations block says the summary
+  may be out of date, treats the water as one to verify, and the season labels
+  read "(2026 rules)". The gate keeps running on the bundled rules.
+- **Annual re-verification.** When ODFW publishes a new booklet (usually
+  before the new year), re-read every water against it, update
+  `ODFW_REGULATIONS`, its `year` and `checked`, and write a new
+  `docs/odfw-regulations-<year>.md`, then ship an app update. That is the only
+  way the rules change.
+- **Release check.** `verify-release-readiness.py` fails if any water lacks an
+  entry, if a source is not on ODFW's or eRegulations' site, if the March 1
+  check or its storage key is missing, or if the oldest `checked` date is more
+  than 13 months old: stale regulations block a release until re-verified.
+
 ## Alerts for saved waters
 
 Free, opt-in, local notifications; there is no server. Each saved water has an

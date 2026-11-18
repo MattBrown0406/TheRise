@@ -163,7 +163,8 @@ vm.runInContext(`${scriptBody}\n;globalThis.__app = {
   setPlannerForecasts(value) { plannerForecasts = value; },
   alertRulesNow() { return alertRules; },
   savedWatersNow() { return savedWaterIds; },
-  BUG_SNAP_TRAITS, SNAP_COLOURS, SNAP_SIZE_BUCKETS, SNAP_SHAPES, SNAP_TAILS
+  BUG_SNAP_TRAITS, SNAP_COLOURS, SNAP_SIZE_BUCKETS, SNAP_SHAPES, SNAP_TAILS,
+  ODFW_REGULATIONS, ODFW_REGULATIONS_META, REGULATION_STATUS_LABELS, REGS_CHECK_KEY, REGS_CHECK_URL
 };`, context);
 
 const app = context.__app;
@@ -1281,6 +1282,270 @@ group("Your water: a profile learned only from the angler's own measured catches
   context.currentHour = realHour;
   app.setLogs([]);
   Object.assign(app.liveReports.byWater, savedReports);
+}
+
+group("ODFW regulations: every water has a sourced, dated entry");
+{
+  const regs = app.ODFW_REGULATIONS;
+  const meta = app.ODFW_REGULATIONS_META;
+  const ids = app.waters.map((water) => water.id);
+  const missing = ids.filter((id) => !regs[id]);
+  const extra = Object.keys(regs).filter((id) => !ids.includes(id));
+  assert(!missing.length, `every app water has a regulations entry (${missing.join(", ") || "none missing"})`);
+  assert(!extra.length, `no entry names a water the app does not have (${extra.join(", ") || "none"})`);
+  assert(meta.year === 2026 && /^\d{4}-\d{2}-\d{2}$/.test(meta.checked), `the booklet year and checked date are recorded (${meta.year}, ${meta.checked})`);
+  const allowedHost = (url) => {
+    try {
+      const parsed = new URL(url);
+      return parsed.protocol === "https:" && /(^|\.)(myodfw\.com|eregulations\.com)$/.test(parsed.hostname);
+    } catch {
+      return false;
+    }
+  };
+  const badSource = Object.entries(regs).filter(([, entry]) => !allowedHost(entry.source)).map(([id]) => id);
+  assert(!badSource.length, `every source URL is on myodfw.com or eregulations.com (${badSource.join(", ") || "all"})`);
+  const badLinks = Object.entries(meta.links).filter(([, url]) => !allowedHost(url)).map(([key]) => key);
+  assert(!badLinks.length, `every ODFW link in the meta is on myodfw.com or eregulations.com (${badLinks.join(", ") || "all"})`);
+  assert(/regulation-updates/.test(meta.links.updates), "the in-season changes page is linked");
+  const malformed = Object.entries(regs).filter(([, entry]) => !(
+    entry.year === meta.year
+    && /^\d{4}-\d{2}-\d{2}$/.test(entry.checked)
+    && typeof entry.zone === "string" && entry.zone
+    && Array.isArray(entry.summary) && entry.summary.length && entry.summary.every((line) => typeof line === "string" && line.trim())
+    && typeof entry.gear === "string" && entry.gear
+    && typeof entry.harvest === "string" && entry.harvest
+    && typeof entry.notes === "string"
+    && ["confirmed", "verify"].includes(entry.confidence)
+  )).map(([id]) => id);
+  assert(!malformed.length, `every entry has year, checked, zone, summary, gear, harvest, notes, source and confidence (${malformed.join(", ") || "all"})`);
+  const verifyWithoutReason = Object.entries(regs).filter(([, entry]) => entry.confidence === "verify" && !(typeof entry.uncertain === "string" && entry.uncertain.length > 20)).map(([id]) => id);
+  assert(!verifyWithoutReason.length, `every verify entry says what is uncertain (${verifyWithoutReason.join(", ") || "all"})`);
+  const confirmedWithoutSeason = Object.entries(regs).filter(([, entry]) => entry.confidence === "confirmed" && !entry.season).map(([id]) => id);
+  assert(!confirmedWithoutSeason.length, `every confirmed entry records its season (${confirmedWithoutSeason.join(", ") || "all"})`);
+  const markup = Object.entries(regs).filter(([, entry]) => /[<>]/.test([...entry.summary, entry.gear, entry.harvest, entry.notes, entry.uncertain || ""].join(" "))).map(([id]) => id);
+  assert(!markup.length, `no regulation text carries markup (${markup.join(", ") || "none"})`);
+  assert(!/Stocked lake regulations apply|Always confirm current ODFW regulations/.test(html), "the old generic regulations line is gone");
+  assert(app.waters.every((water) => !("regs" in water)), "no water still carries the old regs string");
+  const counts = Object.values(regs).reduce((memo, entry) => ({ ...memo, [entry.confidence]: (memo[entry.confidence] || 0) + 1 }), {});
+  console.log(`       ${counts.confirmed || 0} confirmed, ${counts.verify || 0} verify`);
+}
+
+group("ODFW regulations: season windows, wrap-around and sections");
+{
+  const open = context.seasonWindowOpen;
+  assert(open({ allYear: true }, "02-29") === true, "an all-year season is open on any day");
+  assert(open({ from: "05-22", to: "10-31" }, "05-21") === false, "a window is closed the day before it opens");
+  assert(open({ from: "05-22", to: "10-31" }, "05-22") === true, "open on its first day (inclusive)");
+  assert(open({ from: "05-22", to: "10-31" }, "10-31") === true, "open on its last day (inclusive)");
+  assert(open({ from: "05-22", to: "10-31" }, "11-01") === false, "closed the day after");
+  const winter = { from: "11-01", to: "02-28" };
+  assert(open(winter, "12-31") === true && open(winter, "01-01") === true, "a season that wraps the new year is open across it");
+  assert(open(winter, "11-01") === true && open(winter, "02-28") === true, "and on both of its ends");
+  assert(open(winter, "10-31") === false && open(winter, "03-01") === false, "and closed outside it");
+  assert(open({ from: "5-22", to: "10-31" }, "06-01") === null, "a malformed window is unknown, never open");
+  assert(open({}, "06-01") === null, "an empty season is unknown");
+
+  const realRegs = { ...app.ODFW_REGULATIONS };
+  const probe = { id: "regs-probe", name: "Probe" };
+  const set = (entry) => { app.ODFW_REGULATIONS["regs-probe"] = { year: 2026, checked: "2026-11-18", zone: "Central", summary: ["x"], gear: "x", harvest: "x", notes: "", source: "https://myodfw.com/", confidence: "confirmed", ...entry }; };
+  set({ season: { sections: [{ name: "Lower", allYear: true }, { name: "Upper", from: "05-22", to: "09-30" }] } });
+  const partial = context.regulationSeasonDetail(probe, "2026-11-18");
+  assert(partial.status === "partial" && partial.open.join() === "Lower" && partial.closed.join() === "Upper", `some sections open is partial, naming each (${JSON.stringify(partial)})`);
+  assert(context.regulationSeasonStatus(probe, "2026-07-04") === "open", "every section open is open");
+  set({ season: { sections: [{ name: "A", from: "05-22", to: "09-30" }, { name: "B", from: "04-22", to: "10-31" }] } });
+  assert(context.regulationSeasonStatus(probe, "2026-12-01") === "closed", "no section open is closed");
+  set({ season: { sections: [{ name: "A", allYear: true }, { name: "B", from: "bad", to: "10-31" }] } });
+  assert(context.regulationSeasonStatus(probe, "2026-12-01") === "unknown", "one malformed section makes the water unknown");
+  set({ season: { allYear: true }, confidence: "verify", uncertain: "zone not confirmed for this probe water" });
+  assert(context.regulationSeasonStatus(probe, "2026-12-01") === "unknown", "a verify entry is unknown even with a season recorded");
+  set({ season: null });
+  assert(context.regulationSeasonStatus(probe, "2026-12-01") === "unknown", "a missing season is unknown");
+  delete app.ODFW_REGULATIONS["regs-probe"];
+  assert(context.regulationSeasonStatus(probe, "2026-12-01") === "unknown", "a water with no entry is unknown");
+  assert(Object.keys(app.ODFW_REGULATIONS).length === Object.keys(realRegs).length, "the probe left the table as it was");
+}
+
+group("ODFW regulations: status on boundary dates, on Oregon's clock");
+{
+  const water = (id) => app.waters.find((item) => item.id === id);
+  // Apr 22 00:00 PDT is 07:00 UTC; Oct 31 23:59 PDT is Nov 1 06:59 UTC.
+  assert(context.regulationSeasonStatus(water("crane-prairie"), new Date("2026-04-22T06:59:00Z")) === "closed", "Crane Prairie is closed at 11:59 PM Apr 21 in Oregon, though it is Apr 22 in UTC");
+  assert(context.regulationSeasonStatus(water("crane-prairie"), new Date("2026-04-22T07:00:00Z")) === "open", "and open at midnight Apr 22 Pacific");
+  assert(context.regulationSeasonStatus(water("whychus"), new Date("2026-11-01T06:59:00Z")) === "open", "a zone stream is open at 11:59 PM Oct 31 Pacific, though it is Nov 1 in UTC");
+  assert(context.regulationSeasonStatus(water("whychus"), new Date("2026-11-01T07:00:00Z")) === "closed", "and closed at midnight Nov 1 Pacific");
+  assert(context.regulationSeasonStatus(water("whychus"), new Date("2026-05-22T07:00:00Z")) === "open", "and opens at midnight May 22 Pacific");
+  assert(context.regulationSeasonStatus(water("fall-river"), "2026-10-01") === "partial", "Fall River below the falls closes after Sep 30; above stays open");
+  assert(context.regulationSeasonStatus(water("lower-deschutes"), "2026-01-15") === "partial", "the Lower Deschutes above the Reservation boundary is closed in January");
+  assert(context.regulationSeasonStatus(water("lower-deschutes"), "2026-04-22") === "open", "and open again from Apr 22");
+
+  const nov18 = new Date("2026-11-18T20:00:00Z");
+  const byStatus = {};
+  app.waters.forEach((item) => {
+    const status = context.regulationSeasonStatus(item, nov18);
+    (byStatus[status] = byStatus[status] || []).push(item.id);
+  });
+  const closedExpected = ["whychus", "tumalo", "little-deschutes", "crane-prairie", "wickiup", "odell-lake", "crescent-creek", "spring-river", "paulina-creek"];
+  assert(JSON.stringify([...(byStatus.closed || [])].sort()) === JSON.stringify([...closedExpected].sort()),
+    `closed on Nov 18, 2026: ${(byStatus.closed || []).join(", ")}`);
+  assert(JSON.stringify([...(byStatus.partial || [])].sort()) === JSON.stringify(["fall-river", "lake-billy-chinook", "metolius", "upper-deschutes"]),
+    `partly open on Nov 18, 2026: ${(byStatus.partial || []).join(", ")}`);
+  const verifyIds = Object.entries(app.ODFW_REGULATIONS).filter(([, entry]) => entry.confidence === "verify").map(([id]) => id).sort();
+  assert(JSON.stringify([...(byStatus.unknown || [])].sort()) === JSON.stringify(verifyIds), `unknown is exactly the verify waters (${(byStatus.unknown || []).length})`);
+}
+
+group("ODFW regulations: a closed water is never the top pick or ranked as fishable");
+{
+  const water = (id) => app.waters.find((item) => item.id === id);
+  const realKey = context.pacificDateKey;
+  context.pacificDateKey = () => "2026-11-18";
+  const crane = water("crane-prairie");
+  const realScore = crane.score;
+  crane.score = 100;
+  const ranked = context.rankedWatersForCurrentMode(app.waters);
+  const statuses = ranked.map((item) => context.regulationSeasonStatus(item));
+  const firstClosed = statuses.indexOf("closed");
+  assert(firstClosed > 0 && statuses.slice(firstClosed).every((status) => status === "closed"), `every closed water ranks after every other water (first closed at #${firstClosed + 1} of ${ranked.length})`);
+  assert(context.topRecommendedWater().id !== "crane-prairie", `a closed water with the best conditions is not the top pick (${context.topRecommendedWater().id})`);
+  assert(context.regulationSeasonStatus(context.topRecommendedWater()) !== "closed", "the top pick is never in a closed season");
+  assert(ranked.indexOf(crane) === firstClosed, "among closed waters the score still orders them");
+  assert(context.fishabilitySummary(crane) === "Closed season (ODFW)", `a closed water is labelled, not called fishable (${context.fishabilitySummary(crane)})`);
+  const unknownRank = ranked.findIndex((item) => context.regulationSeasonStatus(item) === "unknown");
+  assert(unknownRank >= 0 && unknownRank < firstClosed, "an unconfirmed water is not treated as closed");
+  const headline = context.watersHeadlineMarkup({ topWater: crane });
+  assert(/Closed season \(ODFW\)/.test(headline), "a closed water heading a filtered list is labelled");
+  const rows = context.scoreBreakdownItems(crane);
+  assert(rows[0][0] === "ODFW season" && rows[0][1] === "Closed today" && /2026 ODFW regulations - checked Nov 18, 2026/.test(rows[0][2]), `the rating breakdown says the water is closed (${rows[0].join(" | ")})`);
+  const partialRow = context.scoreBreakdownItems(water("metolius"))[0];
+  assert(partialRow[0] === "ODFW season" && /Allingham/.test(partialRow[2]), `a partly open water names the closed section (${partialRow[2]})`);
+  assert(context.scoreBreakdownItems(water("crooked"))[0][0] !== "ODFW season", "an open water gets no season row");
+  crane.score = realScore;
+  context.pacificDateKey = realKey;
+}
+
+group("ODFW regulations: the planner does not score a closed-season day");
+{
+  const water = (id) => app.waters.find((item) => item.id === id);
+  const whychus = water("whychus");
+  const hourly = "https://api.weather.gov/gridpoints/PDT/31,77/forecast/hourly";
+  const coords = app.waterCoordinates.whychus;
+  app.setNwsGrid(`${coords.lat.toFixed(4)},${coords.lon.toFixed(4)}`, hourly);
+  const days = ["2026-10-30", "2026-10-31", "2026-11-01", "2026-11-02"].map((date) => ({ date, highF: 55, windMph: 6, forecast: "Cloudy" }));
+  app.setPlannerForecasts({ "https://api.weather.gov/gridpoints/PDT/31,77/forecast": { fetchedAt: new Date().toISOString(), days } });
+  const plan = context.plannerForWater(whychus, "2026-10-30");
+  assert(plan.days.length === 4, `the forecast is planned (${plan.days.length} days)`);
+  assert(plan.days[0].score !== null && plan.days[1].score !== null, "days inside the season are scored");
+  assert(plan.days[2].score === null && plan.days[3].score === null, "days after the season closes get no score");
+  assert(plan.days[2].reason === "Closed season (ODFW)", `and say Closed season (${plan.days[2].reason})`);
+  assert(plan.best && plan.best.date <= "2026-10-31", `the best day is never a closed-season day (${plan.best?.date})`);
+  const closedWeek = context.plannerForWater(whychus, "2026-11-01");
+  assert(closedWeek.best === null && closedWeek.days.every((day) => day.regulationClosed), "an all-closed week has no best day");
+  assert(/planner-day\s+\S*\s*closed/.test(context.plannerDayRow(closedWeek.days[0], null)), "a closed-season day row carries the closed class");
+  app.setPlannerForecasts({});
+}
+
+group("ODFW regulations: the block says it is a summary and links out");
+{
+  const water = (id) => app.waters.find((item) => item.id === id);
+  const block = context.regulationsBlock(water("metolius"));
+  assert(/2026 ODFW regulations - checked Nov 18, 2026/.test(block), "the block names the booklet year and the date checked");
+  assert(/Summary only\. Regulations change and in-season rules apply - check ODFW before you fish\./.test(block), "and says it is a summary, not the law");
+  const links = [...block.matchAll(/<a [^>]*href="([^"]+)"[^>]*>/g)];
+  assert(links.length >= 2 && links.every(([tag, href]) => /target="_blank"/.test(tag) && /rel="noopener"/.test(tag) && /^https:\/\/(www\.)?(myodfw|eregulations)\.com\//.test(href)),
+    `every link goes to ODFW or eRegulations and opens outside the app (${links.length})`);
+  assert(block.includes(app.ODFW_REGULATIONS_META.links.updates), "the in-season changes page is linked");
+  assert(!/Verify with ODFW/.test(block), "a confirmed water has no verify note");
+  const verify = context.regulationsBlock(water("bridge-creek"));
+  assert(/Verify with ODFW:/.test(verify) && /Season not confirmed - check ODFW/.test(verify), "a verify water says to verify, and that its season is not confirmed");
+  const compact = context.regulationsBlock(water("whychus"), { compact: true });
+  assert(/data-regs-block="whychus"/.test(compact) && /Artificial flies and lures only/.test(compact), "the compact block shows the gear rule");
+  assert(app.clickActions.some(([selector]) => selector === "[data-regs-block]"), "a tap in the block is caught before it collapses the card");
+}
+
+group("ODFW regulations: the March 1 check for a new booklet");
+{
+  const due = context.regulationsCheckDue;
+  assert(due({}, "2027-02-28") === false, "not due on Feb 28");
+  assert(due({}, "2027-03-01") === true, "due on Mar 1");
+  assert(due({ year: 2027, ok: true }, "2027-08-01") === false, "not due again once this year's check succeeded");
+  assert(due({ year: 2026, ok: true, attemptedOn: "2026-03-01" }, "2027-03-01") === true, "due again when the year rolls over");
+  assert(due({ year: 2027, ok: false, attemptedOn: "2027-03-01" }, "2027-03-01") === false, "a failed check is not retried the same day");
+  assert(due({ year: 2027, ok: false, attemptedOn: "2027-03-01" }, "2027-03-02") === true, "and is retried the next day");
+  assert(due({}, context.pacificDateKey(new Date("2027-03-01T07:59:00Z"))) === false, "11:59 PM Feb 28 in Oregon is not Mar 1, though it is in UTC");
+  assert(due({}, context.pacificDateKey(new Date("2027-03-01T08:00:00Z"))) === true, "midnight Mar 1 Pacific is");
+  assert(due({}, "garbage") === false, "a malformed date is never due");
+
+  const extract = context.extractPublishedRegulationsYear;
+  assert(extract("<p>Changes to the permanent regulations in the 2026 Oregon Sport Fishing Regulations.</p><p>See the 2027 Oregon Sport Fishing Regulations</p>", 2027) === 2027, "several booklets named: the newest wins");
+  assert(extract("<footer>&copy; Copyright 2028 ODFW</footer><p>2026 Oregon Sport Fishing Regulations</p>", 2027) === 2026, "a copyright year is not a booklet");
+  assert(extract("<p>Effective August 1, 2027 through December 31, 2027</p>", 2027) === null, "a page naming no booklet gives no year");
+  assert(extract("<h2><b>2027</b> Oregon Sport <i>Fishing</i>\n Regulations</h2>", 2027) === 2027, "markup inside the phrase is read as text");
+  assert(extract("<script>var x = '2031 Oregon Sport Fishing Regulations'</script><p>none</p>", 2027) === null, "script text is not read");
+  assert(extract("2099 Oregon Sport Fishing Regulations", 2027) === null, "a year far in the future is ignored");
+  assert(extract(null) === null && extract(undefined) === null && extract(12345) === null && extract("<<<>>>&&&") === null, "garbage gives no year and does not throw");
+
+  const realFetch = context.fetchTextWithTimeout;
+  const realOnline = context.navigator.onLine;
+  const read = () => context.readRegulationsCheck();
+  context.localStorage.removeItem(app.REGS_CHECK_KEY);
+  let fetched = [];
+  context.fetchTextWithTimeout = async (url) => { fetched.push(url); return "<p>See the 2027 Oregon Sport Fishing Regulations.</p>"; };
+  const ok = await context.runRegulationsAnnualCheck({ dateKey: "2027-03-01", render: false });
+  assert(ok === true && fetched.length === 1 && /^https:\/\/(www\.)?myodfw\.com\//.test(fetched[0]), `one request, to myodfw.com (${fetched.join(", ")})`);
+  assert(read().ok && read().year === 2027 && read().publishedYear === 2027 && read().attemptedOn === "2027-03-01", `a successful check is stored (${JSON.stringify(read())})`);
+  assert(!due(read(), "2027-03-02"), "and is not repeated this year");
+
+  context.localStorage.removeItem(app.REGS_CHECK_KEY);
+  fetched = [];
+  context.fetchTextWithTimeout = async () => { throw new Error("ODFW regulations check 503"); };
+  const failed = await context.runRegulationsAnnualCheck({ dateKey: "2027-03-01", render: false });
+  assert(failed === false && read().ok === false && read().attemptedOn === "2027-03-01", "a failed check is recorded as not done");
+  assert(!due(read(), "2027-03-01") && due(read(), "2027-03-02"), "and retried on the next day, not the same one");
+  context.fetchTextWithTimeout = async () => "<p>No booklet named here</p>";
+  await context.runRegulationsAnnualCheck({ dateKey: "2027-03-02", render: false });
+  assert(read().ok === false, "a page that names no booklet is not a successful check");
+
+  context.localStorage.removeItem(app.REGS_CHECK_KEY);
+  context.navigator.onLine = false;
+  fetched = [];
+  context.fetchTextWithTimeout = async (url) => { fetched.push(url); return ""; };
+  const offline = await context.runRegulationsAnnualCheck({ dateKey: "2027-03-01", render: false });
+  assert(offline === false && !fetched.length && read().attemptedOn === null, "offline is not an attempt: nothing fetched, the online event retries");
+  context.navigator.onLine = realOnline;
+  context.fetchTextWithTimeout = realFetch;
+
+  const water = (id) => app.waters.find((item) => item.id === id);
+  const stale = context.regulationsStaleness;
+  assert(stale("2026-11-18", {}) === null, "no warning in the booklet's own year");
+  assert(stale("2027-02-28", {}) === null, "nor before Mar 1 of the next year");
+  assert(stale("2027-03-01", {})?.kind === "calendar" && stale("2027-03-01", {}).message === "This summary is from 2026; ODFW's current rules may differ. Check ODFW before you fish.",
+    "from Mar 1 the calendar alone warns, even if no check ever got through");
+  assert(stale("2028-01-15", {})?.kind === "calendar", "and keeps warning in later years");
+  const newer = stale("2026-12-20", { publishedYear: 2027 });
+  assert(newer?.kind === "newer" && newer.message === "ODFW has published 2027 regulations. This summary is from 2026 and may be out of date - check ODFW before you fish.",
+    `a newer booklet seen by the check warns at once (${newer?.message})`);
+  assert(stale("2026-12-20", { publishedYear: 2026 }) === null, "the same booklet year is not news");
+  assert(context.regulationStatusLabel("closed", newer) === "Closed season (2026 rules)" && context.regulationStatusLabel("closed", null) === "Closed season (ODFW)",
+    "while stale, season labels say whose rules they are");
+  assert(context.regulationStatusLabel("unknown", newer) === "Season not confirmed - check ODFW", "an unknown season label is unchanged");
+
+  context.localStorage.setItem(app.REGS_CHECK_KEY, JSON.stringify({ year: 2026, ok: true, checkedAt: "2026-12-20T18:00:00Z", attemptedOn: "2026-12-20", publishedYear: 2027 }));
+  const realKey = context.pacificDateKey;
+  context.pacificDateKey = (date) => (date ? realKey(date) : "2026-12-20");
+  const block = context.regulationsBlock(water("crooked"));
+  assert(block.includes("ODFW has published 2027 regulations. This summary is from 2026 and may be out of date - check ODFW before you fish."), "every Regulations block carries the warning");
+  assert(/Verify with ODFW:/.test(block), "and treats the entry as one to verify");
+  assert(/Open season \(2026 rules\)/.test(block), "the status says it is the 2026 rules");
+  assert(/Checked for new ODFW regulations Dec 20, 2026/.test(block), "the block says when the check last ran");
+  assert(context.regulationSeasonStatus(water("whychus")) === "closed", "season gating still runs on the bundled rules");
+  assert(context.fishabilitySummary(water("whychus")) === "Closed season (2026 rules)", "and its closed label names the year");
+  context.localStorage.setItem(app.REGS_CHECK_KEY, JSON.stringify({ year: 2026, ok: false, attemptedOn: "2026-12-19" }));
+  assert(/Couldn(&#39;|&#039;|')t check for new ODFW regulations yet - will retry/.test(context.regulationsBlock(water("crooked"))), "a failed check says it will retry");
+  assert(!/ODFW has published/.test(context.regulationsBlock(water("crooked"))), "and claims no new booklet");
+  context.localStorage.removeItem(app.REGS_CHECK_KEY);
+  context.pacificDateKey = (date) => (date ? realKey(date) : "2027-02-10");
+  assert(/Next check for new ODFW regulations: Mar 1, 2027/.test(context.regulationsCheckLine()), "before Mar 1 the block says when the next check is");
+  context.pacificDateKey = realKey;
+  assert(/riseRegsCheck\.v1/.test(app.REGS_CHECK_KEY) && /^https:\/\/myodfw\.com\//.test(app.REGS_CHECK_URL), "the check has its own storage key and an allowed ODFW URL");
 }
 
 group("On the water: the prime-window countdown");
