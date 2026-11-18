@@ -1543,6 +1543,16 @@ try {
       const small = await page.evaluate(() => {
         // Pro on, so the gated panels and their controls are measured too.
         proAccessActive = true;
+        // Snap a bug only shows its questions, results and the log form's
+        // attached-photo row once there is a photo, so one is staged.
+        const photo = document.createElement("canvas");
+        photo.width = 120;
+        photo.height = 80;
+        photo.getContext("2d").fillRect(0, 0, 120, 80);
+        snapBug = { status: "ready", photo: photo.toDataURL("image/jpeg"), error: "", sample: { r: 100, g: 120, b: 40, hex: "#647828", fx: .5, fy: .5 }, autoColor: "olive" };
+        snapTraits = { color: "olive", size: "s16", shape: "upright", tails: "3" };
+        pendingCatchPhoto = snapBug.photo;
+        logFormOpen = true;
         renderEverything();
         const undersized = [];
         document.querySelectorAll(".view").forEach((view) => {
@@ -2376,6 +2386,204 @@ try {
     await page.close();
   }
 
+  group("Feature 5: Snap a bug - photo in, sampled colour out, results escaped");
+
+  {
+    // A 3x phone, so a tap mapped in screen pixels instead of by fraction of
+    // the displayed photo would land in the wrong half of the picture.
+    const page = await openApp(browser, { viewport: { width: 390, height: 844, deviceScaleFactor: 3 } });
+    const feedPhoto = (kind) => page.evaluate(async (kind) => {
+      proAccessActive = true;
+      renderAll();
+      activateTab("bugs");
+      let file;
+      if (kind === "broken") {
+        file = new File(["not an image"], "bug.jpg", { type: "image/jpeg" });
+      } else {
+        // Left half olive, right half red: two colours nobody disputes.
+        const canvas = document.createElement("canvas");
+        canvas.width = 400;
+        canvas.height = 200;
+        const context = canvas.getContext("2d");
+        context.fillStyle = "rgb(100, 120, 40)";
+        context.fillRect(0, 0, 200, 200);
+        context.fillStyle = "rgb(180, 30, 30)";
+        context.fillRect(200, 0, 200, 200);
+        const blob = await new Promise((done) => canvas.toBlob(done, "image/png"));
+        file = new File([blob], "bug.png", { type: "image/png" });
+      }
+      // The real change path: a file on the rendered input, and a bubbling
+      // change event for the delegated handler to pick up.
+      const input = document.querySelector("#bugs [data-snap-photo]");
+      const transfer = new DataTransfer();
+      transfer.items.add(file);
+      input.files = transfer.files;
+      input.dispatchEvent(new Event("change", { bubbles: true }));
+      for (let i = 0; i < 100 && snapBug.status === "loading"; i += 1) {
+        await new Promise((done) => setTimeout(done, 30));
+      }
+      return {
+        status: snapBug.status,
+        photo: document.querySelector("#bugs .snap-photo")?.getAttribute("src") || "",
+        error: document.querySelector("#bugs .snap-error")?.textContent || "",
+        stored: Object.keys(localStorage).filter((key) => /data:image/.test(localStorage.getItem(key) || ""))
+      };
+    }, kind);
+
+    const broken = await feedPhoto("broken");
+    assert(broken.status === "error" && /could not be opened/.test(broken.error), `an undecodable photo says so (${broken.error})`);
+
+    const loaded = await feedPhoto("good");
+    assert(loaded.status === "ready" && loaded.photo.startsWith("data:image/jpeg"),
+      `a picked photo goes through the catch-photo decoder and is shown (${loaded.photo.slice(0, 22)})`);
+    assert(!loaded.stored.length, `and nothing is written to storage (${loaded.stored.join(", ") || "nothing"})`);
+
+    const tap = async (fraction) => {
+      const box = await page.evaluate(() => {
+        const image = document.querySelector("#bugs .snap-photo");
+        image.scrollIntoView({ block: "center" });
+        const rect = image.getBoundingClientRect();
+        return { x: rect.left, y: rect.top, width: rect.width, height: rect.height };
+      });
+      await page.mouse.click(box.x + box.width * fraction, box.y + box.height / 2);
+      return page.evaluate(() => ({
+        trait: snapTraits.color,
+        select: document.querySelector('#bugs [data-snap-trait="color"]')?.value,
+        hex: snapBug.sample?.hex,
+        swatch: getComputedStyle(document.querySelector("#bugs .snap-swatch")).backgroundColor,
+        marker: Boolean(document.querySelector("#bugs .snap-marker")),
+        status: document.querySelector("#bugs [data-snap-sample-status]")?.textContent || "",
+        displayed: document.querySelector("#bugs .snap-photo").getBoundingClientRect().width,
+        natural: snapSampleCanvas?.width
+      }));
+    };
+    const olive = await tap(.25);
+    assert(olive.trait === "olive" && olive.select === "olive",
+      `a real tap on the left of the photo samples olive (${olive.trait}, ${olive.hex}, select ${olive.select})`);
+    assert(olive.displayed !== olive.natural, `the photo is drawn scaled, so the tap is mapped, not copied (${Math.round(olive.displayed)}pt shown, ${olive.natural}px sampled)`);
+    assert(olive.marker && /Olive/.test(olive.status) && olive.swatch !== "rgba(0, 0, 0, 0)",
+      `the swatch and tap marker show what was sampled (${olive.swatch})`);
+    const red = await tap(.75);
+    assert(red.trait === "red", `a tap on the right samples red (${red.trait}, ${red.hex})`);
+
+    const override = await page.evaluate(() => {
+      const select = document.querySelector('#bugs [data-snap-trait="color"]');
+      select.value = "tan";
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+      return { trait: snapTraits.color, status: document.querySelector("#bugs [data-snap-sample-status]").textContent };
+    });
+    assert(override.trait === "tan" && /You changed it to Tan/.test(override.status),
+      `the angler can overrule the sample (${override.status.trim().slice(0, 80)})`);
+
+    const results = await page.evaluate(() => {
+      const select = document.querySelector('#bugs [data-snap-trait="color"]');
+      select.value = "olive";
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+      for (const [key, value] of [["size", "s20"], ["shape", "upright"], ["tails", "2"]]) {
+        document.querySelector(`#bugs [data-snap-choice="${key}"][data-snap-value="${value}"]`).click();
+      }
+      const cards = [...document.querySelectorAll("#bugs .snap-result")];
+      return {
+        names: cards.map((card) => card.querySelector("strong").textContent),
+        first: cards[0]?.textContent.replace(/\s+/g, " ") || "",
+        photos: cards.filter((card) => card.querySelector(".snap-compare img")?.getAttribute("src") === snapBug.photo).length,
+        plates: cards.filter((card) => /bug-plates\//.test(card.querySelector(".snap-plate")?.getAttribute("style") || "")).length,
+        flies: cards.every((card) => card.querySelector("[data-snap-fly]") && card.querySelector("[data-hatch-pick]")),
+        pressed: document.querySelector('#bugs [data-snap-choice="size"][data-snap-value="s20"]').getAttribute("aria-pressed")
+      };
+    });
+    assert(results.names[0] === "Blue-Winged Olive" && results.names.length <= 3,
+      `olive, #20, upright wings, two tails is a BWO first (${results.names.join(", ")})`);
+    assert(/Strong match on 4 of 4 traits/.test(results.first) && /Matched size: #20/.test(results.first),
+      "with its confidence and the traits it matched");
+    assert(/In season in|Edge of its season|Out of season/.test(results.first), "and the season prior explained");
+    assert(results.photos === results.names.length && results.plates === results.names.length,
+      "every result shows the angler's photo beside the bug plate");
+    assert(results.flies, "and links to its flies and to the bug");
+    assert(results.pressed === "true", "a chosen answer is marked pressed");
+
+    const opened = await page.evaluate(async () => {
+      document.querySelector("#bugs .snap-result [data-snap-fly]").click();
+      await new Promise((done) => requestAnimationFrame(done));
+      const library = document.querySelector("#bugs .bug-card.active .fly-library");
+      const rect = library?.getBoundingClientRect();
+      return { bug: activeBug, fly: activeFlyName, onScreen: Boolean(rect) && rect.top < innerHeight && rect.bottom > 0 };
+    });
+    assert(opened.bug === "bwo" && opened.fly && opened.onScreen,
+      `a matching fly opens that bug's imitation library on screen (${opened.bug}, ${opened.fly})`);
+
+    const nothing = await page.evaluate(() => {
+      snapTraits = { color: "blue", size: "", shape: "fish", tails: "2" };
+      renderBugs();
+      return {
+        cards: document.querySelectorAll("#bugs .snap-result").length,
+        text: document.querySelector("#bugs .snap-empty")?.textContent || ""
+      };
+    });
+    assert(!nothing.cards && /Nothing in the bug library matches/.test(nothing.text), "traits nothing matches show no result, and say so");
+
+    const escaped = await page.evaluate(() => {
+      const bug = bugs.find((item) => item.id === "bwo");
+      const fly = flyLibrary.find((item) => item.bugId === "bwo");
+      const saved = [bug.name, fly.name];
+      bug.name = `BWO <img src=x data-pwned onerror="window.__pwned=1"> "quoted"`;
+      fly.name = `RS2 <b data-pwned>bold</b> "#20"`;
+      snapTraits = { color: "olive", size: "s20", shape: "upright", tails: "2" };
+      renderBugs();
+      const panel = document.querySelector("#bugs .snap-bug");
+      const result = {
+        injected: panel.querySelectorAll("[data-pwned]").length,
+        text: panel.textContent.includes("<img src=x data-pwned") && panel.textContent.includes("<b data-pwned>bold</b>"),
+        flyValue: panel.querySelector("[data-snap-fly]")?.dataset.snapFly
+      };
+      [bug.name, fly.name] = saved;
+      renderBugs();
+      return { ...result, ran: Boolean(window.__pwned) };
+    });
+    assert(!escaped.injected && !escaped.ran && escaped.text, "bug and fly names in the results are escaped, not parsed");
+    assert(escaped.flyValue === `RS2 <b data-pwned>bold</b> "#20"`, `and a fly name survives an attribute intact (${escaped.flyValue})`);
+
+    const attached = await page.evaluate(async () => {
+      document.querySelector("#bugs [data-snap-attach]").click();
+      const form = document.querySelector("#logForm");
+      const visible = document.querySelector(".view.active")?.id;
+      const preview = form?.querySelector("[data-log-attached-photo] img")?.getAttribute("src") || "";
+      await saveLogEntry(form);
+      const entry = getLogs()[0];
+      return { visible, preview: preview === snapBug.photo, photo: entry?.photo?.slice(0, 22) || "", pending: pendingCatchPhoto, count: getLogs().length };
+    });
+    assert(attached.visible === "log" && attached.preview, "Attach opens the catch form with the bug photo shown in it");
+    assert(attached.count === 1 && attached.photo.startsWith("data:image/jpeg") && !attached.pending,
+      `saving stores it through the catch-photo path and releases it (${attached.photo})`);
+
+    const kept = await page.evaluate(() => {
+      activateTab("log");
+      document.querySelector("[data-new-log]").click();
+      const form = document.querySelector("#logForm");
+      form.elements.notes.value = "draft in progress";
+      activateTab("bugs");
+      document.querySelector("#bugs [data-snap-attach]").click();
+      const now = document.querySelector("#logForm");
+      const shown = Boolean(now.querySelector("[data-log-attached-photo] img"));
+      now.querySelector("[data-detach-photo]").click();
+      return {
+        sameForm: now === form && now.elements.notes.value === "draft in progress",
+        shown,
+        removed: !pendingCatchPhoto && document.querySelector("[data-log-attached-photo]").hidden
+      };
+    });
+    assert(kept.sameForm && kept.shown, "attaching to an open form keeps the angler's draft and adds the photo");
+    assert(kept.removed, "and Remove takes it off again");
+
+    const cleared = await page.evaluate(() => {
+      activateTab("bugs");
+      document.querySelector("#bugs [data-snap-clear]").click();
+      return { status: snapBug.status, photo: Boolean(document.querySelector("#bugs .snap-photo")), canvas: snapSampleCanvas };
+    });
+    assert(cleared.status === "idle" && !cleared.photo && !cleared.canvas, "Clear drops the photo and its pixels");
+    await page.close();
+  }
+
   {
     const page = await openApp(browser);
     const restored = await page.evaluate(() => {
@@ -2430,6 +2638,24 @@ try {
     await page.close();
   }
 
+
+  {
+    const page = await openApp(browser);
+    const locked = await page.evaluate(() => {
+      proAccessActive = false;
+      renderAll();
+      activateTab("bugs");
+      const panel = document.querySelector("#bugs .snap-bug");
+      return {
+        lock: Boolean(panel?.querySelector(".pro-lock [data-tab-jump=\"pro\"]")),
+        input: document.querySelectorAll("#bugs [data-snap-photo]").length,
+        text: panel?.textContent || ""
+      };
+    });
+    assert(locked.lock && !locked.input, "a free user sees the Pro lock and no camera input");
+    assert(/does not recognise bugs from photos/.test(locked.text), "and the lock does not oversell what Pro does with a photo");
+    await page.close();
+  }
 
 } finally {
   for (const context of openContexts) {
