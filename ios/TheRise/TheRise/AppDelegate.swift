@@ -23,6 +23,12 @@ final class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationC
         UNUserNotificationCenter.current().delegate = self
         RiseNotifications.registerBackgroundTasks()
 
+        // Apple Watch. Activated here, not when the web view loads, so a
+        // catch the system delivers from the Watch while the page is not
+        // loaded is still written to Application Support. A no-op on an
+        // iPhone without a paired Watch.
+        RiseWatchBridge.shared.activate()
+
         return true
     }
 

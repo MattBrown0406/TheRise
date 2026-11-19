@@ -3287,6 +3287,151 @@ try {
     await page.close();
   }
 
+  /* ---------------------------------------------------------------- */
+  group("Apple Watch: catches from the Watch reach the journal once, and only a saved catch is acknowledged");
+
+  const watchBridge = `
+    window.__watch = [];
+    window.webkit = { messageHandlers: { riseWatch: { postMessage: (message) => window.__watch.push(JSON.parse(JSON.stringify(message))) } } };
+  `;
+  const watchCatchFixture = (watchId, loggedAt, extra = {}) => ({
+    watchId, loggedAt, date: "Jun 21, 2026", time: "11:00 AM", waterId: "metolius", waterName: "Metolius River",
+    fly: "BWO Emerger #18", fish: "Redband Trout", length: "15.5", count: "1", notes: "",
+    flow: "1,520 cfs", flowSource: "stale", temp: "48 F", tempSource: "measured", ...extra
+  });
+
+  {
+    const page = await openApp(browser, { before: watchBridge });
+    await seedLogs(page, [
+      sampleEntry({ loggedAt: "2026-06-21T20:00:00.000Z", notes: "NEWEST", fly: "Newest Fly" }),
+      sampleEntry({ loggedAt: "2026-06-21T15:00:00.000Z", notes: "MIDDLE", fly: "Middle Fly" }),
+      sampleEntry({ loggedAt: "2026-06-20T15:00:00.000Z", notes: "OLDEST", fly: "Oldest Fly" })
+    ]);
+    const catches = [
+      watchCatchFixture("A1B2C3D4-0000-4000-8000-000000000001", "2026-06-21T18:00:00.000Z"),
+      watchCatchFixture("A1B2C3D4-0000-4000-8000-000000000002", "2026-06-21T16:30:00.000Z", { fish: "", length: "", fly: "<b>Bold</b> Nymph" })
+    ];
+    const result = await page.evaluate(async (delivered) => {
+      window.__watch.length = 0;
+      activateTab("log");
+      await new Promise((done) => requestAnimationFrame(done));
+      // The edit form is open on MIDDLE (index 1) when the Watch catches land.
+      document.querySelector("[data-edit-log='1']").click();
+      await new Promise((done) => requestAnimationFrame(done));
+      const formBefore = document.querySelector("#logForm");
+      window.riseWatchCatches({ catches: delivered });
+      await new Promise((done) => requestAnimationFrame(done));
+      const first = {
+        notes: getLogs().map((entry) => entry.notes || entry.watchId),
+        editing: getLogs()[editingLogIndex]?.notes,
+        formKept: document.querySelector("#logForm") === formBefore,
+        formFly: document.querySelector("#logForm [name=fly]")?.value,
+        cards: [...document.querySelectorAll("#log .catch-card")].map((node) => node.textContent.replace(/\s+/g, " ").trim()),
+        tags: document.querySelectorAll("#log [data-watch-tag]").length,
+        boldTags: document.querySelectorAll("#log .catch-card b").length,
+        notice: document.querySelector("#log [data-watch-notice]")?.textContent || "",
+        acks: window.__watch.filter((message) => message.action === "catchesSaved"),
+        stored: JSON.parse(localStorage.getItem("riseLogs")).filter((entry) => entry.loggedOn === "watch")
+      };
+      window.riseWatchCatches({ catches: delivered });
+      await new Promise((done) => requestAnimationFrame(done));
+      const second = {
+        count: getLogs().length,
+        tags: document.querySelectorAll("#log [data-watch-tag]").length,
+        acks: window.__watch.filter((message) => message.action === "catchesSaved").length
+      };
+      return { first, second };
+    }, catches);
+    const { first, second } = result;
+    assert(first.notes.join(",") === "NEWEST,A1B2C3D4-0000-4000-8000-000000000001,A1B2C3D4-0000-4000-8000-000000000002,MIDDLE,OLDEST",
+      `Watch catches land in loggedAt order among the phone's own (${first.notes.join(", ")})`);
+    assert(first.editing === "MIDDLE" && first.formKept && first.formFly === "Middle Fly",
+      `the open edit form stays on the catch it was editing (${first.editing}, ${first.formFly})`);
+    assert(first.tags === 2 && first.cards.filter((text) => /Logged on Apple Watch/.test(text)).length === 2, "each Watch catch is marked as logged on the Watch");
+    const watchCard = first.cards.find((text) => /Metolius/.test(text) && /15\.5/.test(text)) || "";
+    assert(/Redband Trout - 15\.5"/.test(watchCard) && /BWO Emerger #18/.test(watchCard) && /1,520 cfs \(measured earlier\)/.test(watchCard) && /48 F \(measured\)/.test(watchCard),
+      `a Watch card shows its species, length, fly and readings with their provenance (${watchCard})`);
+    assert(first.boldTags === 0 && first.cards.some((text) => text.includes("<b>Bold</b> Nymph")), "a fly name from the Watch is escaped, not parsed");
+    const stored = first.stored.find((entry) => entry.watchId.endsWith("0001"));
+    assert(stored && stored.date === "Jun 21, 2026" && stored.time === "11:00 AM" && stored.count === "1" && stored.waterId === "metolius" && stored.loggedAt === "2026-06-21T18:00:00.000Z",
+      `the stored entry has the journal's own fields and Oregon date and time (${JSON.stringify(stored)})`);
+    assert(first.acks.length === 1 && first.acks[0].ids.length === 2, `both catches are acknowledged once, after the write (${JSON.stringify(first.acks)})`);
+    assert(/Added 2 catches from your Apple Watch/.test(first.notice), `the journal says what arrived (${first.notice})`);
+    assert(second.count === 5 && second.tags === 2, `a second delivery of the same catches adds nothing (${second.count} entries)`);
+    assert(second.acks === 2, "and is acknowledged again so the iPhone can let go of them");
+    await page.close();
+  }
+
+  {
+    const page = await openApp(browser, { before: watchBridge });
+    await seedLogs(page, [sampleEntry({ notes: "ONLY", loggedAt: "2026-06-21T20:00:00.000Z" })]);
+    const result = await page.evaluate(async (delivered) => {
+      window.__watch.length = 0;
+      activateTab("log");
+      await new Promise((done) => requestAnimationFrame(done));
+      const realSetItem = Storage.prototype.setItem;
+      Storage.prototype.setItem = function (key, value) {
+        if (key === "riseLogs") throw new DOMException("The quota has been exceeded.", "QuotaExceededError");
+        return realSetItem.call(this, key, value);
+      };
+      window.riseWatchCatches({ catches: delivered });
+      Storage.prototype.setItem = realSetItem;
+      await new Promise((done) => requestAnimationFrame(done));
+      return {
+        count: getLogs().length,
+        stored: JSON.parse(localStorage.getItem("riseLogs")).length,
+        acks: window.__watch.filter((message) => message.action === "catchesSaved").length,
+        notice: document.querySelector("#log [data-watch-notice]")?.textContent || "",
+        role: document.querySelector("#log [data-watch-notice]")?.getAttribute("role") || "",
+        tags: document.querySelectorAll("#log [data-watch-tag]").length
+      };
+    }, [watchCatchFixture("A1B2C3D4-0000-4000-8000-000000000009", "2026-06-21T18:00:00.000Z")]);
+    assert(result.count === 1 && result.stored === 1 && result.tags === 0, `a full device adds nothing to the journal (${result.count})`);
+    assert(result.acks === 0, "and sends no acknowledgement, so the iPhone keeps the catch");
+    assert(/could not be saved/.test(result.notice) && result.role === "alert", `and the angler is told (${result.notice})`);
+    await page.close();
+  }
+
+  {
+    // The pack: posted once the page settles, not again for a repaint that
+    // changed nothing, and again when a saved water changes.
+    const page = await openApp(browser, { before: watchBridge });
+    const result = await page.evaluate(async () => {
+      const packs = () => window.__watch.filter((message) => message.action === "pack");
+      await new Promise((done) => setTimeout(done, WATCH_PACK_DEBOUNCE_MS + 300));
+      const atLaunch = packs().length;
+      const pack = atLaunch ? JSON.parse(packs()[0].body) : null;
+      for (let index = 0; index < 10; index += 1) renderAll();
+      await new Promise((done) => setTimeout(done, WATCH_PACK_DEBOUNCE_MS + 300));
+      const afterRepaints = packs().length;
+      toggleSavedWater("hosmer");
+      renderAll();
+      await new Promise((done) => setTimeout(done, WATCH_PACK_DEBOUNCE_MS + 300));
+      const latest = JSON.parse(packs()[packs().length - 1].body);
+      return { atLaunch, afterRepaints, afterSave: packs().length, pack, hasHosmer: latest.waters.some((water) => water.id === "hosmer") };
+    });
+    assert(result.atLaunch === 1, `one pack is posted after launch (${result.atLaunch})`);
+    assert(result.pack && result.pack.waters.length >= 1 && result.pack.waters.every((water) => water.flow && water.temp && water.flow.source && water.temp.source),
+      "every water in it carries both readings with their provenance");
+    assert(result.afterRepaints === 1, `ten repaints that changed nothing post nothing (${result.afterRepaints - 1})`);
+    assert(result.afterSave === 2 && result.hasHosmer, `saving a water posts one new pack that includes it (${result.afterSave - 1})`);
+    await page.close();
+  }
+
+  {
+    // No Watch bridge (the web build, or an iPhone build before this one):
+    // nothing is posted and nothing throws.
+    const page = await openApp(browser);
+    const errors = [];
+    page.on("pageerror", (error) => errors.push(error.message));
+    const result = await page.evaluate(async () => {
+      await new Promise((done) => setTimeout(done, WATCH_PACK_DEBOUNCE_MS + 200));
+      return { timer: watchPackTimer, posted: watchPackPostedKey };
+    });
+    assert(result.timer === null && result.posted === null && !errors.length, "without the riseWatch handler no pack is built or posted");
+    await page.close();
+  }
+
 } finally {
   for (const context of openContexts) {
     await context.close().catch(() => {});

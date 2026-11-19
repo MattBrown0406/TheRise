@@ -163,6 +163,14 @@ vm.runInContext(`${scriptBody}\n;globalThis.__app = {
   setPlannerForecasts(value) { plannerForecasts = value; },
   alertRulesNow() { return alertRules; },
   savedWatersNow() { return savedWaterIds; },
+  setHomeWaterId(id) { homeWaterId = id; },
+  watchPackPostedKeyNow() { return watchPackPostedKey; },
+  resetWatchPack() { clearTimeout(watchPackTimer); watchPackTimer = null; watchPackPostedKey = null; },
+  watchNoticeNow() { return watchCatchNotice; },
+  setEditingLogIndex(index) { editingLogIndex = index; },
+  editingLogIndexNow() { return editingLogIndex; },
+  setLogStorageUnreadable(value) { logStorageUnreadable = value; },
+  WATCH_PACK_DEBOUNCE_MS, nativeFish,
   BUG_SNAP_TRAITS, SNAP_COLOURS, SNAP_SIZE_BUCKETS, SNAP_SHAPES, SNAP_TAILS,
   ODFW_REGULATIONS, ODFW_REGULATIONS_META, REGULATION_STATUS_LABELS, REGS_CHECK_KEY, REGS_CHECK_URL
 };`, context);
@@ -1566,6 +1574,198 @@ group("On the water: the prime-window countdown");
   context.primeWindowHours = () => null;
   assert(context.primeWindowCountdown(crooked).state === "unknown", "a wind-decided window says so instead of counting down");
   context.primeWindowHours = realWindow;
+}
+
+group("Apple Watch: the trip pack carries readings with their provenance");
+{
+  const water = (id) => app.waters.find((item) => item.id === id);
+  const savedReports = { ...app.liveReports.byWater };
+  const savedBefore = [...app.savedWatersNow()];
+  savedBefore.forEach((id) => context.toggleSavedWater(id));
+  app.setHomeWaterId("crooked");
+  const hoursAgo = (hours) => new Date(Date.now() - hours * 3600000).toISOString();
+  app.liveReports.byWater.crooked = {
+    status: "ready",
+    cachedAt: hoursAgo(2),
+    usgs: { flow: "240 cfs", waterTemp: "53 F", observedAt: hoursAgo(2.5) },
+    nws: { wind: "6 mph", forecast: "Cloudy" }
+  };
+  delete app.liveReports.byWater.hosmer;
+  delete app.liveReports.byWater.whychus;
+  context.toggleSavedWater("hosmer");
+  context.toggleSavedWater("whychus");
+
+  const pack = context.buildWatchPack(new Date());
+  const byId = Object.fromEntries(pack.waters.map((item) => [item.id, item]));
+  const crookedPack = byId.crooked;
+  assert(pack.version === 1 && !Number.isNaN(Date.parse(pack.generatedAt)), "the pack is versioned and says when it was built");
+  assert(pack.pacificDate === context.pacificDateKey(new Date()), `the pack names its Pacific date (${pack.pacificDate})`);
+  assert(pack.waters[0]?.id === "crooked" && crookedPack.home === true, `home water comes first (${pack.waters.map((item) => item.id).join(", ")})`);
+  const savedOrder = pack.waters.slice(1, 3).map((item) => item.id).sort().join(",");
+  assert(savedOrder === "hosmer,whychus" && byId.hosmer.saved && byId.whychus.saved, `saved waters follow home (${pack.waters.map((item) => item.id).join(", ")})`);
+  assert(pack.waters.some((item) => item.topPick), "today's top pick is in the pack");
+  assert(JSON.stringify(pack.species) === JSON.stringify(app.nativeFish), "the Watch's species list is the app's list");
+  assert(crookedPack.usgsSite === "14080500" && byId.hosmer.usgsSite === null, "a gauged water carries its USGS site, a lake carries none");
+  assert(crookedPack.lat === app.waterCoordinates.crooked.lat && crookedPack.lon === app.waterCoordinates.crooked.lon, "coordinates come from waterCoordinates");
+  assert(crookedPack.score === Number(context.fishScore(water("crooked"))) && crookedPack.scoreSource === context.scoreSourceLabel(water("crooked")),
+    `the score and its honest source label are the app's own (${crookedPack.score}, ${crookedPack.scoreSource})`);
+  const hours = context.primeWindowHours(water("crooked"));
+  assert(JSON.stringify(crookedPack.primeWindow) === JSON.stringify(hours ? { startHour: hours[0], endHour: hours[1] } : null),
+    `the prime window is today's Pacific hours (${JSON.stringify(crookedPack.primeWindow)})`);
+  assert(crookedPack.flow.value === "240 cfs" && crookedPack.flow.source === "measured", `a fresh gauge reading is measured (${JSON.stringify(crookedPack.flow)})`);
+  assert(crookedPack.flow.observedAt === app.liveReports.byWater.crooked.usgs.observedAt && crookedPack.flow.cachedAt === app.liveReports.byWater.crooked.cachedAt,
+    "and carries when USGS took it and when it was cached");
+  assert(crookedPack.temp.value === "53 F" && crookedPack.temp.source === "measured", "the water temperature travels the same way");
+  assert(crookedPack.flow.reference === water("crooked").flow, "the seasonal value travels as the fallback, labelled as such");
+  assert(byId.hosmer.flow.source === "reference" && byId.hosmer.flow.observedAt === null && byId.hosmer.flow.cachedAt === null,
+    `a lake's flow is reference and carries no measurement time (${JSON.stringify(byId.hosmer.flow)})`);
+  assert(byId.whychus.flow.source === "unavailable" && byId.whychus.flow.value === "No live gauge" && byId.whychus.flow.reference === "",
+    `an ungauged river says so and has nothing to fall back to (${JSON.stringify(byId.whychus.flow)})`);
+  assert(crookedPack.flies.length > 0 && crookedPack.flies.length <= 6 && new Set(crookedPack.flies).size === crookedPack.flies.length,
+    `up to six distinct flies (${crookedPack.flies.join(", ")})`);
+  assert(crookedPack.flies[0] === context.liveRecommendedFlies(water("crooked"))[0], "in the order the app recommends them");
+  assert(Array.isArray(crookedPack.hatches) && crookedPack.hatches.length <= 4, "predicted hatches are carried");
+  assert(crookedPack.planner === null, "no planner days are invented when the week was never loaded");
+
+  app.liveReports.byWater.crooked = { ...app.liveReports.byWater.crooked, cachedAt: hoursAgo(20) };
+  const stalePack = context.buildWatchPack(new Date());
+  assert(stalePack.waters[0].flow.source === "stale", `a reading past the 12-hour fresh window travels as stale (${stalePack.waters[0].flow.source})`);
+  app.liveReports.byWater.crooked = { ...app.liveReports.byWater.crooked, cachedAt: hoursAgo(24 * 8) };
+  const expiredPack = context.buildWatchPack(new Date());
+  assert(expiredPack.waters[0].flow.source === "reference" && expiredPack.waters[0].flow.value === water("crooked").flow && expiredPack.waters[0].flow.observedAt === null,
+    `an expired reading is not sent as a measurement (${JSON.stringify(expiredPack.waters[0].flow)})`);
+
+  const coords = app.waterCoordinates.crooked;
+  app.setNwsGrid(`${coords.lat.toFixed(4)},${coords.lon.toFixed(4)}`, "https://api.weather.gov/gridpoints/PDT/77,77/forecast/hourly");
+  const days = [0, 1, 2].map((offset) => ({ date: context.pacificDateKey(new Date(Date.now() + offset * 86400000)), highF: 50, windMph: offset === 1 ? 4 : 22, forecast: offset === 1 ? "Cloudy" : "Sunny" }));
+  app.setPlannerForecasts({ "https://api.weather.gov/gridpoints/PDT/77,77/forecast": { fetchedAt: new Date().toISOString(), days } });
+  const planned = context.buildWatchPack(new Date()).waters[0].planner;
+  assert(planned && planned.days.length === 3 && planned.days.every((day) => typeof day.score === "number" && day.label && day.reason),
+    `a loaded week travels with its day scores (${JSON.stringify(planned?.days?.map((day) => day.score))})`);
+  assert(planned?.best?.date === days[1].date, `and its best day (${planned?.best?.date})`);
+  app.setPlannerForecasts({});
+
+  ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k"].forEach((_, index) => {
+    const id = app.waters[index + 10]?.id;
+    if (id && !app.savedWatersNow().includes(id)) context.toggleSavedWater(id);
+  });
+  const capped = context.buildWatchPack(new Date());
+  assert(capped.waters.length === 10 && capped.waters[0].id === "crooked", `the pack is capped at ten waters, home still first (${capped.waters.length})`);
+  assert(JSON.parse(JSON.stringify(capped)).waters.length === 10, "and survives JSON");
+
+  [...app.savedWatersNow()].forEach((id) => context.toggleSavedWater(id));
+  savedBefore.forEach((id) => context.toggleSavedWater(id));
+  for (const key of Object.keys(app.liveReports.byWater)) delete app.liveReports.byWater[key];
+  Object.assign(app.liveReports.byWater, savedReports);
+}
+
+group("Apple Watch: a pack is posted only when it changed");
+{
+  const posted = [];
+  app.resetWatchPack();
+  assert(context.postWatchPack() === false, "without the riseWatch handler nothing is posted");
+  context.webkit = { messageHandlers: { riseWatch: { postMessage: (message) => posted.push(JSON.parse(JSON.stringify(message))) } } };
+  app.resetWatchPack();
+  const savedReports = { ...app.liveReports.byWater };
+  app.liveReports.byWater.crooked = { status: "ready", cachedAt: new Date().toISOString(), usgs: { flow: "240 cfs", waterTemp: "53 F" }, nws: {} };
+  assert(context.postWatchPack() === true && posted.length === 1, "the first pack is posted");
+  assert(posted[0].action === "pack" && typeof posted[0].body === "string" && JSON.parse(posted[0].body).waters.length > 0,
+    "as { action: \"pack\", body } with the pack as JSON");
+  assert(context.postWatchPack() === false && posted.length === 1, "an unchanged pack is not posted again, though its generatedAt moved");
+  app.liveReports.byWater.crooked = { ...app.liveReports.byWater.crooked, usgs: { flow: "310 cfs", waterTemp: "53 F" } };
+  const homeIsCrooked = JSON.parse(posted[0].body).waters.some((item) => item.id === "crooked");
+  if (!homeIsCrooked) app.setHomeWaterId("crooked");
+  assert(context.postWatchPack() === true && posted.length === 2, "a new reading posts a new pack");
+  context.toggleSavedWater("metolius");
+  assert(context.postWatchPack() === true && posted.length === 3, "saving a water posts a new pack");
+  context.toggleSavedWater("metolius");
+  context.postWatchPack();
+  const before = posted.length;
+  for (let index = 0; index < 5; index += 1) context.renderScreens("today");
+  context.toggleSavedWater("hosmer");
+  for (let index = 0; index < 5; index += 1) context.scheduleWatchPack();
+  await new Promise((done) => setTimeout(done, app.WATCH_PACK_DEBOUNCE_MS + 200));
+  assert(posted.length === before + 1, `a burst of renders posts one pack, after the debounce (${posted.length - before})`);
+  context.toggleSavedWater("hosmer");
+  context.webkit = { messageHandlers: { riseWatch: { postMessage() { throw new Error("bridge gone"); } } } };
+  const keyBefore = app.watchPackPostedKeyNow();
+  assert(context.postWatchPack() === false && app.watchPackPostedKeyNow() === keyBefore, "a throwing bridge is not recorded as posted, so the next change retries");
+  app.resetWatchPack();
+  context.webkit = undefined;
+  for (const key of Object.keys(app.liveReports.byWater)) delete app.liveReports.byWater[key];
+  Object.assign(app.liveReports.byWater, savedReports);
+}
+
+group("Apple Watch: catches merge once, in order, without moving anyone's index");
+{
+  const at = (iso) => new Date(iso).toISOString();
+  const entry = (loggedAt, notes) => ({ loggedAt, date: "", time: "", waterName: "Crooked River", waterId: "crooked", fly: "Zebra Midge #18", fish: "", length: "", count: "1", notes, flow: "", temp: "" });
+  const watchCatch = (watchId, loggedAt, extra = {}) => ({
+    watchId, loggedAt, date: "x", time: "y", waterId: "crooked", waterName: "Crooked River", fly: "Zebra Midge #18",
+    fish: "Redband Trout", length: "14.5", count: "1", notes: "", flow: "240 cfs", flowSource: "stale", temp: "53 F", tempSource: "measured", ...extra
+  });
+
+  const converted = context.watchCatchEntry(watchCatch("W-0001-AAAA", "2026-11-19T07:30:00.000Z"));
+  assert(converted.date === context.zonedDateLabel(new Date("2026-11-19T07:30:00.000Z")) && converted.time === context.zonedTimeLabel(new Date("2026-11-19T07:30:00.000Z")),
+    `a Watch catch is dated on Oregon's clock by the journal's own formatters (${converted.date} ${converted.time})`);
+  assert(converted.loggedOn === "watch" && converted.watchId === "W-0001-AAAA", "and is marked as from the Watch, with its id");
+  assert(converted.flowSource === "stale" && converted.flow === "240 cfs" && converted.tempSource === "measured", "its readings keep the provenance the Watch gave them");
+  assert(converted.waterName === "Crooked River" && converted.length === "14.5" && converted.count === "1" && converted.notes === "" && converted.photoId === "",
+    "with exactly the fields Fish on! writes");
+  assert(context.watchCatchEntry(watchCatch("bad id!", "2026-11-19T07:30:00.000Z")) === null, "a malformed watchId is refused");
+  assert(context.watchCatchEntry(watchCatch("W-0001-AAAB", "yesterday-ish")) === null, "a catch with no real time is refused");
+  const unknownSource = context.watchCatchEntry(watchCatch("W-0001-AAAC", "2026-11-19T07:30:00.000Z", { flowSource: "live!", length: "huge", count: "0" }));
+  assert(unknownSource.flowSource === "unavailable" && unknownSource.flow === "", "a reading with an unknown source is stored as unavailable, not guessed");
+  assert(unknownSource.length === "" && unknownSource.count === "1", "a nonsense length is dropped and a count defaults to one");
+
+  const a = entry(at("2026-06-21T17:00:00Z"), "a");
+  const b = entry(at("2026-06-21T15:00:00Z"), "b");
+  const c = { ...entry("", "c"), dateApproximate: true };
+  const w1 = context.watchCatchEntry(watchCatch("W-0001-0001", at("2026-06-21T16:00:00Z")));
+  const w2 = context.watchCatchEntry(watchCatch("W-0001-0002", at("2026-06-21T18:00:00Z")));
+  const merged = context.mergeWatchCatches([a, b, c], [w1, w2, { ...w1 }]);
+  assert(merged.logs.map((item) => item.notes || item.watchId).join(",") === "W-0001-0002,a,W-0001-0001,b,c",
+    `catches land in loggedAt order, newest first (${merged.logs.map((item) => item.notes || item.watchId).join(",")})`);
+  assert(merged.added.length === 2, "a repeated id in one delivery is added once");
+  assert(merged.logs.indexOf(a) < merged.logs.indexOf(b) && merged.logs.indexOf(b) < merged.logs.indexOf(c), "existing entries keep their order and identity");
+  const again = context.mergeWatchCatches(merged.logs, [w1, w2]);
+  assert(again.added.length === 0 && again.logs.length === merged.logs.length, "a second delivery of the same ids adds nothing");
+
+  const posted = [];
+  context.webkit = { messageHandlers: { riseWatch: { postMessage: (message) => posted.push(JSON.parse(JSON.stringify(message))) } } };
+  app.setLogs([a, b, c]);
+  app.setEditingLogIndex(1);
+  context.riseWatchCatches({ catches: [watchCatch("W-0002-0001", at("2026-06-21T18:30:00Z")), watchCatch("W-0002-0002", at("2026-06-21T16:30:00Z"))] });
+  const logs = app.getLogs();
+  assert(logs.length === 5 && logs.filter((item) => item.loggedOn === "watch").length === 2, "delivered catches are in the journal");
+  assert(logs[app.editingLogIndexNow()] === b, `an open edit form still points at the catch it was editing (index ${app.editingLogIndexNow()})`);
+  const ack = posted.filter((message) => message.action === "catchesSaved");
+  assert(ack.length === 1 && ack[0].ids.sort().join(",") === "W-0002-0001,W-0002-0002", `both are acknowledged after the write (${JSON.stringify(ack)})`);
+  context.riseWatchCatches({ catches: [watchCatch("W-0002-0001", at("2026-06-21T18:30:00Z"))] });
+  assert(app.getLogs().length === 5, "redelivery adds nothing");
+  assert(posted.filter((message) => message.action === "catchesSaved").length === 2, "but is acknowledged again, so the container can let go of it");
+  app.setEditingLogIndex(null);
+
+  const realSetItem = localStorage.setItem;
+  posted.length = 0;
+  localStorage.setItem = (key, value) => {
+    if (key === "riseLogs") throw new Error("QuotaExceededError");
+    return realSetItem.call(localStorage, key, value);
+  };
+  context.riseWatchCatches({ catches: [watchCatch("W-0003-0001", at("2026-06-21T19:00:00Z"))] });
+  localStorage.setItem = realSetItem;
+  assert(app.getLogs().length === 5 && !app.getLogs().some((item) => item.watchId === "W-0003-0001"), "a failed write adds nothing");
+  assert(!posted.some((message) => message.action === "catchesSaved"), "and acknowledges nothing, so the container keeps the catch");
+  assert(app.watchNoticeNow()?.error === true && /could not be saved/.test(app.watchNoticeNow().text), `and says so (${app.watchNoticeNow()?.text})`);
+
+  app.setLogStorageUnreadable(true);
+  context.riseWatchCatches({ catches: [watchCatch("W-0003-0002", at("2026-06-21T19:00:00Z"))] });
+  assert(!posted.some((message) => message.action === "catchesSaved"), "an unreadable journal acknowledges nothing");
+  assert(/could not be read/.test(app.watchNoticeNow()?.text || ""), "and says why");
+  app.setLogStorageUnreadable(false);
+
+  context.webkit = undefined;
+  app.setLogs([]);
 }
 
 console.log(`\n${checks - failures}/${checks} checks passed`);

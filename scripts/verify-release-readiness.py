@@ -318,6 +318,77 @@ def main() -> int:
         "the Pro screen still says the app sends no notifications",
     )
 
+    # --- Apple Watch: useful with the phone left in the truck -----------------
+    # The iPhone half is in the target. The Watch target itself is created in
+    # Xcode from docs/watch-app.md (a hand-edited watchOS target could not be
+    # verified here and a broken project file would block the iPhone release),
+    # so its sources are checked for presence. What both sides decide lives in
+    # one Foundation-only file that the native tests compile.
+    watch_models_path = ROOT / "ios/TheRise/TheRise/RiseWatchModels.swift"
+    require(watch_models_path.is_file(), "RiseWatchModels.swift is missing")
+    watch_models = watch_models_path.read_text(encoding="utf-8")
+    watch_model_imports = set(re.findall(r"^\s*import\s+(\w+)", watch_models, re.MULTILINE))
+    require(
+        watch_model_imports == {"Foundation"},
+        f"RiseWatchModels must stay Foundation-only: it is compiled into the Watch target and the native tests (imports {sorted(watch_model_imports)})",
+    )
+    for name in ("RiseWatchModels.swift", "RiseWatchBridge.swift"):
+        require(f"{name} in Sources" in project, f"{name} is not in the target's Sources build phase")
+    require(
+        'add(messageProxy, name: "riseWatch")' in swift
+        and swift.count('removeScriptMessageHandler(forName: "riseWatch")') == 1,
+        "the riseWatch handler is not registered and removed like the others",
+    )
+    require(
+        "RiseWatchBridge.shared.activate()" in (ROOT / "ios/TheRise/TheRise/AppDelegate.swift").read_text(encoding="utf-8"),
+        "WatchConnectivity is not activated at launch, so a Watch catch delivered before the page loads has nowhere to land",
+    )
+    require(
+        "RiseWatchBridge.shared.pageDidFinishLoading(self)" in swift,
+        "held Watch catches are not handed to the page when it loads",
+    )
+    watch_bridge = (ROOT / "ios/TheRise/TheRise/RiseWatchBridge.swift").read_text(encoding="utf-8")
+    require(
+        "queue.sync" in watch_bridge and "persistIncoming(incoming)" in watch_bridge and "confirmSaved" in watch_bridge,
+        "the iPhone does not write a Watch catch to disk before handing it on, or deletes it without the page's acknowledgement",
+    )
+    require(
+        "RiseWatchModels.swift" in STORE_TESTS.read_text(encoding="utf-8"),
+        "the native tests do not compile RiseWatchModels.swift",
+    )
+    watch_dir = ROOT / "ios/TheRiseWatch/TheRiseWatch Watch App"
+    for name in (
+        "RiseWatchApp.swift",
+        "RiseWatchModel.swift",
+        "RiseWatchConnector.swift",
+        "RiseWatchLocator.swift",
+        "RiseWatchLiveFetch.swift",
+        "RiseWatchViews.swift",
+        "Info.plist",
+        "PrivacyInfo.xcprivacy",
+        "Assets.xcassets/AppIcon.appiconset/Contents.json",
+    ):
+        require((watch_dir / name).is_file(), f"Watch app source is missing: {name}")
+    with (watch_dir / "Info.plist").open("rb") as handle:
+        watch_plist = plistlib.load(handle)
+    require(
+        watch_plist.get("WKCompanionAppBundleIdentifier") == "com.mattbrown.therise",
+        "the Watch app does not name the iPhone app as its companion",
+    )
+    require(
+        "location" in str(watch_plist.get("NSLocationWhenInUseUsageDescription", "")).lower(),
+        "the Watch app asks for location without a usage description",
+    )
+    require((ROOT / "docs/watch-app.md").is_file(), "docs/watch-app.md, the Xcode steps for the Watch target, is missing")
+    require(
+        "window.riseWatchCatches" in web and 'postWatchMessage({ action: "catchesSaved", ids })' in web,
+        "the page cannot take Watch catches, or never acknowledges them",
+    )
+    require(
+        "if (added.length && !setLogs(next))" in web,
+        "Watch catches can be acknowledged without a confirmed journal write",
+    )
+
     # --- The planner is forecast and season, never invented water ------------
     planner_start = web.index("function plannerDayScore(")
     planner_score = web[planner_start:web.index("function plannerWindPhrase(", planner_start)]
@@ -978,6 +1049,7 @@ def main() -> int:
     print("PASS: catch-log durability, export, and native container storage")
     print("PASS: subscription claims match shipped functionality")
     print("PASS: alerts are free, local, registered natively and testable off-device")
+    print("PASS: Apple Watch bridge registered, shared models Foundation-only, Watch sources present")
     print("PASS: the week planner scores forecast and season, and marks typical closures")
     print(f"PASS: ODFW regulations cover every water, cite ODFW, and were checked within 13 months ({oldest_checked.isoformat()})")
     print("PASS: the March 1 check for new ODFW regulations is present, stored, and triggered")
