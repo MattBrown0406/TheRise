@@ -32,6 +32,12 @@ final class RiseViewController: UIViewController, WKNavigationDelegate, WKScript
     /// four screens are paper and need dark ones.
     private var statusBarStyle: UIStatusBarStyle = .lightContent
 
+    /// Alert messages are carried out one after another, in the order the page
+    /// sent them. Separate Tasks ran unordered, so a "scheduleGreatDays" could
+    /// read the rules from disk before the "setRules" sent just ahead of it had
+    /// written them.
+    private var alertsWork: Task<Void, Never>?
+
     override var preferredStatusBarStyle: UIStatusBarStyle {
         statusBarStyle
     }
@@ -363,21 +369,25 @@ final class RiseViewController: UIViewController, WKNavigationDelegate, WKScript
             return
         }
 
+        let previous = alertsWork
         switch action {
         case "setRules":
             let rules = RiseAlerts.rules(fromMessage: payload)
             let requestPermission = (payload["requestPermission"] as? Bool) ?? false
-            Task { [weak self] in
+            alertsWork = Task { [weak self] in
+                await previous?.value
                 let status = await RiseNotifications.applyRules(rules, requestPermission: requestPermission)
                 self?.sendAlertsResult(["action": "permission", "status": status])
             }
         case "scheduleGreatDays":
             let plans = RiseAlerts.greatDayPlans(fromMessage: payload)
-            Task {
+            alertsWork = Task {
+                await previous?.value
                 await RiseNotifications.scheduleGreatDays(plans)
             }
         case "status":
-            Task { [weak self] in
+            alertsWork = Task { [weak self] in
+                await previous?.value
                 let status = await RiseNotifications.authorizationStatusString()
                 self?.sendAlertsResult(["action": "permission", "status": status])
             }

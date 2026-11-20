@@ -76,17 +76,21 @@ enum RiseNotifications {
         for plan in plans {
             guard let threshold = thresholds[plan.waterId] else { continue }
             let prefix = RiseAlerts.greatDayPrefix(waterId: plan.waterId)
-            let stale = pending.filter { $0.hasPrefix(prefix) }
+            let planned = RiseAlerts.greatDayNotifications(plan: plan, threshold: threshold, now: now)
+            // Adding a request replaces a pending one with the same
+            // identifier, so only days the new plan no longer holds are
+            // withdrawn; removing and re-adding the same identifiers raced.
+            let keep = Set(planned.map { $0.identifier })
+            let stale = pending.filter { $0.hasPrefix(prefix) && !keep.contains($0) }
             if !stale.isEmpty {
                 center.removePendingNotificationRequests(withIdentifiers: stale)
             }
-            for planned in RiseAlerts.greatDayNotifications(plan: plan, threshold: threshold, now: now) {
-                // The fire date is an instant (6 PM Pacific); expressed in the
-                // device's own calendar it fires at that instant wherever the
-                // phone is.
-                let components = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: planned.fireDate)
-                let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: false)
-                let request = UNNotificationRequest(identifier: planned.identifier, content: content(for: planned), trigger: trigger)
+            for notification in planned {
+                // The fire date is an instant (6 PM Pacific). A time interval
+                // fires at that instant wherever the phone is; calendar
+                // components with no time zone floated with the device's zone.
+                let trigger = UNTimeIntervalNotificationTrigger(timeInterval: max(1, notification.fireDate.timeIntervalSince(now)), repeats: false)
+                let request = UNNotificationRequest(identifier: notification.identifier, content: content(for: notification), trigger: trigger)
                 try? await center.add(request)
             }
         }

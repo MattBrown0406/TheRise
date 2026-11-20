@@ -313,6 +313,16 @@ def main() -> int:
         'postAlertsMessage({ action: "setRules"' in web and "window.riseAlertsRestore" in web,
         "the page does not hand its alert rules to the container, or cannot take them back",
     )
+    notifications_swift = (ROOT / "ios/TheRise/TheRise/RiseNotifications.swift").read_text(encoding="utf-8")
+    require(
+        "UNTimeIntervalNotificationTrigger" in notifications_swift
+        and "UNCalendarNotificationTrigger" not in notifications_swift,
+        "great-day notifications must fire on an instant (a time interval), not on calendar components that float with the device's time zone",
+    )
+    require(
+        "alertsWork = Task" in swift and swift.count("await previous?.value") >= 3,
+        "riseAlerts messages must run one after another on one serial task, or a schedule can read rules before setRules wrote them",
+    )
     require(
         "The Rise does not send notifications" not in web,
         "the Pro screen still says the app sends no notifications",
