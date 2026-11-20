@@ -985,7 +985,8 @@ struct RiseWatchCatch: Codable, Equatable, Identifiable {
 // MARK: - The Watch's own queue
 
 /// Where a Watch catch is on its way to the journal. Only ever moves forward,
-/// except that a failed transfer goes back to queued to be sent again.
+/// except that a failed or lost transfer, or a delivery the iPhone has not
+/// confirmed for a day, goes back to queued to be sent again.
 enum RiseCatchState: String, Codable, Comparable {
     /// Logged and on disk; inside its Undo window or having details added.
     case draft

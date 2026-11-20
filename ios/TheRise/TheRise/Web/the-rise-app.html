@@ -12857,7 +12857,11 @@
       const today = seasonalClosureFor(water, pacificDateKey(now));
       const closure = today || SEASONAL_ACCESS_CLOSURES.find((item) => Array.isArray(item.waters) && item.waters.includes(water.id)) || null;
       if (!closure) return null;
-      const partial = closure.partial === true;
+      // Whether this water keeps some access is what seasonalClosureFor()
+      // says inside the window, so ask it for the window's first day too.
+      const start = watchPackMonthDay(closure.from);
+      const atStart = today || (/^\d{2}-\d{2}$/.test(start) ? seasonalClosureFor(water, `2000-${start}`) : null);
+      const partial = closure.partial === true || atStart?.partial === true;
       return {
         label: String(closure.label || ""),
         typical: String(closure.typical || ""),

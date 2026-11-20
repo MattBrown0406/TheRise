@@ -1786,6 +1786,18 @@ group("Apple Watch: the trip pack carries the ODFW season and snow access, re-ev
   const partial = packOn("2026-12-10T19:00:00.000Z")["hosmer"];
   delete closure.partial;
   assert(partial.access.partial === true && partial.access.snowedIn === false, `a partial closure is carried as partial, not snowed in (${JSON.stringify(partial.access)})`);
+  // A water seasonalClosureFor() reports as partial (another way in) is
+  // carried as partial even on a day outside the window.
+  const realClosureFor = context.seasonalClosureFor;
+  context.seasonalClosureFor = (item, dateKey) => {
+    const found = realClosureFor(item, dateKey);
+    return found && item?.id === "hosmer" ? { ...found, partial: true } : found;
+  };
+  const partialOutside = packOn("2026-11-02T19:00:00.000Z")["hosmer"];
+  const partialInside = packOn("2026-12-10T19:00:00.000Z")["hosmer"];
+  context.seasonalClosureFor = realClosureFor;
+  assert(partialOutside.access.partial === true && partialInside.access.partial === true && partialInside.access.snowedIn === false,
+    `a per-water partial closure is carried as partial inside and outside its window (${JSON.stringify(partialOutside.access)})`);
 
   [...app.savedWatersNow()].forEach((id) => context.toggleSavedWater(id));
   savedBefore.forEach((id) => context.toggleSavedWater(id));
