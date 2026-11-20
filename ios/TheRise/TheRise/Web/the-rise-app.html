@@ -13006,6 +13006,11 @@
     const WATCH_PACK_DEBOUNCE_MS = 1500;
     const WATCH_PROVENANCE = ["measured", "stale", "reference", "unavailable"];
     const WATCH_ID_PATTERN = /^[A-Za-z0-9-]{8,64}$/;
+    // Watch catch ids this page has acknowledged, newest last. A catch the
+    // angler deleted after it landed must not come back when the Watch or
+    // the iPhone delivers it again.
+    const WATCH_ACKED_KEY = "riseWatchAcked.v1";
+    const WATCH_ACKED_MAX = 500;
     let watchPackTimer = null;
     let watchPackPostedKey = null;
     // { text, error } for the Log screen, or null.
@@ -13059,6 +13064,69 @@
       };
     }
 
+    // A season window exactly as ODFW_REGULATIONS writes it - { allYear },
+    // { from, to } or a named section - so the Watch can evaluate it again
+    // on a later day. Copied, never repaired: a malformed window stays
+    // malformed and the Watch calls it unknown, as regulationSeasonDetail()
+    // does here.
+    function watchPackSeasonWindow(window, named = false) {
+      const copy = named ? { name: String(window?.name || "") } : {};
+      if (window?.allYear === true) return { ...copy, allYear: true };
+      return { ...copy, from: String(window?.from || ""), to: String(window?.to || "") };
+    }
+
+    /* The ODFW season, as of the pack's date and as rules the Watch can
+       re-evaluate by date on Oregon's clock: a pack built Oct 30 must not
+       still read fishable Nov 2. `windows` is null when the entry is not
+       confirmed (verify, missing or unrecorded season) - the status is then
+       always unknown, never open or closed. */
+    function watchPackRegulation(water, now) {
+      const entry = regulationFor(water);
+      const status = regulationSeasonStatus(water, now);
+      const season = entry && entry.confidence === "confirmed" ? entry.season : null;
+      let windows = null;
+      if (season && Array.isArray(season.sections)) {
+        windows = { sections: season.sections.map((section) => watchPackSeasonWindow(section, true)) };
+      } else if (season) {
+        windows = watchPackSeasonWindow(season);
+      }
+      return {
+        status,
+        label: regulationStatusLabel(status),
+        year: Number(entry?.year || ODFW_REGULATIONS_META.year),
+        stale: Boolean(regulationsStaleness()),
+        windows
+      };
+    }
+
+    // "MM-DD" from SEASONAL_ACCESS_CLOSURES' [month, day].
+    function watchPackMonthDay(value) {
+      if (Array.isArray(value)) return `${String(value[0]).padStart(2, "0")}-${String(value[1]).padStart(2, "0")}`;
+      return typeof value === "string" ? value : "";
+    }
+
+    /* The typical snow closure for this water, if any, with its window so the
+       Watch can tell on a later day. A closure marked partial is not "snowed
+       in": some access stays open. */
+    function watchPackAccess(water, now) {
+      const today = seasonalClosureFor(water, pacificDateKey(now));
+      const closure = today || SEASONAL_ACCESS_CLOSURES.find((item) => Array.isArray(item.waters) && item.waters.includes(water.id)) || null;
+      if (!closure) return null;
+      // Whether this water keeps some access is what seasonalClosureFor()
+      // says inside the window, so ask it for the window's first day too.
+      const start = watchPackMonthDay(closure.from);
+      const atStart = today || (/^\d{2}-\d{2}$/.test(start) ? seasonalClosureFor(water, `2000-${start}`) : null);
+      const partial = closure.partial === true || atStart?.partial === true;
+      return {
+        label: String(closure.label || ""),
+        typical: String(closure.typical || ""),
+        from: watchPackMonthDay(closure.from),
+        to: watchPackMonthDay(closure.to),
+        partial,
+        snowedIn: Boolean(today) && !partial
+      };
+    }
+
     // The planner's days only if the angler loaded them; nothing is fetched
     // for the Watch and nothing is filled in.
     function watchPackPlanner(water) {
@@ -13102,10 +13170,22 @@
             temp: watchPackReading(water, "temp"),
             flies: uniqueItems([...liveRecommendedFlies(water), ...Object.values(dailyFlyBoxFor(water)).flat()]).slice(0, WATCH_PACK_FLIES),
             hatches: predictedHatches(water).slice(0, 4),
-            planner: watchPackPlanner(water)
+            planner: watchPackPlanner(water),
+            regulation: watchPackRegulation(water, now),
+            access: watchPackAccess(water, now)
           };
         })
       };
+    }
+
+    // A sync in flight paints transient labels ("Checking live inputs",
+    // "Updating local cache"). The render after it settles posts the pack.
+    function watchPackSyncing() {
+      if (liveReports.bulkStatus) return true;
+      return watchPackWaters().some((water) => {
+        const report = liveReports.byWater[water?.id];
+        return report?.status === "loading" || Boolean(report?.refreshing);
+      });
     }
 
     // Posts the pack if, and only if, something in it changed. generatedAt
@@ -13115,6 +13195,7 @@
       if (!watchHandler()) return false;
       let pack;
       try {
+        if (watchPackSyncing()) return false;
         pack = buildWatchPack();
       } catch {
         return false;
@@ -13210,6 +13291,17 @@
       return { logs: next, added };
     }
 
+    function readWatchAckedIds() {
+      return new Set(readStoredArray(WATCH_ACKED_KEY).filter((id) => typeof id === "string" && WATCH_ID_PATTERN.test(id)));
+    }
+
+    // Newest last, at most WATCH_ACKED_MAX. A failed write only means a
+    // deleted catch could come back; the journal itself is never at risk.
+    function rememberWatchAckedIds(ids) {
+      const kept = [...readWatchAckedIds()].filter((id) => !ids.includes(id));
+      writeStoredArray(WATCH_ACKED_KEY, [...kept, ...ids].slice(-WATCH_ACKED_MAX));
+    }
+
     function watchCatchCount(count) {
       return `${count} ${count === 1 ? "catch" : "catches"}`;
     }
@@ -13223,11 +13315,14 @@
        watchId. The container deletes a held catch only when it is named in
        catchesSaved, and that is posted only for catches the journal now
        holds - after setLogs returned true. A journal that cannot be read or
-       written acknowledges nothing, so the container keeps every catch. */
+       written acknowledges nothing, so the container keeps every catch.
+       An id acknowledged before and no longer in the journal was deleted
+       here by the angler: it is acknowledged again, never re-inserted. */
     window.riseWatchCatches = function(payload) {
       const incoming = (Array.isArray(payload?.catches) ? payload.catches : []).map(watchCatchEntry).filter(Boolean);
       if (!incoming.length) return;
       const logs = getLogs();
+      const acked = readWatchAckedIds();
       if (logStorageUnreadable) {
         watchCatchNotice = {
           error: true,
@@ -13238,7 +13333,9 @@
       }
       // Indexes move under an insert. An open edit form follows its catch.
       const editingEntry = editingLogIndex !== null ? logs[editingLogIndex] || null : null;
-      const { logs: next, added } = mergeWatchCatches(logs, incoming);
+      const inJournalBefore = new Set(logs.map((entry) => entry?.watchId).filter(Boolean));
+      const fresh = incoming.filter((entry) => !acked.has(entry.watchId) || inJournalBefore.has(entry.watchId));
+      const { logs: next, added } = mergeWatchCatches(logs, fresh);
       if (added.length && !setLogs(next)) {
         watchCatchNotice = {
           error: true,
@@ -13257,8 +13354,11 @@
         if (entry.fly) setFlyFeedback(entry.fly, "worked", { toggle: false });
       });
       const inJournal = new Set(getLogs().map((entry) => entry?.watchId).filter(Boolean));
-      const ids = uniqueItems(incoming.map((entry) => entry.watchId)).filter((id) => inJournal.has(id));
-      if (ids.length) postWatchMessage({ action: "catchesSaved", ids });
+      const ids = uniqueItems(incoming.map((entry) => entry.watchId)).filter((id) => inJournal.has(id) || acked.has(id));
+      if (ids.length) {
+        rememberWatchAckedIds(ids);
+        postWatchMessage({ action: "catchesSaved", ids });
+      }
       if (added.length) {
         watchCatchNotice = { error: false, text: `Added ${watchCatchCount(added.length)} from your Apple Watch.` };
         maybeCompleteOnboarding();

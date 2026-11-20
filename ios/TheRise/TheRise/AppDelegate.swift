@@ -64,4 +64,12 @@ final class RiseSceneDelegate: UIResponder, UIWindowSceneDelegate {
     func sceneDidEnterBackground(_ scene: UIScene) {
         RiseNotifications.scheduleFlowCheck()
     }
+
+    /// Back in the app: held Watch catches are offered to the page again (a
+    /// journal write that failed for lack of space may work now - the notice
+    /// says "free up storage and reopen The Rise"), and any acknowledgement
+    /// still owed to the Watch is sent.
+    func sceneDidBecomeActive(_ scene: UIScene) {
+        RiseWatchBridge.shared.appDidBecomeActive()
+    }
 }

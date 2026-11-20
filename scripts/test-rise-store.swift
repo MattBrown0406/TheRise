@@ -431,10 +431,10 @@ unconfirmed.add(RiseWatchCatch.make(watchId: "6F1C2A3B-0000-4000-8000-00000000CC
 unconfirmed.prune(now: iso("2026-11-30T20:00:00.000Z"))
 assert(unconfirmed.items.map { $0.entry.watchId } == ["6F1C2A3B-0000-4000-8000-00000000CCCC"], "old confirmed catches are pruned, an unconfirmed one never is")
 try "{ not json".data(using: .utf8)!.write(to: queueURL)
-assert(RiseCatchQueue.load(from: queueURL).items.isEmpty, "an unreadable queue file starts a fresh queue")
+assert(RiseCatchQueue.load(from: queueURL)?.items.isEmpty == true, "an unreadable queue file starts a fresh queue")
 let setAside = (try? FileManager.default.contentsOfDirectory(atPath: watchRoot.path)) ?? []
 assert(setAside.contains { $0.hasPrefix("catch-watchQueue.unreadable-") }, "after setting the unreadable file aside, not overwriting it (\(setAside))")
-assert(RiseCatchQueue.load(from: watchRoot.appendingPathComponent("missing.json")).items.isEmpty, "a missing file is an empty queue")
+assert(RiseCatchQueue.load(from: watchRoot.appendingPathComponent("missing.json"))?.items.isEmpty == true, "a missing file is an empty queue")
 let stateJSON = #"{"items":[{"entry":\#(encodedCatch),"state":"teleported"}]}"#
 let oddState = try JSONDecoder().decode(RiseCatchQueue.self, from: stateJSON.data(using: .utf8)!)
 assert(oddState.items.first?.state == .queued, "an unknown state is resent rather than lost")
@@ -489,6 +489,209 @@ if var big = decodedPack {
     assert((trimmed?.count ?? .max) <= RiseWatchPack.maxEncodedBytes && trimmedPack?.waters.first?.id == "water-0", "an oversized pack is trimmed to fit, first water kept")
     assert(trimmedPack?.waters.allSatisfy { $0.planner == nil } == true, "planner days are the first thing dropped")
 }
+
+group("Watch: a file that failed to READ is not a file that failed to DECODE")
+// A directory where the file should be: it exists, and reading it fails.
+let unreadableDir = watchRoot.appendingPathComponent("locked-queue.json", isDirectory: true)
+try? FileManager.default.createDirectory(at: unreadableDir, withIntermediateDirectories: true)
+if case .readFailed = RiseJSONFile.load(RiseCatchQueue.self, from: unreadableDir) {
+    assert(true, "a file that cannot be read is readFailed")
+} else {
+    assert(false, "a file that cannot be read is readFailed")
+}
+assert(RiseCatchQueue.load(from: unreadableDir) == nil, "the Watch queue reports it as nil, so nothing is written over it")
+let afterReadFailure = (try? FileManager.default.contentsOfDirectory(atPath: watchRoot.path)) ?? []
+assert(afterReadFailure.contains("locked-queue.json") && !afterReadFailure.contains { $0.hasPrefix("locked-queue.unreadable-") },
+       "and it is never set aside (\(afterReadFailure))")
+if case .readFailed = RiseWatchInbox.load(from: unreadableDir) {
+    assert(true, "the iPhone's held-catch file is told apart the same way")
+} else {
+    assert(false, "the iPhone's held-catch file is told apart the same way")
+}
+let damagedInbox = watchRoot.appendingPathComponent("damaged-inbox.json")
+try "[{ not json".data(using: .utf8)!.write(to: damagedInbox)
+if case .unreadable = RiseWatchInbox.load(from: damagedInbox) {
+    assert(true, "a file that reads but does not decode is unreadable (damaged)")
+} else {
+    assert(false, "a file that reads but does not decode is unreadable (damaged)")
+}
+
+group("Watch: the iPhone remembers which catches the journal took")
+let ackA = "6F1C2A3B-0000-4000-8000-0000000AC001"
+let ackB = "6F1C2A3B-0000-4000-8000-0000000AC002"
+var ackLog = RiseWatchAckLog()
+ackLog.record([ackA, ackB, ackA, "bad id"])
+assert(ackLog.acked == [ackA, ackB] && ackLog.unsent == [ackA, ackB], "acknowledged ids are recorded once each, valid ids only (\(ackLog.acked))")
+assert(ackLog.isAcked(ackA) && !ackLog.isAcked(made.watchId), "and can be looked up")
+ackLog.markSent([ackA])
+assert(ackLog.unsent == [ackB] && ackLog.isAcked(ackA), "an acknowledgement handed to the system is no longer owed, but still remembered")
+ackLog.record([ackA])
+assert(ackLog.acked == [ackA, ackB] && ackLog.unsent == [ackB, ackA], "acknowledging again owes the Watch another acknowledgement")
+var bigLog = RiseWatchAckLog()
+bigLog.record((0..<(RiseWatchAckLog.maxIds + 5)).map { String(format: "6F1C2A3B-0000-4000-8000-%012ld", $0) })
+assert(bigLog.acked.count == RiseWatchAckLog.maxIds && bigLog.acked.first == String(format: "6F1C2A3B-0000-4000-8000-%012ld", 5),
+       "the list is bounded; the oldest ids go first (\(bigLog.acked.count))")
+let mergedLog = RiseWatchAckLog(acked: [ackA], unsent: []).merged(with: RiseWatchAckLog(acked: [ackB, ackA], unsent: [ackB]))
+assert(mergedLog.acked == [ackA, ackB] && mergedLog.unsent == [ackB], "a log recorded while the file could not be read merges into it, once each")
+let ackURL = watchRoot.appendingPathComponent("watch-acked-ids.json")
+assert(ackLog.save(to: ackURL), "the log is written")
+if case .loaded(let readLog) = RiseWatchAckLog.load(from: ackURL) {
+    assert(readLog == ackLog, "and read back unchanged")
+} else {
+    assert(false, "and read back")
+}
+let partialLog = try JSONDecoder().decode(RiseWatchAckLog.self, from: #"{"acked":["\#(ackA)","../x"]}"#.data(using: .utf8)!)
+assert(partialLog.acked == [ackA] && partialLog.unsent.isEmpty, "a log with a missing field or a bad id still decodes")
+let acks = RiseWatchTransfer.savedAcks(ids: (0..<450).map { String(format: "6F1C2A3B-0000-4000-8000-%012ld", $0) } + ["bad id"])
+assert(acks.count == 3 && acks.map { RiseWatchTransfer.savedIds(fromUserInfo: $0).count } == [200, 200, 50], "a long backlog goes in bounded transfers")
+assert(RiseWatchTransfer.savedAcks(ids: []).isEmpty, "and nothing is sent for nothing")
+
+group("Watch: an acknowledged catch that arrives again is acknowledged, never held again")
+var deletedOnPhone = made
+deletedOnPhone.watchId = ackA
+let arrivals = RiseWatchInbox.split([deletedOnPhone, earlierCatch, deletedOnPhone], acked: ackLog)
+assert(arrivals.fresh.map { $0.watchId } == [earlierCatch.watchId], "a new catch is held for the page")
+assert(arrivals.alreadySaved == [ackA], "an acknowledged one is only acknowledged again, once")
+assert(RiseWatchInbox.split([earlierCatch], acked: RiseWatchAckLog()).alreadySaved.isEmpty, "with nothing acknowledged everything is held")
+
+group("Watch: the requeue rules")
+var requeueQueue = RiseCatchQueue()
+let deliveredCatch = RiseWatchCatch.make(watchId: "6F1C2A3B-0000-4000-8000-0000000DE001", water: crookedPack, fly: "", flow: .none, temp: .none, packGeneratedAt: nil, now: iso("2026-11-18T18:00:00.000Z"))
+let freshDelivered = RiseWatchCatch.make(watchId: "6F1C2A3B-0000-4000-8000-0000000DE002", water: crookedPack, fly: "", flow: .none, temp: .none, packGeneratedAt: nil, now: iso("2026-11-18T18:00:00.000Z"))
+let sentCatch = RiseWatchCatch.make(watchId: "6F1C2A3B-0000-4000-8000-0000000DE003", water: crookedPack, fly: "", flow: .none, temp: .none, packGeneratedAt: nil, now: iso("2026-11-18T18:00:00.000Z"))
+requeueQueue.add(deliveredCatch, state: .sent)
+requeueQueue.add(freshDelivered, state: .sent)
+requeueQueue.add(sentCatch, state: .sent)
+requeueQueue.advance([deliveredCatch.watchId], to: .delivered, now: iso("2026-11-18T19:00:00.000Z"))
+requeueQueue.advance([freshDelivered.watchId], to: .delivered, now: iso("2026-11-19T18:00:00.000Z"))
+assert(requeueQueue.item(deliveredCatch.watchId)?.deliveredAt == "2026-11-18T19:00:00.000Z", "delivery is time-stamped")
+let day = 24.0 * 3600
+assert(requeueQueue.requeueDelivered(olderThan: day, now: iso("2026-11-19T18:59:00.000Z")).isEmpty, "a delivered catch waits a day for the iPhone to confirm it")
+assert(requeueQueue.requeueDelivered(olderThan: day, now: iso("2026-11-19T19:00:00.000Z")) == [deliveredCatch.watchId], "then it is sent again")
+assert(requeueQueue.item(deliveredCatch.watchId)?.state == .queued && requeueQueue.item(deliveredCatch.watchId)?.deliveredAt == nil, "back in the queue, with no delivery time")
+assert(requeueQueue.item(freshDelivered.watchId)?.state == .delivered, "a recent delivery is left alone")
+assert(requeueQueue.requeueSent(notIn: [sentCatch.watchId]).isEmpty && requeueQueue.item(sentCatch.watchId)?.state == .sent, "a sent catch the system still carries is left alone")
+requeueQueue.advance([deliveredCatch.watchId, freshDelivered.watchId], to: .saved)
+assert(requeueQueue.requeueDelivered(olderThan: 0, now: iso("2026-12-30T00:00:00.000Z")).isEmpty, "a saved catch is never sent again")
+let deliveredJSON = String(data: try JSONEncoder().encode(deliveredCatch), encoding: .utf8)!
+let legacyJSON = #"{"items":[{"entry":\#(deliveredJSON),"state":"delivered"}]}"#
+let legacy = try JSONDecoder().decode(RiseCatchQueue.self, from: legacyJSON.data(using: .utf8)!)
+assert(legacy.items.first?.state == .delivered && legacy.items.first?.deliveredAt == nil, "a queue file from an earlier build (no delivery time) still decodes")
+var legacyRequeue = legacy
+assert(legacyRequeue.requeueDelivered(olderThan: day, now: iso("2026-11-19T18:30:00.000Z")) == [deliveredCatch.watchId], "and is aged from when it was logged")
+let diskQueue = RiseCatchQueue(items: [RiseQueuedCatch(entry: deliveredCatch, state: .delivered), RiseQueuedCatch(entry: sentCatch, state: .queued)])
+let memoryQueue = RiseCatchQueue(items: [RiseQueuedCatch(entry: sentCatch, state: .sent), RiseQueuedCatch(entry: freshDelivered, state: .draft)])
+let mergedQueue = diskQueue.merged(with: memoryQueue)
+assert(mergedQueue.items.map { $0.entry.watchId } == [deliveredCatch.watchId, sentCatch.watchId, freshDelivered.watchId], "a queue that could not be read merges with the one in memory, once each")
+assert(mergedQueue.item(sentCatch.watchId)?.state == .sent, "the further-along state wins")
+
+group("Watch: a pack replaces the stored one unless it is the same or older")
+let storedPack = decodedPack!
+var newerPack = storedPack
+newerPack.generatedAt = "2026-11-18T15:00:00.000Z"
+var olderPack = storedPack
+olderPack.generatedAt = "2026-11-18T13:00:00.000Z"
+let storedBytes = try JSONEncoder().encode(storedPack)
+let newerBytes = try JSONEncoder().encode(newerPack)
+let olderBytes = try JSONEncoder().encode(olderPack)
+let packNow = iso("2026-11-18T16:00:00.000Z")
+assert(RiseWatchPack.shouldReplace(current: nil, currentData: nil, with: storedPack, data: storedBytes, now: packNow), "the first pack is kept")
+assert(!RiseWatchPack.shouldReplace(current: storedPack, currentData: storedBytes, with: storedPack, data: storedBytes, now: packNow), "the same bytes again are not a change")
+assert(RiseWatchPack.shouldReplace(current: storedPack, currentData: storedBytes, with: newerPack, data: newerBytes, now: packNow), "a newer pack replaces it")
+assert(!RiseWatchPack.shouldReplace(current: storedPack, currentData: storedBytes, with: olderPack, data: olderBytes, now: packNow), "an older one arriving late does not")
+var futurePack = storedPack
+futurePack.generatedAt = "2026-11-19T16:00:00.000Z"
+let futureBytes = try JSONEncoder().encode(futurePack)
+assert(RiseWatchPack.shouldReplace(current: futurePack, currentData: futureBytes, with: olderPack, data: olderBytes, now: packNow),
+       "but a stored pack stamped in the future (the phone's clock was ahead) does not block later ones")
+futurePack.generatedAt = "2026-11-18T16:03:00.000Z"
+let nearFutureBytes = try JSONEncoder().encode(futurePack)
+assert(!RiseWatchPack.shouldReplace(current: futurePack, currentData: nearFutureBytes, with: olderPack, data: olderBytes, now: packNow),
+       "a few minutes of clock skew is not treated as the future")
+
+group("Watch: the pack carries the ODFW season and snow access, and older packs still decode")
+let seasonPackJSON = """
+{"version":1,"generatedAt":"2026-10-30T19:00:00.000Z","pacificDate":"2026-10-30","homeWaterId":"crane-prairie","species":[],
+ "waters":[
+  {"id":"crane-prairie","name":"Crane Prairie Reservoir","type":"Lake","home":true,"saved":false,"topPick":false,"score":8.3,"scoreSource":"Live-adjusted score",
+   "flow":{"value":"","source":"unavailable"},"temp":{"value":"","source":"unavailable"},"flies":[],"hatches":[],
+   "regulation":{"status":"open","label":"Open season (ODFW)","year":2026,"stale":false,"windows":{"from":"04-22","to":"10-31"}},
+   "access":{"label":"Cascade Lakes Highway (OR-46) beyond Mt. Bachelor","typical":"Typically closed by snow from about mid-November to late May.","from":"11-15","to":"05-25","partial":false,"snowedIn":false}},
+  {"id":"lower-deschutes","name":"Lower Deschutes","type":"River","home":false,"saved":true,"topPick":false,"score":7.0,"scoreSource":"Live-adjusted score",
+   "flow":{"value":"","source":"unavailable"},"temp":{"value":"","source":"unavailable"},"flies":[],"hatches":[],
+   "regulation":{"status":"open","label":"Open season (ODFW)","year":2026,"stale":false,"windows":{"sections":[{"name":"Lower","allYear":true},{"name":"Upper","from":"04-22","to":"12-31"}]}},
+   "access":null},
+  {"id":"verify-lake","name":"Verify Lake","type":"Lake","home":false,"saved":true,"topPick":false,"score":6.0,"scoreSource":"x",
+   "flow":{"value":"","source":"unavailable"},"temp":{"value":"","source":"unavailable"},"flies":[],"hatches":[],
+   "regulation":{"status":"unknown","label":"Season not confirmed - check ODFW","year":2026,"stale":false,"windows":null}},
+  {"id":"odd-water","name":"Odd Water","type":"River","home":false,"saved":true,"topPick":false,"score":5.0,"scoreSource":"x",
+   "flow":{"value":"","source":"unavailable"},"temp":{"value":"","source":"unavailable"},"flies":[],"hatches":[],
+   "regulation":"closed!","access":7}
+ ]}
+"""
+let seasonPack = RiseWatchPack.decode(seasonPackJSON.data(using: .utf8)!)
+assert(seasonPack?.waters.count == 4, "every water decodes, the odd one too (\(seasonPack?.waters.map { $0.id } ?? []))")
+let crane = seasonPack?.water(id: "crane-prairie")
+let lowerD = seasonPack?.water(id: "lower-deschutes")
+let verifyLake = seasonPack?.water(id: "verify-lake")
+let oddWater = seasonPack?.water(id: "odd-water")
+assert(crane?.regulation?.windows == RiseSeason(from: "04-22", to: "10-31") && crane?.regulation?.year == 2026, "the season window decodes")
+assert(crane?.access?.from == "11-15" && crane?.access?.partial == false, "and the snow closure")
+assert(lowerD?.regulation?.windows?.sections?.map { $0.name ?? "" } == ["Lower", "Upper"] && lowerD?.access == nil, "sections decode with their names; no closure is nil")
+assert(oddWater?.regulation == nil && oddWater?.access == nil && oddWater?.score == 5.0, "a malformed season or closure is dropped, never the water")
+assert(decodedPack?.waters.allSatisfy { $0.regulation == nil && $0.access == nil } == true, "a pack from before these fields decodes with none")
+assert(decodedPack?.waters.first?.seasonNotice(on: catchTime) == nil && decodedPack?.waters.first?.isClosedSeason(on: catchTime) == false
+       && decodedPack?.waters.first?.accessNotice(on: catchTime) == nil, "and shows no season label at all")
+if let crane = crane, let seasonBytes = seasonPack?.encodedForTransfer() {
+    let roundTrip = RiseWatchPack.decode(seasonBytes)
+    assert(roundTrip?.water(id: "crane-prairie")?.regulation == crane.regulation && roundTrip?.water(id: "crane-prairie")?.access == crane.access,
+           "the season and access survive the iPhone's re-encode")
+}
+
+group("Watch: the season is decided again on the day, on Oregon's clock")
+if let crane = crane, let lowerD = lowerD, let verifyLake = verifyLake {
+    // Oct 31 11:59 PM PDT is Nov 1 06:59 UTC; Nov 1 midnight PDT is 07:00 UTC.
+    assert(crane.seasonStatus(on: iso("2026-10-31T18:00:00.000Z")) == .open, "Oct 31 is inside an Apr 22 - Oct 31 season (ends inclusive)")
+    assert(crane.seasonStatus(on: iso("2026-11-01T06:59:00.000Z")) == .open, "11:59 PM Oct 31 in Oregon is still open, though it is Nov 1 in UTC")
+    assert(crane.seasonStatus(on: iso("2026-11-01T07:00:00.000Z")) == .closed, "midnight Nov 1 in Oregon is closed")
+    assert(crane.seasonStatus(on: iso("2026-04-22T07:00:00.000Z")) == .open && crane.seasonStatus(on: iso("2026-04-22T06:59:00.000Z")) == .closed, "the season opens at midnight Apr 22 in Oregon")
+    let nov2 = iso("2026-11-02T19:00:00.000Z")
+    assert(crane.isClosedSeason(on: nov2) && crane.seasonNotice(on: nov2) == "Closed season (ODFW)", "a pack built Oct 30 reads closed on Nov 2 (\(crane.seasonNotice(on: nov2) ?? "nil"))")
+    assert(crane.regulation?.status == .open, "whatever status the pack was built with")
+    assert(crane.seasonNotice(on: iso("2026-10-30T19:00:00.000Z")) == nil, "an open water prints no season label")
+    assert(!crane.isSnowedIn(on: nov2) && crane.accessNotice(on: nov2) == nil, "Nov 2 is before the typical snow closure")
+    assert(crane.isSnowedIn(on: iso("2026-11-15T19:00:00.000Z")) && crane.accessNotice(on: iso("2026-11-15T19:00:00.000Z")) == "Typically snowed in", "Nov 15 is inside it (inclusive)")
+    assert(crane.isSnowedIn(on: iso("2027-01-10T19:00:00.000Z")) && crane.isSnowedIn(on: iso("2027-05-25T19:00:00.000Z")), "it wraps the new year, to May 25 inclusive")
+    assert(!crane.isSnowedIn(on: iso("2027-05-26T19:00:00.000Z")), "and ends after May 25")
+    assert(lowerD.seasonStatus(on: iso("2026-11-02T19:00:00.000Z")) == .open, "every section open is open")
+    assert(lowerD.seasonStatus(on: iso("2027-01-15T19:00:00.000Z")) == .partial && lowerD.seasonNotice(on: iso("2027-01-15T19:00:00.000Z")) == "Some sections closed (ODFW)",
+           "some sections closed is partial (\(lowerD.seasonNotice(on: iso("2027-01-15T19:00:00.000Z")) ?? "nil"))")
+    assert(!lowerD.isClosedSeason(on: iso("2027-01-15T19:00:00.000Z")), "and partial is not closed")
+    assert(verifyLake.seasonStatus(on: nov2) == .unknown && verifyLake.seasonNotice(on: nov2) == "Season not confirmed - check ODFW" && !verifyLake.isClosedSeason(on: nov2),
+           "a verify water is unknown, never open or closed")
+}
+assert(RiseSeason(from: "12-01", to: "03-31").status(monthDay: "01-15") == .open && RiseSeason(from: "12-01", to: "03-31").status(monthDay: "11-30") == .closed, "a winter season wraps")
+assert(RiseSeason(allYear: true).status(monthDay: "07-04") == .open, "all year is open")
+assert(RiseSeason(from: "4-22", to: "10-31").status(monthDay: "05-01") == .unknown && RiseSeason(from: "13-01", to: "10-31").status(monthDay: "05-01") == .unknown,
+       "a malformed window is unknown, never silently open or closed")
+assert(RiseSeason(sections: []).status(monthDay: "05-01") == .unknown, "no sections at all is unknown")
+assert(RiseSeason(sections: [RiseSeasonWindow(name: "A", allYear: true), RiseSeasonWindow(name: "B", from: "xx", to: "10-31")]).status(monthDay: "05-01") == .unknown,
+       "one malformed section makes the water unknown")
+assert(RiseSeason(sections: [RiseSeasonWindow(name: "A", from: "05-22", to: "09-30"), RiseSeasonWindow(name: "B", from: "05-22", to: "10-31")]).status(monthDay: "11-01") == .closed,
+       "every section closed is closed")
+assert(RisePacific.monthDay(iso("2026-03-01T07:59:00.000Z")) == "02-28" && RisePacific.monthDay(iso("2026-03-01T08:00:00.000Z")) == "03-01", "the month-day is Oregon's")
+let staleRegulation = RiseWatchRegulation(status: .closed, label: "Closed season (ODFW)", year: 2026, stale: false, windows: RiseSeason(from: "04-22", to: "10-31"))
+assert(staleRegulation.label(on: iso("2027-02-27T20:00:00.000Z")) == "Closed season (ODFW)", "before March 1 of the next year the label is ODFW's")
+assert(staleRegulation.label(on: iso("2027-03-01T20:00:00.000Z")) == "Closed season (2026 rules)", "from March 1 it says whose rules they are")
+var flaggedStale = staleRegulation
+flaggedStale.stale = true
+assert(flaggedStale.label(on: iso("2026-11-02T20:00:00.000Z")) == "Closed season (2026 rules)", "and so it does whenever the phone said the summary may be out of date")
+assert(RiseWatchRegulation(status: .unknown, label: "", year: 2026, stale: true, windows: nil).label(on: iso("2027-06-01T20:00:00.000Z")) == "Season not confirmed - check ODFW",
+       "the unknown label never changes")
+let partialAccess = RiseWatchAccess(label: "Road", typical: "Typically closed", from: "11-15", to: "05-25", partial: true, snowedIn: true)
+assert(!partialAccess.isSnowedIn(on: iso("2026-12-10T19:00:00.000Z")), "a partial closure is never snowed in")
+let windowless = RiseWatchAccess(label: "Road", typical: "Typically closed", from: nil, to: nil, partial: nil, snowedIn: true)
+assert(windowless.isSnowedIn(on: iso("2026-12-10T19:00:00.000Z")), "with no usable window, the phone's word is kept")
 
 print("\n\(checks - failures)/\(checks) checks passed")
 exit(failures == 0 ? 0 : 1)

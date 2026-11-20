@@ -168,18 +168,34 @@ struct RiseWaterRow: View {
     }
 
     var body: some View {
+        // The pack can be days old: the season is decided on today's date.
+        let now = Date()
+        let closed = water.isClosedSeason(on: now)
         HStack(alignment: .center, spacing: 8) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(water.name)
                     .font(.headline)
                     .lineLimit(2)
+                if let season = water.seasonNotice(on: now) {
+                    Text(season)
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(closed ? RiseWatchColors.warning : RiseWatchColors.stale)
+                }
+                if let access = water.accessNotice(on: now) {
+                    Text(access)
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(RiseWatchColors.stale)
+                }
                 Text([role, model.asOfText()].filter { !$0.isEmpty }.joined(separator: " - "))
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }
             Spacer(minLength: 4)
-            Text(riseScoreText(water.score))
-                .font(.system(size: 24, weight: .bold, design: .rounded).monospacedDigit())
+            // A closed water has no score to show: its label says why.
+            if !closed {
+                Text(riseScoreText(water.score))
+                    .font(.system(size: 24, weight: .bold, design: .rounded).monospacedDigit())
+            }
         }
         .frame(minHeight: 52)
         .accessibilityElement(children: .combine)
@@ -225,43 +241,74 @@ struct RiseWaterDetail: View {
         .task(id: water.id) {
             await model.refreshLive(water)
         }
-        .sheet(item: $model.detailsFor) { entry in
+        // Sealed from onDismiss, not from the sheet content's onDisappear:
+        // the content swaps its length step for its species step, and an
+        // onDisappear there fired on Next and closed the sheet.
+        .sheet(item: $model.detailsFor, onDismiss: {
+            model.detailsDismissed()
+        }) { entry in
             RiseCatchDetailsView(entry: entry, species: model.pack?.species ?? [])
                 .environmentObject(model)
         }
     }
 
+    /// The score, or - on a water closed by ODFW season today - the label
+    /// in its place. Partial, unconfirmed and snowed-in waters keep the
+    /// score with the label under it.
     private var scoreHeader: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            HStack(alignment: .firstTextBaseline) {
-                Text(riseScoreText(water.score))
-                    .font(.system(size: 40, weight: .heavy, design: .rounded).monospacedDigit())
-                Text("/ 10")
-                    .font(.footnote)
+        TimelineView(.periodic(from: .now, by: 60)) { context in
+            let closed = water.isClosedSeason(on: context.date)
+            VStack(alignment: .leading, spacing: 2) {
+                if closed {
+                    Text(water.seasonNotice(on: context.date) ?? RiseWatchRegulation.baseLabel(.closed))
+                        .font(.system(size: 22, weight: .heavy, design: .rounded))
+                        .foregroundStyle(RiseWatchColors.warning)
+                        .fixedSize(horizontal: false, vertical: true)
+                } else {
+                    HStack(alignment: .firstTextBaseline) {
+                        Text(riseScoreText(water.score))
+                            .font(.system(size: 40, weight: .heavy, design: .rounded).monospacedDigit())
+                        Text("/ 10")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+                    Text(water.scoreSource)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                    if let season = water.seasonNotice(on: context.date) {
+                        Text(season)
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(RiseWatchColors.stale)
+                    }
+                }
+                if let access = water.accessNotice(on: context.date) {
+                    Text(access)
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(RiseWatchColors.stale)
+                }
+                Text(model.asOfText())
+                    .font(.caption2)
                     .foregroundStyle(.secondary)
             }
-            Text(water.scoreSource)
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-            Text(model.asOfText())
-                .font(.caption2)
-                .foregroundStyle(.secondary)
         }
     }
 
+    /// No countdown to a window on a water that is closed today.
     private var primeWindow: some View {
         TimelineView(.periodic(from: .now, by: 30)) { context in
-            let status = RisePrimeWindow.status(water.primeWindow, now: context.date)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(status.text)
-                    .font(.headline)
-                Text(status.range)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                if model.packIsOld(now: context.date) {
-                    Text("Window hours from an earlier day's pack.")
+            if !water.isClosedSeason(on: context.date) {
+                let status = RisePrimeWindow.status(water.primeWindow, now: context.date)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(status.text)
+                        .font(.headline)
+                    Text(status.range)
                         .font(.caption2)
-                        .foregroundStyle(RiseWatchColors.stale)
+                        .foregroundStyle(.secondary)
+                    if model.packIsOld(now: context.date) {
+                        Text("Window hours from an earlier day's pack.")
+                            .font(.caption2)
+                            .foregroundStyle(RiseWatchColors.stale)
+                    }
                 }
             }
         }
@@ -285,14 +332,23 @@ struct RiseWaterDetail: View {
         }
     }
 
+    /// Fish on! stays: it is a journal, not an enforcement tool. On a closed
+    /// water the label is right beside it, so it cannot be missed.
     private var fishOnButton: some View {
-        Button {
-            model.fishOn(water)
-        } label: {
-            Text("Fish on!")
+        VStack(alignment: .leading, spacing: 4) {
+            if water.isClosedSeason(on: Date()), let season = water.seasonNotice(on: Date()) {
+                Text(season)
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(RiseWatchColors.warning)
+            }
+            Button {
+                model.fishOn(water)
+            } label: {
+                Text("Fish on!")
+            }
+            .buttonStyle(RiseBigButtonStyle(fill: RiseWatchColors.fishOn, text: .black, minHeight: 80, fontSize: 28))
+            .accessibilityHint("Logs a catch on \(water.name) now")
         }
-        .buttonStyle(RiseBigButtonStyle(fill: RiseWatchColors.fishOn, text: .black, minHeight: 80, fontSize: 28))
-        .accessibilityHint("Logs a catch on \(water.name) now")
     }
 
     @ViewBuilder
@@ -398,6 +454,11 @@ struct RiseLastCatchPanel: View {
                                 .foregroundStyle(.secondary)
                         }
                     }
+                    if let problem = model.detailsError {
+                        Text(problem)
+                            .font(.footnote)
+                            .foregroundStyle(RiseWatchColors.warning)
+                    }
                 }
             }
         }
@@ -414,6 +475,9 @@ struct RiseCatchDetailsView: View {
     @State private var choosingSpecies = false
     @FocusState private var crownFocused: Bool
 
+    // No onDisappear here: modifiers on a Group apply to whichever step is
+    // showing, so it fired when Next swapped the steps. The sheet's
+    // onDismiss (RiseWaterDetail) seals the catch instead.
     var body: some View {
         Group {
             if choosingSpecies {
@@ -421,9 +485,6 @@ struct RiseCatchDetailsView: View {
             } else {
                 lengthStep
             }
-        }
-        .onDisappear {
-            model.detailsClosed(entry.watchId)
         }
     }
 

@@ -170,7 +170,7 @@ vm.runInContext(`${scriptBody}\n;globalThis.__app = {
   setEditingLogIndex(index) { editingLogIndex = index; },
   editingLogIndexNow() { return editingLogIndex; },
   setLogStorageUnreadable(value) { logStorageUnreadable = value; },
-  WATCH_PACK_DEBOUNCE_MS, nativeFish,
+  WATCH_PACK_DEBOUNCE_MS, WATCH_ACKED_KEY, WATCH_ACKED_MAX, nativeFish,
   BUG_SNAP_TRAITS, SNAP_COLOURS, SNAP_SIZE_BUCKETS, SNAP_SHAPES, SNAP_TAILS,
   ODFW_REGULATIONS, ODFW_REGULATIONS_META, REGULATION_STATUS_LABELS, REGS_CHECK_KEY, REGS_CHECK_URL
 };`, context);
@@ -1674,6 +1674,13 @@ group("Apple Watch: a pack is posted only when it changed");
   context.webkit = { messageHandlers: { riseWatch: { postMessage: (message) => posted.push(JSON.parse(JSON.stringify(message))) } } };
   app.resetWatchPack();
   const savedReports = { ...app.liveReports.byWater };
+  // The harness's launch sync never settles (fetch is disabled); these
+  // checks are about a settled page.
+  const savedBulk = app.liveReports.bulkStatus;
+  app.liveReports.bulkStatus = "";
+  for (const [key, report] of Object.entries(app.liveReports.byWater)) {
+    if (report?.status === "loading" || report?.refreshing) delete app.liveReports.byWater[key];
+  }
   app.liveReports.byWater.crooked = { status: "ready", cachedAt: new Date().toISOString(), usgs: { flow: "240 cfs", waterTemp: "53 F" }, nws: {} };
   assert(context.postWatchPack() === true && posted.length === 1, "the first pack is posted");
   assert(posted[0].action === "pack" && typeof posted[0].body === "string" && JSON.parse(posted[0].body).waters.length > 0,
@@ -1697,10 +1704,111 @@ group("Apple Watch: a pack is posted only when it changed");
   context.webkit = { messageHandlers: { riseWatch: { postMessage() { throw new Error("bridge gone"); } } } };
   const keyBefore = app.watchPackPostedKeyNow();
   assert(context.postWatchPack() === false && app.watchPackPostedKeyNow() === keyBefore, "a throwing bridge is not recorded as posted, so the next change retries");
+
+  // Mid-sync the labels are transient ("Checking live inputs"): no pack.
+  context.webkit = { messageHandlers: { riseWatch: { postMessage: (message) => posted.push(JSON.parse(JSON.stringify(message))) } } };
+  app.resetWatchPack();
+  app.setHomeWaterId("crooked");
+  app.liveReports.bulkStatus = "manual";
+  const beforeSync = posted.length;
+  assert(context.postWatchPack() === false && posted.length === beforeSync && app.watchPackPostedKeyNow() === null, "no pack is posted while a sync is running");
+  app.liveReports.bulkStatus = "";
+  const settledCrooked = app.liveReports.byWater.crooked;
+  app.liveReports.byWater.crooked = { status: "loading", meta: {} };
+  assert(context.postWatchPack() === false && posted.length === beforeSync, "nor while a pack water's report is loading");
+  app.liveReports.byWater.crooked = { ...settledCrooked, refreshing: true };
+  assert(context.postWatchPack() === false && posted.length === beforeSync, "nor while one is refreshing");
+  app.liveReports.byWater.crooked = settledCrooked;
+  assert(context.postWatchPack() === true && posted.length === beforeSync + 1, "the settled pack is posted once the sync is done");
+  const settledPack = JSON.parse(posted[posted.length - 1].body);
+  assert(!settledPack.waters.some((item) => /Updating local cache|Checking live inputs/.test(item.scoreSource)),
+    `and carries no transient label (${settledPack.waters.map((item) => item.scoreSource).join(" | ")})`);
+
   app.resetWatchPack();
   context.webkit = undefined;
+  app.liveReports.bulkStatus = savedBulk;
   for (const key of Object.keys(app.liveReports.byWater)) delete app.liveReports.byWater[key];
   Object.assign(app.liveReports.byWater, savedReports);
+}
+
+group("Apple Watch: the trip pack carries the ODFW season and snow access, re-evaluable by date");
+{
+  const water = (id) => app.waters.find((item) => item.id === id);
+  const savedBefore = [...app.savedWatersNow()];
+  savedBefore.forEach((id) => context.toggleSavedWater(id));
+  app.setHomeWaterId("crooked");
+  ["crane-prairie", "lower-deschutes", "hosmer"].forEach((id) => context.toggleSavedWater(id));
+  const verifyId = Object.keys(app.ODFW_REGULATIONS).find((id) => app.ODFW_REGULATIONS[id].confidence !== "confirmed" && water(id));
+  if (verifyId) context.toggleSavedWater(verifyId);
+  const packOn = (iso) => {
+    const pack = context.buildWatchPack(new Date(iso));
+    return Object.fromEntries(pack.waters.map((item) => [item.id, item]));
+  };
+
+  // Nov 2 (Pacific): Crane Prairie's Apr 22 - Oct 31 season is over.
+  const nov = packOn("2026-11-02T19:00:00.000Z");
+  const crane = nov["crane-prairie"];
+  assert(crane && crane.regulation.status === "closed" && crane.regulation.label === context.regulationStatusLabel("closed"),
+    `a closed water says so in the pack (${JSON.stringify(crane?.regulation)})`);
+  assert(crane.regulation.status === context.regulationSeasonStatus(water("crane-prairie"), new Date("2026-11-02T19:00:00.000Z")),
+    "the status is the app's own regulationSeasonStatus() for the pack's date");
+  assert(JSON.stringify(crane.regulation.windows) === JSON.stringify({ from: app.ODFW_REGULATIONS["crane-prairie"].season.from, to: app.ODFW_REGULATIONS["crane-prairie"].season.to }),
+    `and carries its season window so the Watch can re-evaluate it on a later day (${JSON.stringify(crane.regulation.windows)})`);
+  assert(crane.regulation.year === app.ODFW_REGULATIONS_META.year && typeof crane.regulation.stale === "boolean", "with the booklet year and whether the rules may be out of date");
+  const oct = packOn("2026-10-30T19:00:00.000Z")["crane-prairie"];
+  assert(oct.regulation.status === "open" && JSON.stringify(oct.regulation.windows) === JSON.stringify(crane.regulation.windows),
+    "a pack built Oct 30 reads open, with the same window the Watch will close on Nov 1");
+
+  const lower = nov["lower-deschutes"];
+  const sections = app.ODFW_REGULATIONS["lower-deschutes"].season.sections;
+  assert(Array.isArray(lower.regulation.windows?.sections) && lower.regulation.windows.sections.length === sections.length
+    && lower.regulation.windows.sections.every((section, index) => section.name === sections[index].name),
+    `a water with sections carries every section by name (${JSON.stringify(lower.regulation.windows)})`);
+  const janLower = packOn("2027-01-15T19:00:00.000Z")["lower-deschutes"];
+  assert(janLower.regulation.status === "partial" && janLower.regulation.label === context.regulationStatusLabel("partial"),
+    `some sections closed reads partial (${janLower.regulation.status})`);
+
+  assert(nov.crooked.regulation.status === context.regulationSeasonStatus(water("crooked"), new Date("2026-11-02T19:00:00.000Z")), "every water carries a regulation, open ones too");
+  const openWater = Object.values(nov).find((item) => item.regulation.status === "open");
+  assert(openWater && openWater.regulation.windows && openWater.regulation.label === context.regulationStatusLabel("open"), `an open water carries its window too (${openWater?.id})`);
+  if (verifyId) {
+    const verify = nov[verifyId];
+    assert(verify.regulation.status === "unknown" && verify.regulation.windows === null && verify.regulation.label === app.REGULATION_STATUS_LABELS.unknown,
+      `a verify water travels as unknown with no window, so the Watch never calls it open (${verifyId}: ${JSON.stringify(verify.regulation)})`);
+  } else {
+    assert(false, "the regulations table has a verify water to test with");
+  }
+
+  const cranePartial = context.seasonalClosureFor(water("crane-prairie"), "2000-11-15")?.partial === true;
+  assert(crane.access && crane.access.snowedIn === false && crane.access.partial === cranePartial && crane.access.from === "11-15" && crane.access.to === "05-25"
+    && crane.access.label.length > 0 && crane.access.typical.length > 0,
+    `Nov 2 is before the typical OR-46 closure, but the window travels so the Watch can tell on Nov 20 (${JSON.stringify(crane.access)})`);
+  const dec = packOn("2026-12-10T19:00:00.000Z")["hosmer"];
+  assert(dec.access.snowedIn === true, `inside the window it is snowed in on the pack's date (${JSON.stringify(dec.access)})`);
+  assert(nov.crooked.access === null, "a water with no snow closure carries none");
+  assert(JSON.parse(JSON.stringify(context.buildWatchPack(new Date()))).waters.every((item) => "regulation" in item && "access" in item), "and both survive JSON");
+
+  // A closure later marked partial is not snowed in.
+  const closure = app.SEASONAL_ACCESS_CLOSURES.find((item) => item.waters.includes("hosmer"));
+  closure.partial = true;
+  const partial = packOn("2026-12-10T19:00:00.000Z")["hosmer"];
+  delete closure.partial;
+  assert(partial.access.partial === true && partial.access.snowedIn === false, `a partial closure is carried as partial, not snowed in (${JSON.stringify(partial.access)})`);
+  // A water seasonalClosureFor() reports as partial (another way in) is
+  // carried as partial even on a day outside the window.
+  const realClosureFor = context.seasonalClosureFor;
+  context.seasonalClosureFor = (item, dateKey) => {
+    const found = realClosureFor(item, dateKey);
+    return found && item?.id === "hosmer" ? { ...found, partial: true } : found;
+  };
+  const partialOutside = packOn("2026-11-02T19:00:00.000Z")["hosmer"];
+  const partialInside = packOn("2026-12-10T19:00:00.000Z")["hosmer"];
+  context.seasonalClosureFor = realClosureFor;
+  assert(partialOutside.access.partial === true && partialInside.access.partial === true && partialInside.access.snowedIn === false,
+    `a per-water partial closure is carried as partial inside and outside its window (${JSON.stringify(partialOutside.access)})`);
+
+  [...app.savedWatersNow()].forEach((id) => context.toggleSavedWater(id));
+  savedBefore.forEach((id) => context.toggleSavedWater(id));
 }
 
 group("Apple Watch: catches merge once, in order, without moving anyone's index");
@@ -1752,6 +1860,26 @@ group("Apple Watch: catches merge once, in order, without moving anyone's index"
   assert(app.getLogs().length === 5, "redelivery adds nothing");
   assert(posted.filter((message) => message.action === "catchesSaved").length === 2, "but is acknowledged again, so the container can let go of it");
   app.setEditingLogIndex(null);
+  const ackedStored = JSON.parse(localStorage.getItem(app.WATCH_ACKED_KEY) || "[]");
+  assert(ackedStored.includes("W-0002-0001") && ackedStored.includes("W-0002-0002"), `acknowledged ids are remembered (${JSON.stringify(ackedStored)})`);
+
+  // Deleted on the phone, then delivered again: acknowledged, not re-inserted.
+  app.setLogs(app.getLogs().filter((item) => item.watchId !== "W-0002-0001"));
+  posted.length = 0;
+  context.riseWatchCatches({ catches: [watchCatch("W-0002-0001", at("2026-06-21T18:30:00Z"))] });
+  assert(app.getLogs().length === 4 && !app.getLogs().some((item) => item.watchId === "W-0002-0001"), "a catch deleted on the phone is not re-inserted when delivered again");
+  const reAck = posted.filter((message) => message.action === "catchesSaved");
+  assert(reAck.length === 1 && reAck[0].ids.join(",") === "W-0002-0001", `but it is acknowledged again, so neither device keeps offering it (${JSON.stringify(reAck)})`);
+  posted.length = 0;
+  context.riseWatchCatches({ catches: [watchCatch("W-0002-0001", at("2026-06-21T18:30:00Z")), watchCatch("W-0002-0003", at("2026-06-21T18:45:00Z"))] });
+  assert(app.getLogs().length === 5 && app.getLogs().some((item) => item.watchId === "W-0002-0003") && !app.getLogs().some((item) => item.watchId === "W-0002-0001"),
+    "a new catch in the same delivery still lands");
+  assert(posted.filter((message) => message.action === "catchesSaved")[0]?.ids.sort().join(",") === "W-0002-0001,W-0002-0003", "and both are acknowledged");
+  localStorage.setItem(app.WATCH_ACKED_KEY, JSON.stringify(Array.from({ length: app.WATCH_ACKED_MAX + 20 }, (_, index) => `W-9999-${String(index).padStart(4, "0")}`)));
+  context.riseWatchCatches({ catches: [watchCatch("W-0002-0003", at("2026-06-21T18:45:00Z"))] });
+  const capped = JSON.parse(localStorage.getItem(app.WATCH_ACKED_KEY));
+  assert(capped.length === app.WATCH_ACKED_MAX && capped[capped.length - 1] === "W-0002-0003", `the remembered ids are capped, newest kept (${capped.length})`);
+  localStorage.removeItem(app.WATCH_ACKED_KEY);
 
   const realSetItem = localStorage.setItem;
   posted.length = 0;

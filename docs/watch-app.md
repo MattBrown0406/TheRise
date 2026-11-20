@@ -18,7 +18,11 @@ Once The Rise has been opened on the iPhone (so the page could build and send
 a trip pack), the Watch on its own can:
 
 - List the angler's waters - home first, then saved waters, then today's top
-  pick - each with its score and "as of" the time the pack was built.
+  pick - each with its score and "as of" the time the pack was built. A
+  water closed by ODFW season *today* (decided on the Watch, on Oregon's
+  calendar, however old the pack) shows "Closed season (ODFW)" instead of a
+  score; "Some sections closed (ODFW)", "Season not confirmed - check ODFW"
+  and "Typically snowed in" are shown beside the score.
 - Show a water: the score and its honest source label, a prime-window
   countdown computed on the Watch on Oregon's clock, flow and water
   temperature with their provenance and age ("measured 3h ago",
@@ -48,12 +52,14 @@ the-rise-app.html --riseWatch {action:"pack", body}--> RiseWatchBridge (iPhone)
      |                                                   | transferUserInfo (queued by the system)
 RiseWatchBridge <--------------- catch ------------------+
      | writes watch-pending-catches.json FIRST, then hands every held catch to the page
-     | deletes a held catch only on catchesSaved; then tells the Watch (transferUserInfo)
+     | deletes a held catch only on catchesSaved, records its id in watch-acked-ids.json,
+     | then tells the Watch (transferUserInfo) - now, or at the next activation
+     | an already-acknowledged id that arrives again is only acknowledged again
 ```
 
 | File | Target | What it is |
 | --- | --- | --- |
-| `ios/TheRise/TheRise/RiseWatchModels.swift` | **TheRise and the Watch app**, and `scripts/test-rise-store.sh` | Foundation-only. Codable pack and catch types, the provenance rules, Oregon date/time formatting, prime-window countdown, nearest water, USGS parsing, the Watch's catch queue, the iPhone's held-catch inbox, and every WatchConnectivity payload. |
+| `ios/TheRise/TheRise/RiseWatchModels.swift` | **TheRise and the Watch app**, and `scripts/test-rise-store.sh` | Foundation-only. Codable pack and catch types, the provenance rules, Oregon date/time formatting, prime-window countdown, the ODFW season and snow-access evaluation by date, nearest water, USGS parsing, the Watch's catch queue and its requeue rules, the iPhone's held-catch inbox and acknowledged-id log, read-vs-decode file failures, and every WatchConnectivity payload. |
 | `ios/TheRise/TheRise/RiseWatchBridge.swift` | TheRise | The iPhone's WCSessionDelegate. Activated in `AppDelegate` at launch. |
 | `ios/TheRiseWatch/TheRiseWatch Watch App/RiseWatchApp.swift` | Watch app | `@main` and the root view. |
 | `.../RiseWatchModel.swift` | Watch app | State: the pack, the queue, live readings, Fish on!, Undo, details, sending. |
@@ -68,7 +74,10 @@ RiseWatchBridge <--------------- catch ------------------+
 The page builds it in `buildWatchPack()` and posts it with
 `postWatchPack()` - debounced 1.5 s after any render, and only if the content
 changed (the `generatedAt` stamp alone is not a change). Nothing is posted
-unless `window.webkit.messageHandlers.riseWatch` exists. The bridge validates
+unless `window.webkit.messageHandlers.riseWatch` exists, and nothing is
+posted mid-sync (`liveReports.bulkStatus` set, or a pack water's report
+`loading` or `refreshing`): its labels would be transient ("Checking live
+inputs"); the render after the sync settles posts the pack. The bridge validates
 it (`RiseWatchPack.decode`), re-encodes it (trimming planner days, then the
 tail of the list, if it is over 48 KB) and sends
 `["kind": "pack", "version": 1, "pack": <JSON Data>]` with
@@ -92,10 +101,21 @@ activation and keeps the bytes in `trip-pack.json`.
     "temp": { "value": "47 F", "source": "reference", "observedAt": null, "cachedAt": null, "reference": "47 F" },
     "flies": ["Zebra Midge #20", "..."],
     "hatches": ["Midge", "BWO"],
-    "planner": { "fetchedAt": "...", "days": [{ "date": "2026-11-19", "label": "Thu", "score": 8.4, "reason": "..." }], "best": { "...": "..." } }
+    "planner": { "fetchedAt": "...", "days": [{ "date": "2026-11-19", "label": "Thu", "score": 8.4, "reason": "..." }], "best": { "...": "..." } },
+    "regulation": {
+      "status": "open", "label": "Open season (ODFW)", "year": 2026, "stale": false,
+      "windows": { "from": "05-22", "to": "10-31" }
+    },
+    "access": null
   }]
 }
 ```
+
+`regulation.windows` is one of `{ "allYear": true }`, `{ "from": "MM-DD",
+"to": "MM-DD" }` or `{ "sections": [{ "name": "...", "allYear": true },
+{ "name": "...", "from": "04-22", "to": "12-31" }] }`; `access` is `null` or
+`{ "label", "typical", "from": "11-15", "to": "05-25", "partial": false,
+"snowedIn": false }`.
 
 - Up to ten waters: home, saved, top pick (`watchPackWaters()`).
 - `score` / `scoreSource` are `fishScore()` and `scoreSourceLabel()`.
@@ -108,6 +128,39 @@ activation and keeps the bytes in `trip-pack.json`.
 - `flies` is `liveRecommendedFlies()` then the daily fly box, six at most.
 - `planner` is `plannerForWater()` only if the angler loaded the week;
   otherwise `null`. Nothing is fetched for the Watch.
+- `regulation` (`watchPackRegulation()`) is `regulationSeasonStatus()` and
+  `regulationStatusLabel()` for the pack's date, the booklet `year`, `stale`
+  (`regulationsStaleness()` said the summary may be out of date) and
+  `windows`: the water's season copied from `ODFW_REGULATIONS`, so the Watch
+  can **decide again on the day it is read** - a pack built Oct 30 must not
+  read fishable on Nov 2. `windows` is `null` for a water that is not
+  `confirmed` (verify, or no season recorded): that is always unknown, never
+  open or closed. A malformed window is copied as it is, and is unknown on
+  both sides.
+- `access` (`watchPackAccess()`) is the water's typical snow closure from
+  `SEASONAL_ACCESS_CLOSURES` (via `seasonalClosureFor()` for the pack's
+  date), with its window, or `null`. A closure marked `partial` is never
+  "snowed in".
+- Both fields are optional on the Watch (`RiseWatchRegulation`,
+  `RiseWatchAccess`): a pack from an earlier build decodes with neither and
+  shows no season label; a malformed one is dropped, never the water.
+
+### Season and access on the Watch
+
+`RiseWatchRegulation.seasonStatus(on:)` mirrors `regulationSeasonDetail()`
+on Oregon's calendar (`America/Los_Angeles`, whatever zone the Watch is in):
+inclusive ends, windows that wrap the new year, sections (all open is open,
+none open is closed, some is partial), and unknown for no windows, no
+sections or any malformed window. The label is the page's, and reads
+"(2026 rules)" instead of "(ODFW)" once the phone said the rules may be out
+of date or it is March 1 of the following year.
+
+- **Closed**: the waters row and the score header show the label instead of
+  the score; the prime-window countdown is hidden. Fish on! stays - it is a
+  journal, not an enforcement tool - with the closed label right above it.
+- **Partial / not confirmed**: the score stays, with the label under it.
+- **Typically snowed in** (`RiseWatchAccess.isSnowedIn(on:)`, inclusive,
+  wrapping): shown under the name and the score.
 
 ### Provenance on the Watch
 
@@ -141,19 +194,35 @@ No coordinates are ever put on a catch.
    `catch-queue.json` as a draft. If that write fails nothing is logged and
    the Watch says so.
 2. Undo (8 s) removes the draft by id. Length / species edit it. The draft is
-   sealed when the details sheet closes, 60 s after the catch, or when the
-   app goes to the background; a draft left by a killed app is sealed at the
-   next launch.
+   sealed when the details sheet is dismissed (the sheet's `onDismiss`, not
+   its content's `onDisappear`, which fired when Next swapped the length step
+   for the species step), 60 s after the catch, or when the app goes to the
+   background - except the catch whose details sheet is still open, so
+   picking a species on wrist raise still saves. If an edit finds the catch
+   already sent, the Watch says so instead of closing silently. A draft left
+   by a killed app is sealed at the next launch.
 3. Sealed catches go out with `transferUserInfo`
    (`["kind": "catch", "version": 1, "watchId": id, "catch": <JSON Data>]`).
    The system queues them and delivers them when the iPhone is next
    reachable, with either app running or not. At each activation the Watch
-   resends any catch it marked sent that the system no longer carries.
+   sends what is queued at once, and **a few seconds later** (so a late
+   `didFinish` or `catchesSaved` is heard first) resends any catch it marked
+   sent that the system no longer carries, and any catch the iPhone has had
+   (`delivered`) for 24 hours without confirming - the iPhone may have held
+   it only in memory (a full disk), or its acknowledgement may have been
+   lost.
 4. The iPhone's `RiseWatchBridge` writes every catch to
    `Application Support/TheRise/watch-pending-catches.json` **before**
    anything else, then calls `window.riseWatchCatches({catches:[...]})` if
    the page is loaded - and again on every `didFinish`, after the journal
-   restore.
+   restore, and whenever the app comes back to the foreground
+   (`RiseSceneDelegate.sceneDidBecomeActive`), so a journal write that failed
+   for lack of space is retried once the angler has freed some. A catch whose
+   id is in `watch-acked-ids.json` (below) is not held or offered again; it
+   is only acknowledged again. A pending file that exists but cannot be
+   *read* (for example before the first unlock) is left exactly as it is -
+   never set aside, never overwritten; only a file that reads but does not
+   decode is set aside.
 5. The page (`window.riseWatchCatches`) converts each catch with
    `watchCatchEntry()` - re-dating it from `loggedAt` with the journal's own
    `zonedDateLabel()` / `zonedTimeLabel()`, so it reads exactly like the
@@ -165,11 +234,22 @@ No coordinates are ever put on a catch.
    if that returned true does it post
    `riseWatch {action: "catchesSaved", ids}` (ids now in the journal,
    including any that were already there). A failed write or an unreadable
-   journal acknowledges nothing and shows a notice on the Log screen.
-6. The bridge deletes exactly the acknowledged catches from the pending file
-   and tells the Watch (`["kind": "catchesSaved", "ids": [...]]`). The Watch
-   marks them saved; "Unsynced" counts everything not yet saved. Saved
-   catches are forgotten after three days; an unconfirmed one never is.
+   journal acknowledges nothing and shows a notice on the Log screen. The
+   page also remembers the ids it acknowledged (`riseWatchAcked.v1`, the
+   newest 500): an id it acknowledged before that is no longer in the
+   journal was deleted there by the angler, so it is acknowledged again and
+   **not** re-inserted.
+6. The bridge deletes exactly the acknowledged catches from the pending file,
+   records the ids in `Application Support/TheRise/watch-acked-ids.json`
+   (`RiseWatchAckLog`: the newest 2000 ids, plus the acknowledgements not yet
+   handed to WatchConnectivity) and tells the Watch
+   (`["kind": "catchesSaved", "ids": [...]]`, at most 200 ids per transfer).
+   An acknowledgement that cannot be sent yet (session not activated, no
+   paired Watch, Watch app not installed) is kept and sent at the next
+   activation, when the Watch app is installed or becomes reachable, or when
+   the iPhone app comes to the foreground. The Watch marks them saved;
+   "Unsynced" counts everything not yet saved. Saved catches are forgotten
+   after three days; an unconfirmed one never is.
 
 Journal entries from the Watch carry `watchId` and `loggedOn: "watch"`, and
 the Log card says "Logged on Apple Watch". Editing one keeps both.
@@ -187,21 +267,45 @@ the Log card says "Logged on Apple Watch". Editing one keeps both.
    - Interface SwiftUI, language Swift. Untick *Include Notification Scene*,
      *Include Complication* and *Include Tests*.
    - Activate the new scheme when asked, then switch back to `TheRise`.
-3. **Deployment target and versions.** In the Watch target's Build Settings:
+3. **Deployment target, versions and concurrency.** In the Watch target's
+   Build Settings:
    `WATCHOS_DEPLOYMENT_TARGET = 10.0`, `SWIFT_VERSION = 5.0`,
    `MARKETING_VERSION` and `CURRENT_PROJECT_VERSION` equal to the app's
    (`scripts/verify-release-readiness.py` reads every
    `CURRENT_PROJECT_VERSION` in the project and requires them all to match).
-4. **Replace the template.** Delete the files Xcode generated in the
-   `TheRiseWatch Watch App` group (`TheRiseWatchApp.swift`,
-   `ContentView.swift`, `Assets.xcassets`, *Preview Content* if you do not
-   want it) - Move to Trash. Then right-click the group > *Add Files to
-   "TheRise"...*, select everything in
-   `ios/TheRiseWatch/TheRiseWatch Watch App/` (the six Swift files,
-   `Info.plist`, `PrivacyInfo.xcprivacy`, `Assets.xcassets`), **untick Copy
-   items if needed**, tick target **TheRiseWatch Watch App only**. Check that
-   `Info.plist` is *not* in Copy Bundle Resources, and that
-   `PrivacyInfo.xcprivacy` and `Assets.xcassets` are.
+   **Concurrency:** newer Xcode templates create targets with
+   `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor` and
+   `SWIFT_APPROACHABLE_CONCURRENCY = YES`. The Watch sources are written for
+   nonisolated-by-default Swift 5 (the WatchConnectivity and CoreLocation
+   delegate callbacks arrive on background queues, and the shared model
+   types are built there - e.g. `RiseWatchLocator`'s nonisolated delegate
+   method constructing a `RiseCoordinate`, `RiseWatchConnector` decoding a
+   pack). Set **Default Actor Isolation** to **nonisolated** and
+   **Approachable Concurrency** to **No** - or delete both settings if the
+   template added them - for the Watch target, and check the TheRise target
+   has neither set to the new defaults either (it compiles
+   `RiseWatchModels.swift` too).
+4. **Replace the template.** Recent Xcode creates the new target's folder as
+   a *file-system synchronized* folder (a blue folder icon, "Folder" rather
+   than "Group" in the File inspector). A synchronized folder only contains
+   what is inside it on disk, so *Add Files... untick Copy items* cannot
+   reference this repo's files in place. Instead:
+   - Select the generated `TheRiseWatch Watch App` folder in the navigator
+     and **Delete > Move to Trash** (it holds only the template's
+     `TheRiseWatchApp.swift`, `ContentView.swift`, `Assets.xcassets` and
+     *Preview Content*).
+   - Right-click the project > *Add Files to "TheRise"...*, select the
+     folder `ios/TheRiseWatch/TheRiseWatch Watch App`, **untick Copy items
+     if needed**, choose **Create groups** (not *Create folder references*,
+     and not a synchronized folder), and tick target **TheRiseWatch Watch
+     App only**. If Xcode still adds it as a synchronized folder, select it
+     and use *Convert to Group* (Xcode 16+) before setting membership.
+   - The six Swift files, `Info.plist`, `PrivacyInfo.xcprivacy` and
+     `Assets.xcassets` belong to the Watch target only. Check that
+     `Info.plist` is *not* in Copy Bundle Resources, and that
+     `PrivacyInfo.xcprivacy` and `Assets.xcassets` are.
+   - The shared `TheRise/RiseWatchModels.swift` is in **both** targets
+     (step 6).
 5. **Info.plist.** In the Watch target's Build Settings set
    `INFOPLIST_FILE = ../TheRiseWatch/TheRiseWatch Watch App/Info.plist`
    (relative to `ios/TheRise/`). It carries `WKApplication = YES`,
@@ -269,6 +373,12 @@ the Log card says "Logged on Apple Watch". Editing one keeps both.
       species. "Unsynced: 1", "Today: 1 on this Watch".
 - [ ] Force-quit the Watch app during the details sheet; reopen: the catch is
       still there, still unsynced.
+- [ ] Details sheet: turn the Crown, tap **Next** - the sheet stays and shows
+      the species list; pick one: the catch has both. Swipe the sheet away
+      instead: the catch is kept as logged.
+- [ ] Open the details sheet, drop the wrist until the app goes to the
+      background, raise it and pick a species: it is saved (not lost or
+      silently ignored).
 - [ ] **Reconnect** (airplane mode off, phone in range) with The Rise open on
       the phone: the catch appears **once** in the journal, in time order,
       marked "Logged on Apple Watch", with the readings' provenance as the
@@ -277,6 +387,24 @@ the Log card says "Logged on Apple Watch". Editing one keeps both.
       then launch The Rise: the catch is added on launch, once.
 - [ ] Deliver the same catch twice (e.g. reinstall the Watch app mid-sync):
       still one entry.
+- [ ] Deliver a Watch catch, **delete it on the phone**, then make the Watch
+      resend it (kill the Watch app before it hears catchesSaved, reopen with
+      the phone in range): it does **not** come back, and the Watch's
+      Unsynced count falls to 0.
+- [ ] iPhone with the Watch app not installed when a catch is saved, then
+      install it: the acknowledgement arrives and Unsynced falls.
+- [ ] Fill the phone's storage, deliver a catch (notice on the Log screen),
+      free space, switch away from The Rise and back: the catch is added
+      without relaunching.
+- [ ] Set the phone's clock a day ahead, open The Rise (pack sent), set it
+      back, change a saved water: the Watch takes the new pack.
+- [ ] A closed-season water (e.g. Crane Prairie after Oct 31): send a pack on
+      Oct 31, open the Watch on Nov 1 with the phone away: "Closed season
+      (ODFW)" in place of the score in the list and on the water, no
+      countdown, Fish on! still there with the label above it. A
+      sectioned water out of season in part: "Some sections closed (ODFW)"
+      with the score. A Cascade Lakes water after Nov 15: "Typically snowed
+      in".
 - [ ] Fill the phone's storage until a journal save fails, then deliver a
       catch: a notice on the Log screen, no entry, the catch still held
       (`watch-pending-catches.json`), added on a later launch once there is

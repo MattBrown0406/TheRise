@@ -496,7 +496,20 @@ Watch writes the catch to a queue file there and sends it with
 it to `window.riseWatchCatches`, and deletes it only when the page answers
 `catchesSaved` - which it does only after `setLogs` returned true. The merge is
 idempotent on `watchId`, keeps the journal's index semantics, and re-dates each
-catch with the journal's own Pacific formatters.
+catch with the journal's own Pacific formatters. Both the iPhone
+(`watch-acked-ids.json`) and the page (`riseWatchAcked.v1`) remember which ids
+were acknowledged, so a catch the angler deleted on the phone is acknowledged
+again, never re-inserted, when the Watch resends it. An acknowledgement the
+iPhone could not send yet is kept and sent at the next activation; the Watch
+resends a catch the iPhone has not confirmed for a day. A file that only failed
+to *read* is never set aside or overwritten.
+
+The pack carries each water's ODFW season (`regulation`: status and label for
+the pack's date plus the season windows from `ODFW_REGULATIONS`) and typical
+snow closure (`access`). The Watch decides both again on the day, on Oregon's
+calendar, so a pack built Oct 30 does not read fishable on Nov 2: a closed
+water shows "Closed season (ODFW)" in place of its score and no countdown
+(Fish on! stays, with the label beside it). No pack is posted mid-sync.
 
 The Watch re-applies the provenance rules at catch time (`measured` becomes
 `stale` past 12 hours; nothing is ever upgraded). Those rules, Oregon's clock,
