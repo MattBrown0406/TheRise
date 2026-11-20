@@ -215,12 +215,13 @@ iPhone, approximate elsewhere), and answers wing-shape and tail questions. Only
 those confirmed answers are scored.
 
 - The photo goes through `readPhotoCanvas`, the same decode and 1600px bound
-  as catch photos, and stays in memory. It is shown from one `blob:` URL,
-  made when it loads and revoked on Clear or replace; the JPEG data URL is
-  kept only for **Attach photo to a catch**. Inlining the data URL put
-  megabytes of HTML into every repaint of a trait tap. It is stored only if the angler taps
+  as catch photos, and stays in memory. It is stored only if the angler taps
   **Attach photo to a catch**, and then by the normal `storePhoto` path when
   the catch is saved. Closing the form, or switching it to an edit, drops it.
+- On screen the photo is one `blob:` URL, made when it loads and revoked on
+  Clear or replace; the JPEG data URL is kept only for the attach path.
+  Inlining the data URL in the workspace and every result card put megabytes
+  of HTML into each repaint of a trait tap.
 - A tap is mapped to the photo by its fraction of the displayed image, so CSS
   scaling and `devicePixelRatio` both cancel out; a ~3pt patch is averaged.
 - `classifyBugColour` is a short HSL rule list, documented where it is

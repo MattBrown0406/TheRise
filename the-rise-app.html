@@ -13962,8 +13962,8 @@
         logFormOpen = true;
         logSaveMessage = "";
         // The active water changed: every screen that shows it is stale.
+        // activateTab rebuilds the Log screen from the dirty set.
         renderAll();
-        renderLog();
         activateTab("log");
         requestAnimationFrame(() => $("#logForm")?.scrollIntoView({ behavior: "smooth", block: "start" }));
       }],
