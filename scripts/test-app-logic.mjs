@@ -327,7 +327,7 @@ assert(app.attr("a'b") === "a&#39;b", "attr escapes the single quote a value cou
 assert(!/escapeHtmlMissing/.test(html) && /function esc\(/.test(html), "the app defines an escaping helper");
 assert(/\$\{esc\(entry\.notes\)\}/.test(html), "catch-log notes are escaped at the render site");
 assert(/\$\{esc\(entry\.fly\)\}/.test(html), "catch-log fly names are escaped at the render site");
-assert(/value="\$\{attr\(editingEntry\?\.fly \|\| defaultFly\)\}"/.test(html), "the edit form escapes the fly value");
+assert(/value="\$\{attr\(editingEntry \? editingEntry\.fly \|\| "" : defaultFly\)\}"/.test(html), "the edit form escapes the fly value");
 
 group("Network text is sanitised where it enters (#3 round two)");
 assert(app.safeText('<b>Sunny</b>') === "b Sunny /b", "safeText strips the characters that build markup");
