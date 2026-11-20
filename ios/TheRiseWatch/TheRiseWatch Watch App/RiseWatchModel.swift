@@ -54,6 +54,12 @@ final class RiseWatchModel: ObservableObject {
     static let repeatSeconds: TimeInterval = 2
     /// The Watch asks USGS at most this often per water.
     static let liveRefreshSeconds: TimeInterval = 600
+    /// After activation, how long to wait for a late didFinish or
+    /// catchesSaved before deciding a transfer was lost.
+    static let recoverDelaySeconds: TimeInterval = 5
+    /// A catch the iPhone has had this long without confirming it is sent
+    /// again; the iPhone acknowledges one the journal already took.
+    static let redeliverSeconds: TimeInterval = 24 * 3600
 
     @Published private(set) var pack: RiseWatchPack?
     @Published private(set) var queue = RiseCatchQueue()
@@ -63,6 +69,9 @@ final class RiseWatchModel: ObservableObject {
     @Published private(set) var lastCatch: RiseWatchCatch?
     @Published private(set) var undoUntil: Date?
     @Published private(set) var saveError: String?
+    /// Length and species could not be added (the catch was already sent).
+    /// Shown with the last catch until the next one, or the next details.
+    @Published private(set) var detailsError: String?
     @Published var path: [String] = []
     @Published var detailsFor: RiseWatchCatch?
 
@@ -71,6 +80,14 @@ final class RiseWatchModel: ObservableObject {
     private var started = false
     private var lastFishOnAt: Date?
     private var sealTask: Task<Void, Never>?
+    private var recoverTask: Task<Void, Never>?
+    /// The bytes of the pack on disk, so the same pack arriving again is not a change.
+    private var packData: Data?
+    /// The queue file is there but could not be read at launch. It is never
+    /// written over: the next write reads it again and merges first.
+    private var queueFileUnread = false
+    /// The catch whose details sheet is open, for sealing when it closes.
+    private var detailsOpenId: String?
     private var liveInFlight: Set<String> = []
     private var lastLiveAttempt: [String: Date] = [:]
 
@@ -87,9 +104,16 @@ final class RiseWatchModel: ObservableObject {
     private func loadFromDisk() {
         if let url = RiseWatchFiles.packURL, let data = try? Data(contentsOf: url) {
             pack = RiseWatchPack.decode(data)
+            packData = pack == nil ? nil : data
         }
         guard let url = RiseWatchFiles.queueURL else { return }
-        var loaded = RiseCatchQueue.load(from: url)
+        guard var loaded = RiseCatchQueue.load(from: url) else {
+            // There but unreadable right now: left untouched, read again on
+            // the next write.
+            queueFileUnread = true
+            saveError = "This Watch could not read its catch list just now. It is left as it is and read again before anything is saved."
+            return
+        }
         // A catch left as a draft by a killed app is a catch: it is kept and
         // sent, never silently dropped.
         loaded.seal()
@@ -105,8 +129,12 @@ final class RiseWatchModel: ObservableObject {
     func scenePhaseChanged(_ phase: ScenePhase) {
         switch phase {
         case .background:
-            // Leaving the app ends the details window: seal and send.
-            seal(nil)
+            // Leaving the app ends the details window: seal and send - but not
+            // the catch whose details sheet is still open, which the angler
+            // will see again on wrist raise.
+            let open = detailsFor?.watchId
+            let drafts = queue.items.filter { $0.state == .draft && $0.entry.watchId != open }.map { $0.entry.watchId }
+            if !drafts.isEmpty { seal(drafts) }
         case .active:
             sendQueued()
         default:
@@ -117,11 +145,12 @@ final class RiseWatchModel: ObservableObject {
     // MARK: The trip pack
 
     func receivePack(_ incoming: RiseWatchPack, data: Data) {
-        if let current = pack?.generatedDate, let arriving = incoming.generatedDate, arriving < current { return }
+        guard RiseWatchPack.shouldReplace(current: pack, currentData: packData, with: incoming, data: data, now: Date()) else { return }
         if let url = RiseWatchFiles.packURL {
             RiseJSONFile.write(data, to: url)
         }
         pack = incoming
+        packData = data
     }
 
     var orderedWaters: [RiseWatchWater] {
@@ -219,6 +248,7 @@ final class RiseWatchModel: ObservableObject {
         }
         lastFishOnAt = now
         lastCatch = entry
+        detailsError = nil
         undoUntil = now.addingTimeInterval(Self.undoSeconds)
         WKInterfaceDevice.current().play(.success)
         scheduleSeal(entry.watchId)
@@ -260,6 +290,8 @@ final class RiseWatchModel: ObservableObject {
     func openDetails() {
         guard let entry = lastCatch, canAddDetails(entry) else { return }
         undoUntil = nil
+        detailsError = nil
+        detailsOpenId = entry.watchId
         detailsFor = queue.item(entry.watchId)?.entry
     }
 
@@ -270,13 +302,26 @@ final class RiseWatchModel: ObservableObject {
             if !lengthText.isEmpty { entry.length = lengthText }
             if let species = species { entry.fish = species }
         }
-        if edited {
-            next.seal([watchId])
-            guard persist(next) else { return }
-            if lastCatch?.watchId == watchId { lastCatch = next.item(watchId)?.entry }
-        }
         detailsFor = nil
+        guard edited else {
+            // Already sealed and on its way: say so rather than close silently.
+            detailsError = "That catch was already sent without these details. Add length and species on your iPhone."
+            WKInterfaceDevice.current().play(.failure)
+            sendQueued()
+            return
+        }
+        next.seal([watchId])
+        guard persist(next) else { return }
+        if lastCatch?.watchId == watchId { lastCatch = next.item(watchId)?.entry }
         sendQueued()
+    }
+
+    /// The details sheet was dismissed, by Save or by the angler swiping it
+    /// away: a catch still in draft is kept exactly as it was logged.
+    func detailsDismissed() {
+        guard let watchId = detailsOpenId else { return }
+        detailsOpenId = nil
+        detailsClosed(watchId)
     }
 
     /// The sheet went away without Save: keep the catch as it was logged.
@@ -309,10 +354,28 @@ final class RiseWatchModel: ObservableObject {
         persist(next)
     }
 
-    func connectorActivated(outstanding: Set<String>) {
+    /// Sends what is queued now. Lost transfers are looked for only after a
+    /// few seconds, against what the system carries then: a late didFinish
+    /// or catchesSaved must land first, or a catch already in the journal -
+    /// and perhaps deleted there since - would be sent straight back.
+    func connectorActivated() {
+        sendQueued()
+        recoverTask?.cancel()
+        recoverTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: UInt64(Self.recoverDelaySeconds * 1_000_000_000))
+            guard !Task.isCancelled, let self = self else { return }
+            self.recoverLostTransfers()
+        }
+    }
+
+    /// A sent catch the system no longer carries, and a delivered one the
+    /// iPhone has not confirmed for a day, go back in the queue.
+    private func recoverLostTransfers() {
+        guard let outstanding = connector.outstandingIds() else { return }
         var next = queue
-        next.requeueSent(notIn: outstanding)
-        persist(next)
+        let lost = next.requeueSent(notIn: outstanding)
+        let unconfirmed = next.requeueDelivered(olderThan: Self.redeliverSeconds, now: Date())
+        guard !lost.isEmpty || !unconfirmed.isEmpty, persist(next) else { return }
         sendQueued()
     }
 
@@ -338,11 +401,31 @@ final class RiseWatchModel: ObservableObject {
 
     @discardableResult
     private func persist(_ next: RiseCatchQueue) -> Bool {
-        guard let url = RiseWatchFiles.queueURL, next.save(to: url) else {
+        guard let url = RiseWatchFiles.queueURL else {
             saveError = "This Watch could not save its catch list. Free up space on the Watch."
             return false
         }
-        queue = next
+        var toSave = next
+        if queueFileUnread {
+            // Never write over a list that could not be read: read it again
+            // and keep both.
+            guard let onDisk = RiseCatchQueue.load(from: url) else {
+                saveError = "This Watch could not read its catch list. Nothing was changed; try again in a moment."
+                return false
+            }
+            var recovered = onDisk.merged(with: next)
+            // A draft only the file had was left by a killed app: sealed, as
+            // at launch. Drafts in memory are still the angler's to edit.
+            let inMemoryDrafts = Set(next.items.filter { $0.state == .draft }.map { $0.entry.watchId })
+            recovered.seal(recovered.items.filter { $0.state == .draft && !inMemoryDrafts.contains($0.entry.watchId) }.map { $0.entry.watchId })
+            toSave = recovered
+        }
+        guard toSave.save(to: url) else {
+            saveError = "This Watch could not save its catch list. Free up space on the Watch."
+            return false
+        }
+        queueFileUnread = false
+        queue = toSave
         saveError = nil
         return true
     }

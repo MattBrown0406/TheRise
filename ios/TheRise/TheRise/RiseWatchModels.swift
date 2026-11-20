@@ -16,7 +16,10 @@ import Foundation
 //   Watch -> iPhone  transferUserInfo ["kind": "catch", "version": 1, "watchId": id, "catch": <JSON Data>]
 //                    One catch. Queued by the system; survives either side being away.
 //   iPhone -> Watch  transferUserInfo ["kind": "catchesSaved", "ids": [id]]
-//                    Sent once the page has written those catches to the journal.
+//                    Sent once the page has written those catches to the journal,
+//                    and again whenever an already-acknowledged catch arrives.
+//                    The iPhone remembers acknowledged ids (watch-acked-ids.json)
+//                    and keeps any acknowledgement it could not hand over yet.
 
 // MARK: - Provenance
 
@@ -111,6 +114,7 @@ enum RisePacific {
     private static let dayKeyFormatter = formatter("yyyy-MM-dd")
     private static let weekdayTimeFormatter = formatter("EEE h:mm a")
     private static let monthDayFormatter = formatter("MMM d")
+    private static let seasonDayFormatter = formatter("MM-dd")
 
     /// "Nov 18, 2026" - what zonedDateLabel() writes on an en-US iPhone.
     static func dateLabel(_ date: Date) -> String {
@@ -125,6 +129,11 @@ enum RisePacific {
     /// "2026-11-18" - pacificDateKey().
     static func dayKey(_ date: Date) -> String {
         dayKeyFormatter.string(from: date)
+    }
+
+    /// "11-02" - regulationMonthDay(): the "MM-DD" ODFW season windows use.
+    static func monthDay(_ date: Date) -> String {
+        seasonDayFormatter.string(from: date)
     }
 
     /// Wall-clock seconds since Pacific midnight.
@@ -224,6 +233,232 @@ struct RiseWatchPlanner: Codable, Equatable {
     var best: RiseWatchPlannerDay?
 }
 
+// MARK: - ODFW season and snow access
+
+/// regulationSeasonStatus() on the page. Anything unrecognised is unknown:
+/// the Watch never calls a water open or closed on a rule it cannot read.
+enum RiseSeasonStatus: String, Codable, Equatable {
+    case open
+    case closed
+    case partial
+    case unknown
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        let raw = (try? container.decode(String.self)) ?? ""
+        self = RiseSeasonStatus(rawValue: raw) ?? .unknown
+    }
+}
+
+/// One season window as ODFW_REGULATIONS writes it: { allYear } or
+/// { from, to } in "MM-DD", inclusive, wrapping the new year when from is
+/// later than to. A section of a water also has a name.
+struct RiseSeasonWindow: Codable, Equatable {
+    var name: String?
+    var allYear: Bool?
+    var from: String?
+    var to: String?
+
+    init(name: String? = nil, allYear: Bool? = nil, from: String? = nil, to: String? = nil) {
+        self.name = name
+        self.allYear = allYear
+        self.from = from
+        self.to = to
+    }
+
+    /// "01-01" to "12-31": two-digit month 01-12, a dash, two-digit day 01-31.
+    static func isMonthDay(_ text: String?) -> Bool {
+        guard let text = text else { return false }
+        let characters = Array(text)
+        guard characters.count == 5, characters[2] == "-" else { return false }
+        let digits = [characters[0], characters[1], characters[3], characters[4]]
+        guard digits.allSatisfy({ $0.isASCII && $0.isNumber }),
+              let month = Int(String(characters[0...1])),
+              let day = Int(String(characters[3...4])) else {
+            return false
+        }
+        return (1...12).contains(month) && (1...31).contains(day)
+    }
+
+    /// seasonWindowOpen() on the page: true or false, or nil for a malformed
+    /// window - never silently open or closed.
+    func contains(monthDay: String) -> Bool? {
+        if allYear == true { return true }
+        guard let from = from, let to = to, Self.isMonthDay(from), Self.isMonthDay(to) else { return nil }
+        return from <= to
+            ? monthDay >= from && monthDay <= to
+            : monthDay >= from || monthDay <= to
+    }
+}
+
+extension RiseSeasonWindow {
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(
+            name: container.optionalValue(.name),
+            allYear: container.optionalValue(.allYear),
+            from: container.optionalValue(.from),
+            to: container.optionalValue(.to)
+        )
+    }
+}
+
+/// A water's whole season: one window, or named sections.
+struct RiseSeason: Codable, Equatable {
+    var allYear: Bool?
+    var from: String?
+    var to: String?
+    var sections: [RiseSeasonWindow]?
+
+    init(allYear: Bool? = nil, from: String? = nil, to: String? = nil, sections: [RiseSeasonWindow]? = nil) {
+        self.allYear = allYear
+        self.from = from
+        self.to = to
+        self.sections = sections
+    }
+
+    /// regulationSeasonDetail() on the page: every section open is open,
+    /// none open is closed, some open is partial; any malformed window, or
+    /// no sections at all, is unknown.
+    func status(monthDay: String) -> RiseSeasonStatus {
+        if let sections = sections {
+            let states = sections.map { $0.contains(monthDay: monthDay) }
+            if states.isEmpty || states.contains(where: { $0 == nil }) { return .unknown }
+            let openCount = states.filter { $0 == true }.count
+            if openCount == states.count { return .open }
+            if openCount == 0 { return .closed }
+            return .partial
+        }
+        guard let open = RiseSeasonWindow(allYear: allYear, from: from, to: to).contains(monthDay: monthDay) else { return .unknown }
+        return open ? .open : .closed
+    }
+}
+
+extension RiseSeason {
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(
+            allYear: container.optionalValue(.allYear),
+            from: container.optionalValue(.from),
+            to: container.optionalValue(.to),
+            sections: container.optionalValue(.sections)
+        )
+    }
+}
+
+/// The ODFW season the page put in the pack. `status` and `label` are as of
+/// the pack's date; `windows` lets the Watch decide again on the day it is
+/// read, because a pack built Oct 30 must not still read fishable Nov 2.
+/// `windows` is nil for a water whose rule is not confirmed (verify): that
+/// is always unknown.
+struct RiseWatchRegulation: Codable, Equatable {
+    var status: RiseSeasonStatus
+    var label: String
+    var year: Int?
+    var stale: Bool?
+    var windows: RiseSeason?
+
+    init(status: RiseSeasonStatus, label: String, year: Int? = nil, stale: Bool? = nil, windows: RiseSeason? = nil) {
+        self.status = status
+        self.label = label
+        self.year = year
+        self.stale = stale
+        self.windows = windows
+    }
+
+    /// REGULATION_STATUS_LABELS on the page.
+    static func baseLabel(_ status: RiseSeasonStatus) -> String {
+        switch status {
+        case .open: return "Open season (ODFW)"
+        case .closed: return "Closed season (ODFW)"
+        case .partial: return "Some sections closed (ODFW)"
+        case .unknown: return "Season not confirmed - check ODFW"
+        }
+    }
+
+    /// On Oregon's calendar, whatever zone the Watch is in.
+    func seasonStatus(on date: Date) -> RiseSeasonStatus {
+        guard let windows = windows else { return .unknown }
+        return windows.status(monthDay: RisePacific.monthDay(date))
+    }
+
+    /// regulationsStaleness(): the phone said the summary may be out of date,
+    /// or it is March 1 or later in the year after the booklet's.
+    func rulesMayBeOutOfDate(on date: Date) -> Bool {
+        if stale == true { return true }
+        guard let year = year else { return false }
+        let parts = RisePacific.calendar.dateComponents([.year, .month], from: date)
+        guard let nowYear = parts.year, let month = parts.month else { return false }
+        return nowYear > year + 1 || (nowYear > year && month >= 3)
+    }
+
+    /// regulationStatusLabel(): "(2026 rules)" in place of "(ODFW)" while
+    /// the rules may be out of date; the unknown label never changes.
+    func label(on date: Date) -> String {
+        let status = seasonStatus(on: date)
+        let base = Self.baseLabel(status)
+        guard status != .unknown, rulesMayBeOutOfDate(on: date), let year = year else { return base }
+        return base.replacingOccurrences(of: "(ODFW)", with: "(\(year) rules)")
+    }
+}
+
+extension RiseWatchRegulation {
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(
+            status: container.value(.status, or: RiseSeasonStatus.unknown),
+            label: RiseWatchValidation.clean(container.value(.label, or: ""), limit: 60),
+            year: container.optionalValue(.year),
+            stale: container.optionalValue(.stale),
+            windows: container.optionalValue(.windows)
+        )
+    }
+}
+
+/// A typical snow closure (SEASONAL_ACCESS_CLOSURES on the page): roads or
+/// trails, not ODFW. `snowedIn` is as of the pack's date; the window lets
+/// the Watch tell on a later day. A partial closure is never "snowed in".
+struct RiseWatchAccess: Codable, Equatable {
+    var label: String
+    var typical: String
+    var from: String?
+    var to: String?
+    var partial: Bool?
+    var snowedIn: Bool?
+
+    init(label: String, typical: String, from: String? = nil, to: String? = nil, partial: Bool? = nil, snowedIn: Bool? = nil) {
+        self.label = label
+        self.typical = typical
+        self.from = from
+        self.to = to
+        self.partial = partial
+        self.snowedIn = snowedIn
+    }
+
+    func isSnowedIn(on date: Date) -> Bool {
+        if partial == true { return false }
+        guard let inside = RiseSeasonWindow(from: from, to: to).contains(monthDay: RisePacific.monthDay(date)) else {
+            // No usable window: only what the phone said.
+            return snowedIn ?? false
+        }
+        return inside
+    }
+}
+
+extension RiseWatchAccess {
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(
+            label: RiseWatchValidation.clean(container.value(.label, or: ""), limit: 80),
+            typical: RiseWatchValidation.clean(container.value(.typical, or: ""), limit: 120),
+            from: container.optionalValue(.from),
+            to: container.optionalValue(.to),
+            partial: container.optionalValue(.partial),
+            snowedIn: container.optionalValue(.snowedIn)
+        )
+    }
+}
+
 struct RiseWatchWater: Codable, Equatable, Identifiable {
     var id: String
     var name: String
@@ -245,6 +480,10 @@ struct RiseWatchWater: Codable, Equatable, Identifiable {
     var flies: [String]
     var hatches: [String]
     var planner: RiseWatchPlanner?
+    /// The ODFW season. nil in a pack from a build before it was carried.
+    var regulation: RiseWatchRegulation? = nil
+    /// A typical snow closure, or nil.
+    var access: RiseWatchAccess? = nil
 }
 
 extension RiseWatchWater {
@@ -268,11 +507,40 @@ extension RiseWatchWater {
             temp: container.value(.temp, or: RiseWatchReading.none),
             flies: Array(container.value(.flies, or: [String]()).map { RiseWatchValidation.clean($0, limit: 60) }.filter { !$0.isEmpty }.prefix(10)),
             hatches: Array(container.value(.hatches, or: [String]()).map { RiseWatchValidation.clean($0, limit: 40) }.prefix(6)),
-            planner: container.optionalValue(.planner)
+            planner: container.optionalValue(.planner),
+            regulation: container.optionalValue(.regulation),
+            access: container.optionalValue(.access)
         )
     }
 
     var isLake: Bool { type.lowercased() == "lake" }
+
+    /// nil when the pack carries no season (an older pack).
+    func seasonStatus(on date: Date) -> RiseSeasonStatus? {
+        regulation?.seasonStatus(on: date)
+    }
+
+    /// Closed by ODFW season today: the score and the countdown are not shown.
+    func isClosedSeason(on date: Date) -> Bool {
+        seasonStatus(on: date) == .closed
+    }
+
+    /// What the Watch prints for the season: "Closed season (ODFW)", "Some
+    /// sections closed (ODFW)", "Season not confirmed - check ODFW". nil for
+    /// an open water, or a pack that carries no season.
+    func seasonNotice(on date: Date) -> String? {
+        guard let regulation = regulation else { return nil }
+        return regulation.seasonStatus(on: date) == .open ? nil : regulation.label(on: date)
+    }
+
+    func isSnowedIn(on date: Date) -> Bool {
+        access?.isSnowedIn(on: date) ?? false
+    }
+
+    /// "Typically snowed in", or nil.
+    func accessNotice(on date: Date) -> String? {
+        isSnowedIn(on: date) ? "Typically snowed in" : nil
+    }
 }
 
 struct RiseWatchPack: Codable, Equatable {
@@ -293,6 +561,22 @@ struct RiseWatchPack: Codable, Equatable {
 
     func water(id: String) -> RiseWatchWater? {
         waters.first { $0.id == id }
+    }
+
+    /// How far a stored pack's stamp may be ahead of the Watch's clock before
+    /// it is treated as a phone clock error rather than as newer.
+    static let clockSkewSeconds: TimeInterval = 5 * 60
+
+    /// Whether an arriving pack replaces the one on the Watch. The same bytes
+    /// are not a change. An older stamp loses - application contexts can
+    /// arrive out of order - unless the stored stamp is in the future: one
+    /// pack built while the phone's clock was ahead must not block every
+    /// later one.
+    static func shouldReplace(current: RiseWatchPack?, currentData: Data?, with incoming: RiseWatchPack, data: Data, now: Date) -> Bool {
+        if let currentData = currentData, currentData == data { return false }
+        guard let stored = current?.generatedDate, let arriving = incoming.generatedDate else { return true }
+        if arriving >= stored { return true }
+        return stored.timeIntervalSince(now) > clockSkewSeconds
     }
 
     /// Validates what arrived: a pack with no usable water, or from a
@@ -739,6 +1023,9 @@ enum RiseCatchState: String, Codable, Comparable {
 struct RiseQueuedCatch: Codable, Equatable {
     var entry: RiseWatchCatch
     var state: RiseCatchState
+    /// When WatchConnectivity said the iPhone had it. ISO 8601; nil before
+    /// that, and in a queue file written by an earlier build.
+    var deliveredAt: String? = nil
 }
 
 /// The Watch's durable record of its catches. Written to a JSON file before
@@ -796,10 +1083,11 @@ struct RiseCatchQueue: Codable, Equatable {
     }
 
     /// Moves catches forward; never backwards.
-    mutating func advance(_ ids: [String], to state: RiseCatchState) {
+    mutating func advance(_ ids: [String], to state: RiseCatchState, now: Date = Date()) {
         let wanted = Set(ids)
         for index in items.indices where wanted.contains(items[index].entry.watchId) && items[index].state < state {
             items[index].state = state
+            if state == .delivered { items[index].deliveredAt = RisePacific.isoString(now) }
         }
     }
 
@@ -819,6 +1107,37 @@ struct RiseCatchQueue: Codable, Equatable {
         let lost = items.filter { $0.state == .sent && !outstanding.contains($0.entry.watchId) }.map { $0.entry.watchId }
         requeue(lost)
         return lost
+    }
+
+    /// Delivered catches the iPhone has not confirmed for a day are sent
+    /// again. The iPhone may have lost them (a full disk kept them only in
+    /// memory) or its acknowledgement may never have arrived; it re-acks one
+    /// the journal already took instead of adding it twice.
+    @discardableResult
+    mutating func requeueDelivered(olderThan seconds: TimeInterval, now: Date) -> [String] {
+        var requeued: [String] = []
+        for index in items.indices where items[index].state == .delivered {
+            let since = RisePacific.parseISO(items[index].deliveredAt) ?? items[index].entry.loggedDate ?? now
+            guard now.timeIntervalSince(since) >= seconds else { continue }
+            items[index].state = .queued
+            items[index].deliveredAt = nil
+            requeued.append(items[index].entry.watchId)
+        }
+        return requeued
+    }
+
+    /// This queue (as read from disk) and catches held only in memory, once
+    /// each. Where both have a catch, the further-along state wins.
+    func merged(with other: RiseCatchQueue) -> RiseCatchQueue {
+        var result = self
+        for item in other.items {
+            if let index = result.items.firstIndex(where: { $0.entry.watchId == item.entry.watchId }) {
+                if result.items[index].state < item.state { result.items[index] = item }
+            } else {
+                result.items.append(item)
+            }
+        }
+        return result
     }
 
     var toSend: [RiseWatchCatch] {
@@ -859,18 +1178,29 @@ struct RiseCatchQueue: Codable, Equatable {
 
 enum RiseLoadResult<Value> {
     case missing
+    /// Read, but not decodable: damaged. Set aside, never overwritten.
     case unreadable
+    /// There, but could not be read just now (file protection before the
+    /// first unlock, an I/O error). Left exactly as it is - never set aside
+    /// and never overwritten - and read again later.
+    case readFailed
     case loaded(Value)
 }
 
-/// Atomic JSON files. Missing and unreadable are different, as they are for
-/// the journal on the page: an unreadable file is set aside, never
-/// overwritten with an empty list.
+/// Atomic JSON files. Missing, damaged and not-readable-right-now are three
+/// different things, as they are for the journal on the page: a damaged file
+/// is set aside, never overwritten with an empty list, and a file that only
+/// failed to read is left alone.
 enum RiseJSONFile {
     static func load<Value: Decodable>(_ type: Value.Type, from url: URL) -> RiseLoadResult<Value> {
         guard FileManager.default.fileExists(atPath: url.path) else { return .missing }
-        guard let data = try? Data(contentsOf: url),
-              let value = try? JSONDecoder().decode(type, from: data) else {
+        let data: Data
+        do {
+            data = try Data(contentsOf: url)
+        } catch {
+            return .readFailed
+        }
+        guard let value = try? JSONDecoder().decode(type, from: data) else {
             return .unreadable
         }
         return .loaded(value)
@@ -913,17 +1243,20 @@ enum RiseJSONFile {
 }
 
 extension RiseCatchQueue {
-    /// The queue on disk. An unreadable file is set aside and an empty queue
-    /// started; the set-aside copy is kept for support to recover.
-    static func load(from url: URL) -> RiseCatchQueue {
+    /// The queue on disk. A damaged file is set aside and an empty queue
+    /// started; the set-aside copy is kept for support to recover. nil when
+    /// the file is there but could not be read (or could not be set aside):
+    /// the caller must not write over it.
+    static func load(from url: URL) -> RiseCatchQueue? {
         switch RiseJSONFile.load(RiseCatchQueue.self, from: url) {
         case .loaded(let queue):
             return queue
         case .missing:
             return RiseCatchQueue()
         case .unreadable:
-            RiseJSONFile.setAside(url)
-            return RiseCatchQueue()
+            return RiseJSONFile.setAside(url) == nil ? nil : RiseCatchQueue()
+        case .readFailed:
+            return nil
         }
     }
 
@@ -954,6 +1287,23 @@ enum RiseWatchInbox {
         return pending.filter { !done.contains($0.watchId) }
     }
 
+    /// What arrived, split into catches to hold for the page and ids the
+    /// journal already took. An already-acknowledged catch is never held or
+    /// offered again - the angler may have deleted it since - only
+    /// acknowledged to the Watch again.
+    static func split(_ incoming: [RiseWatchCatch], acked: RiseWatchAckLog) -> (fresh: [RiseWatchCatch], alreadySaved: [String]) {
+        var fresh: [RiseWatchCatch] = []
+        var alreadySaved: [String] = []
+        for entry in incoming {
+            if acked.isAcked(entry.watchId) {
+                if !alreadySaved.contains(entry.watchId) { alreadySaved.append(entry.watchId) }
+            } else {
+                fresh.append(entry)
+            }
+        }
+        return (fresh, alreadySaved)
+    }
+
     static func load(from url: URL) -> RiseLoadResult<[RiseWatchCatch]> {
         RiseJSONFile.load([RiseWatchCatch].self, from: url)
     }
@@ -961,6 +1311,82 @@ enum RiseWatchInbox {
     @discardableResult
     static func save(_ pending: [RiseWatchCatch], to url: URL) -> Bool {
         RiseJSONFile.save(pending, to: url)
+    }
+}
+
+// MARK: - The iPhone's acknowledgements
+
+/// Which Watch catches the page has confirmed in the journal, and which of
+/// those confirmations have not been handed to WatchConnectivity yet. Kept in
+/// Application Support as watch-acked-ids.json.
+///
+/// - `acked` is bounded (oldest dropped first). An id in it is never held
+///   or offered to the page again, so a catch deleted on the phone does not
+///   come back when the Watch resends it.
+/// - `unsent` is every acknowledgement still owed to the Watch: the session
+///   was not activated, or the Watch app not installed, when it was due.
+///   Flushed at activation and whenever the Watch becomes reachable.
+struct RiseWatchAckLog: Codable, Equatable {
+    static let maxIds = 2000
+
+    var acked: [String] = []
+    var unsent: [String] = []
+
+    init(acked: [String] = [], unsent: [String] = []) {
+        self.acked = acked
+        self.unsent = unsent
+    }
+
+    func isAcked(_ watchId: String) -> Bool {
+        acked.contains(watchId)
+    }
+
+    /// The page confirmed these (again): remember them, and owe the Watch an
+    /// acknowledgement for each.
+    mutating func record(_ ids: [String]) {
+        let valid = ids.filter(RiseWatchValidation.isValidWatchId)
+        for watchId in valid {
+            if !acked.contains(watchId) { acked.append(watchId) }
+            if !unsent.contains(watchId) { unsent.append(watchId) }
+        }
+        if acked.count > Self.maxIds { acked.removeFirst(acked.count - Self.maxIds) }
+        if unsent.count > Self.maxIds { unsent.removeFirst(unsent.count - Self.maxIds) }
+    }
+
+    /// Handed to transferUserInfo, which queues it durably from here on.
+    mutating func markSent(_ ids: [String]) {
+        let sent = Set(ids)
+        unsent.removeAll { sent.contains($0) }
+    }
+
+    /// The file on disk and what was recorded in memory while it could not be
+    /// read, once each, still bounded.
+    func merged(with other: RiseWatchAckLog) -> RiseWatchAckLog {
+        var result = self
+        for watchId in other.acked where !result.acked.contains(watchId) { result.acked.append(watchId) }
+        for watchId in other.unsent where !result.unsent.contains(watchId) { result.unsent.append(watchId) }
+        if result.acked.count > Self.maxIds { result.acked.removeFirst(result.acked.count - Self.maxIds) }
+        if result.unsent.count > Self.maxIds { result.unsent.removeFirst(result.unsent.count - Self.maxIds) }
+        return result
+    }
+
+    static func load(from url: URL) -> RiseLoadResult<RiseWatchAckLog> {
+        RiseJSONFile.load(RiseWatchAckLog.self, from: url)
+    }
+
+    @discardableResult
+    func save(to url: URL) -> Bool {
+        RiseJSONFile.save(self, to: url)
+    }
+}
+
+extension RiseWatchAckLog {
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(
+            acked: container.value(.acked, or: [String]()).filter(RiseWatchValidation.isValidWatchId),
+            unsent: container.value(.unsent, or: [String]()).filter(RiseWatchValidation.isValidWatchId)
+        )
     }
 }
 
@@ -998,6 +1424,16 @@ enum RiseWatchTransfer {
 
     static func savedAck(ids: [String]) -> [String: Any] {
         [kindKey: savedKind, "ids": ids.filter(RiseWatchValidation.isValidWatchId)]
+    }
+
+    /// Acknowledgements in transfers of at most `size` ids, so a long backlog
+    /// never becomes one oversized userInfo.
+    static func savedAcks(ids: [String], size: Int = 200) -> [[String: Any]] {
+        let valid = ids.filter(RiseWatchValidation.isValidWatchId)
+        let step = max(1, size)
+        return stride(from: 0, to: valid.count, by: step).map { start in
+            savedAck(ids: Array(valid[start..<min(start + step, valid.count)]))
+        }
     }
 
     static func savedIds(fromUserInfo info: [String: Any]) -> [String] {

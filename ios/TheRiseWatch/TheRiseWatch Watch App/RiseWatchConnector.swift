@@ -31,7 +31,7 @@ final class RiseWatchConnector: NSObject, WCSessionDelegate {
         guard WCSession.isSupported() else { return [] }
         let session = WCSession.default
         guard session.activationState == .activated else { return [] }
-        let carried = outstandingIds()
+        let carried = outstandingIds() ?? []
         var handed: [String] = []
         for entry in entries {
             if carried.contains(entry.watchId) {
@@ -45,21 +45,28 @@ final class RiseWatchConnector: NSObject, WCSessionDelegate {
         return handed
     }
 
-    private func outstandingIds() -> Set<String> {
-        Set(WCSession.default.outstandingUserInfoTransfers.compactMap { RiseWatchTransfer.watchId(inUserInfo: $0.userInfo) })
+    /// Catch ids the system is still carrying. nil until the session is
+    /// activated: an empty answer then would look like every transfer lost.
+    func outstandingIds() -> Set<String>? {
+        guard WCSession.isSupported() else { return nil }
+        let session = WCSession.default
+        guard session.activationState == .activated else { return nil }
+        return Set(session.outstandingUserInfoTransfers.compactMap { RiseWatchTransfer.watchId(inUserInfo: $0.userInfo) })
     }
 
     // MARK: WCSessionDelegate
 
+    /// The model sends what is queued at once, and only a few seconds later
+    /// looks for transfers the system dropped - after any late didFinish or
+    /// catchesSaved from before has been heard.
     func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) {
         guard activationState == .activated else { return }
-        let carried = outstandingIds()
         let latest = RiseWatchTransfer.pack(fromApplicationContext: session.receivedApplicationContext)
         Task { @MainActor [weak self] in
             if let latest = latest {
                 self?.model?.receivePack(latest.pack, data: latest.data)
             }
-            self?.model?.connectorActivated(outstanding: carried)
+            self?.model?.connectorActivated()
         }
     }
 
