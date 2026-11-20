@@ -11606,7 +11606,7 @@
           <div class="water-card-main">
             <div class="water-top">
               <div>
-                <div class="water-rank-label">${seasonStatus === "closed" ? `${isTop ? "" : `#${rank} - `}${regulationStatusLabel("closed")}` : isTop ? "Top Water Today" : `#${rank} Today`}</div>
+                <div class="water-rank-label">${seasonStatus === "closed" || snowedIn ? `${isTop ? "" : `#${rank} - `}${esc(waterClosedLabel(water))}` : isTop ? "Top Water Today" : `#${rank} Today`}</div>
                 ${seasonStatus === "partial" || seasonStatus === "unknown" ? `<div class="regs-flag regs-${seasonStatus}">${esc(regulationStatusLabel(seasonStatus))}</div>` : ""}
                 ${snowedIn ? `<div class="regs-flag regs-snow">${esc(SNOWED_IN_REASON)}</div>` : ""}
                 ${isTop ? `<h2>${water.name}</h2>` : `<strong>${water.name}</strong>`}

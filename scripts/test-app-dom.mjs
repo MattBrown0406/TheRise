@@ -2243,10 +2243,18 @@ try {
   group("Alerts: opt-in per saved water, persisted, and posted to the container");
 
   {
+    // The container answers every setRules and status with the permission;
+    // here the angler allows notifications at the first prompt.
     const page = await openApp(browser, {
       before: `${dailyForecastFixture}
         window.__alerts = [];
-        window.webkit = { messageHandlers: { riseAlerts: { postMessage: (message) => window.__alerts.push(JSON.parse(JSON.stringify(message))) } } };`
+        window.webkit = { messageHandlers: { riseAlerts: { postMessage: (message) => {
+          window.__alerts.push(JSON.parse(JSON.stringify(message)));
+          if (message.action !== "setRules" && message.action !== "status") return;
+          const status = message.action === "setRules" && message.requestPermission ? "granted" : (window.__alertStatus || "notDetermined");
+          window.__alertStatus = status;
+          setTimeout(() => window.riseAlertsResult({ action: "permission", status }), 0);
+        } } } };`
     });
     const startup = await page.evaluate(() => window.__alerts.slice());
     assert(startup.length === 1 && startup[0].action === "status",
@@ -2272,6 +2280,7 @@ try {
       editor().querySelector('[data-alert-toggle="flow"]').click();
       await new Promise((done) => requestAnimationFrame(done));
       const afterToggle = window.__alerts.slice();
+      await new Promise((done) => setTimeout(done, 20));
       const min = editor().querySelector("input[data-alert-field=flowMin]");
       min.value = "3500";
       min.dispatchEvent(new Event("change", { bubbles: true }));
@@ -2383,6 +2392,136 @@ try {
     assert(startup.length === 1 && startup[0].action === "setRules" && startup[0].requestPermission === false
       && startup[0].rules[0]?.waterId === "crooked" && startup[0].rules[0].flow.min === 200,
       "a launch with rules hands them to the container without a permission prompt");
+    await page.close();
+  }
+
+  /* ---------------------------------------------------------------- */
+  group("Alerts: a container reply does not rebuild the editor under the angler's finger (A2, A5, A8)");
+
+  {
+    // This bridge REPLIES, as RiseViewController does, with whatever
+    // window.__alertStatus says iOS currently reports.
+    const page = await openApp(browser, {
+      before: `
+        localStorage.setItem("riseSavedWaters.v1", JSON.stringify(["lower-deschutes", "metolius"]));
+        window.__alerts = [];
+        window.__alertStatus = "notDetermined";
+        window.webkit = { messageHandlers: { riseAlerts: { postMessage: (message) => {
+          window.__alerts.push(JSON.parse(JSON.stringify(message)));
+          if (message.action === "setRules" || message.action === "status") {
+            setTimeout(() => window.riseAlertsResult({ action: "permission", status: window.__alertStatus }), 5);
+          }
+        } } } };`
+    });
+
+    const focusKept = await page.evaluate(async (wait) => {
+      const settleIn = () => new Promise((done) => setTimeout(done, wait));
+      expandedWaterId = "lower-deschutes";
+      saveActiveWater("lower-deschutes");
+      renderAll();
+      activateTab("waters");
+      const editor = () => document.querySelector('#waters [data-alert-editor="lower-deschutes"]');
+      // A8: the toggle goes on over a range with no rule to send...
+      const min = editor().querySelector("input[data-alert-field=flowMin]");
+      min.value = "6000";
+      min.dispatchEvent(new Event("change", { bubbles: true }));
+      window.__alerts.length = 0;
+      editor().querySelector('[data-alert-toggle="flow"]').click();
+      await settleIn();
+      const toggleMessage = window.__alerts.find((message) => message.action === "setRules");
+      // ...so the edit that makes it valid is the one that asks.
+      window.__alerts.length = 0;
+      const field = editor().querySelector("input[data-alert-field=flowMax]");
+      field.focus();
+      field.value = "7000";
+      field.dispatchEvent(new Event("change", { bubbles: true }));
+      const fixMessage = window.__alerts.find((message) => message.action === "setRules");
+      await settleIn();
+      // A2: the reply said nothing new - the field is the same node and keeps focus.
+      const sameNode = editor()?.querySelector("input[data-alert-field=flowMax]") === field;
+      const focused = document.activeElement === field;
+      // Now the angler allows notifications in Settings while typing.
+      window.__alertStatus = "granted";
+      field.value = "7100";
+      field.dispatchEvent(new Event("change", { bubbles: true }));
+      await settleIn();
+      return {
+        toggleSent: toggleMessage?.rules?.some((rule) => rule.waterId === "lower-deschutes") ?? null,
+        fixAsked: fixMessage?.requestPermission === true && fixMessage.rules.some((rule) => rule.waterId === "lower-deschutes"),
+        sameNode,
+        focused,
+        stillSame: editor()?.querySelector("input[data-alert-field=flowMax]") === field && document.activeElement === field,
+        status: editor()?.querySelector(".alert-editor-status")?.textContent || ""
+      };
+    }, 40);
+    assert(focusKept.toggleSent === false, "a flow toggle over an invalid range sends no flow rule");
+    assert(focusKept.fixAsked, "the edit that makes the range valid asks iOS for permission (A8)");
+    assert(focusKept.sameNode && focusKept.focused, "an unchanged permission reply leaves the focused field in place (A2)");
+    assert(focusKept.stillSame && /Notifications on/.test(focusKept.status),
+      `a changed permission while a field has focus updates the status line in place (${focusKept.status})`);
+
+    const todayStale = await page.evaluate(() => {
+      activateTab("today");
+      return [...document.querySelectorAll("#today .alerts-list li")].map((item) => item.textContent.replace(/\s+/g, " ").trim()).join(" | ");
+    });
+    assert(/Flow 6,000-7,100 cfs/.test(todayStale), `an edit saved without a repaint still shows on Today's alert list (${todayStale})`);
+
+    // A5: hide a saved water with an alert, then follow Set alerts to it.
+    const hidden = await page.evaluate(async (wait) => {
+      window.__alerts.length = 0;
+      toggleHiddenWater("lower-deschutes");
+      renderAll();
+      const lastRules = window.__alerts.filter((message) => message.action === "setRules").pop();
+      activateTab("today");
+      const line = [...document.querySelectorAll("#today .alerts-list li")].map((item) => item.textContent.replace(/\s+/g, " ").trim()).find((text) => /Lower Deschutes/.test(text)) || "";
+      document.querySelector('#today [data-edit-alerts="lower-deschutes"]').click();
+      await new Promise((done) => setTimeout(done, wait));
+      const editor = document.querySelector('#waters [data-alert-editor="lower-deschutes"]');
+      const rect = editor?.getBoundingClientRect();
+      return {
+        withdrawn: lastRules && !lastRules.rules.some((rule) => rule.waterId === "lower-deschutes"),
+        kept: JSON.parse(localStorage.getItem("riseAlertRules.v1") || "{}")["lower-deschutes"]?.flow?.enabled === true,
+        line,
+        screen: activeScreenId(),
+        visible: Boolean(rect) && rect.top >= 0 && rect.top < window.innerHeight,
+        paused: editor?.textContent.includes("alerts are paused") || false
+      };
+    }, 40);
+    assert(hidden.withdrawn && hidden.kept, "hiding the water withdraws its alert from the container but keeps the rule");
+    assert(/\(hidden - alerts paused\)/.test(hidden.line), `the planner lists it as paused (${hidden.line})`);
+    assert(hidden.screen === "waters" && hidden.visible && hidden.paused, "Set alerts on a hidden water opens its card, which says the alerts are paused");
+    await page.close();
+  }
+
+  /* ---------------------------------------------------------------- */
+  group("Closures: a water snowed in today is labelled where its score is shown (D2, D10)");
+
+  {
+    const page = await openApp(browser, {
+      before: `localStorage.setItem("riseSavedWaters.v1", JSON.stringify(["hosmer", "east-lake"]));`
+    });
+    const shown = await page.evaluate(() => {
+      const realKey = pacificDateKey;
+      window.pacificDateKey = (date) => (date ? realKey(date) : "2026-12-15");
+      renderAll();
+      activateTab("waters");
+      const chip = [...document.querySelectorAll("#waters .water-chip-card")].find((card) => card.dataset.water === "east-lake");
+      const card = document.querySelector('#waters [data-water="hosmer"].ranked-water-card');
+      const top = watersSearchState().topWater;
+      activateTab("today");
+      const result = {
+        chip: chip?.textContent.replace(/\s+/g, " ").trim() || "",
+        card: card?.querySelector(".regs-flag")?.textContent || "",
+        top: top?.id,
+        best: document.querySelector('#today .command-card.primary[data-go="waters"] strong')?.textContent || ""
+      };
+      window.pacificDateKey = realKey;
+      return result;
+    });
+    assert(/Typically snowed in/.test(shown.chip), `the saved East Lake chip says it is snowed in in December (${shown.chip})`);
+    assert(/Typically snowed in/.test(shown.card), `Hosmer's rank card carries the flag (${shown.card})`);
+    assert(!["east-lake", "hosmer", "paulina"].includes(shown.top) && shown.best && !/East Lake|Hosmer/.test(shown.best),
+      `December's top pick is a water that can be reached (${shown.top}, ${shown.best})`);
     await page.close();
   }
 
