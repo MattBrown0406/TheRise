@@ -1772,7 +1772,8 @@ group("Apple Watch: the trip pack carries the ODFW season and snow access, re-ev
     assert(false, "the regulations table has a verify water to test with");
   }
 
-  assert(crane.access && crane.access.snowedIn === false && crane.access.partial === false && crane.access.from === "11-15" && crane.access.to === "05-25"
+  const cranePartial = context.seasonalClosureFor(water("crane-prairie"), "2000-11-15")?.partial === true;
+  assert(crane.access && crane.access.snowedIn === false && crane.access.partial === cranePartial && crane.access.from === "11-15" && crane.access.to === "05-25"
     && crane.access.label.length > 0 && crane.access.typical.length > 0,
     `Nov 2 is before the typical OR-46 closure, but the window travels so the Watch can tell on Nov 20 (${JSON.stringify(crane.access)})`);
   const dec = packOn("2026-12-10T19:00:00.000Z")["hosmer"];
