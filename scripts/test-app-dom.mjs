@@ -3363,6 +3363,53 @@ try {
   }
 
   {
+    // Delivered, deleted on the phone, then delivered again (the Watch resent
+    // it, or the iPhone offered it again): acknowledged, never re-inserted -
+    // also after the app is reopened.
+    const page = await openApp(browser, { before: watchBridge });
+    await seedLogs(page, [sampleEntry({ notes: "PHONE", loggedAt: "2026-06-21T20:00:00.000Z" })]);
+    const watchId = "A1B2C3D4-0000-4000-8000-0000000000DE";
+    const delivered = [watchCatchFixture(watchId, "2026-06-21T18:00:00.000Z")];
+    const landed = await page.evaluate(async (catches, id) => {
+      window.__watch.length = 0;
+      activateTab("log");
+      await new Promise((done) => requestAnimationFrame(done));
+      window.riseWatchCatches({ catches });
+      await new Promise((done) => requestAnimationFrame(done));
+      const index = getLogs().findIndex((entry) => entry.watchId === id);
+      document.querySelector(`[data-delete-log='${index}']`).click();
+      await new Promise((done) => requestAnimationFrame(done));
+      const afterDelete = getLogs().map((entry) => entry.watchId || entry.notes);
+      window.__watch.length = 0;
+      window.riseWatchCatches({ catches });
+      await new Promise((done) => requestAnimationFrame(done));
+      return {
+        index,
+        afterDelete,
+        afterRedeliver: getLogs().map((entry) => entry.watchId || entry.notes),
+        cards: document.querySelectorAll("#log [data-watch-tag]").length,
+        acks: window.__watch.filter((message) => message.action === "catchesSaved")
+      };
+    }, delivered, watchId);
+    assert(landed.index >= 0 && landed.afterDelete.join(",") === "PHONE", `the Watch catch landed and the Delete button removed it (${landed.afterDelete.join(",")})`);
+    assert(landed.afterRedeliver.join(",") === "PHONE" && landed.cards === 0, `delivered again, it is not re-inserted (${landed.afterRedeliver.join(",")})`);
+    assert(landed.acks.length === 1 && landed.acks[0].ids.join(",") === watchId, `but it is acknowledged again so the iPhone and the Watch let go of it (${JSON.stringify(landed.acks)})`);
+    await page.reload({ waitUntil: "load" });
+    await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => done())));
+    const reopened = await page.evaluate(async (catches) => {
+      window.__watch.length = 0;
+      window.riseWatchCatches({ catches });
+      await new Promise((done) => requestAnimationFrame(done));
+      return {
+        logs: getLogs().map((entry) => entry.watchId || entry.notes),
+        acks: window.__watch.filter((message) => message.action === "catchesSaved").length
+      };
+    }, delivered);
+    assert(reopened.logs.join(",") === "PHONE" && reopened.acks === 1, `and still not after the app is reopened (${reopened.logs.join(",")}, ${reopened.acks} ack)`);
+    await page.close();
+  }
+
+  {
     const page = await openApp(browser, { before: watchBridge });
     await seedLogs(page, [sampleEntry({ notes: "ONLY", loggedAt: "2026-06-21T20:00:00.000Z" })]);
     const result = await page.evaluate(async (delivered) => {
