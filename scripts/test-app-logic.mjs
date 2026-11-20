@@ -1768,5 +1768,145 @@ group("Apple Watch: catches merge once, in order, without moving anyone's index"
   app.setLogs([]);
 }
 
+group("Audit round 2, batch 2: the journal, On the water and Snap a bug");
+{
+  const run = (code) => vm.runInContext(code, context);
+  const action = (selector) => app.clickActions.find(([name]) => name === selector)[1];
+  const crooked = app.waters.find((water) => water.id === "crooked");
+  const entry = (overrides = {}) => ({
+    loggedAt: "2026-06-21T18:00:00.000Z", date: "Jun 21, 2026", time: "6:00 PM",
+    waterName: "Crooked River", waterId: "crooked", fly: "Zebra Midge #18", fish: "Redband Trout",
+    length: "", count: "1", notes: "", flow: "240 cfs", flowSource: "measured", temp: "53 F", tempSource: "measured",
+    photoId: "", photo: "", ...overrides
+  });
+  const dirty = () => run("[...dirtyScreens]");
+  const clearDirty = () => run("dirtyScreens.clear()");
+  run("saveActiveWater('crooked')");
+
+  // B1: deleting from the Log screen marks every screen the journal feeds.
+  app.setLogs([entry({ notes: "A" }), entry({ notes: "B" })]);
+  clearDirty();
+  action("[data-delete-log]")({ dataset: { deleteLog: "0" } });
+  const afterDelete = dirty();
+  assert(app.getLogs().length === 1 && ["waters", "trip", "bugs", "log"].every((id) => afterDelete.includes(id)),
+    `a Log-screen delete marks Waters, Trip, Bugs and Log stale, not only the Log (${afterDelete.join(", ")})`);
+  assert(/renderScreens\("today", "waters", "trip", "bugs", "log"\);\n    \}\n\n    function syncSubscriptionStatus/.test(html),
+    "a save from the Log screen repaints every screen the journal feeds");
+
+  // B6: Worked/Ignore on a fly card marks Trip stale, where the same card is.
+  clearDirty();
+  action("[data-fly-feedback]")({ dataset: { flyFeedback: "Test Fly #99", feedbackValue: "ignored" } });
+  assert(dirty().includes("trip"), `Worked/Ignore repaints Trip's fly cards (${dirty().join(", ")})`);
+  run("delete flyFeedback['Test Fly #99']; writeStoredObject(FLY_FEEDBACK_KEY, flyFeedback)");
+
+  // B4: editing a catch with no species or fly keeps both blank.
+  app.setLogs([entry({ fish: "", fly: "" })]);
+  run("editingLogIndex = 0; logFormOpen = true");
+  context.renderLog();
+  const logMarkup = elementFor("#log").innerHTML;
+  const fishSelect = (logMarkup.match(/<select name="fish">[\s\S]*?<\/select>/) || [""])[0];
+  assert(/<option value="" selected>Species not set<\/option>/.test(fishSelect) && (fishSelect.match(/selected/g) || []).length === 1,
+    "editing a catch with no species selects \"Species not set\", not Redband Trout");
+  assert(/<input name="fly" value="" /.test(logMarkup), "and leaves its fly blank instead of filling in the water's default fly");
+  run("editingLogIndex = 0");
+  context.renderLog();
+  app.setLogs([entry({ fish: "Brown Trout", fly: "" })]);
+  context.renderLog();
+  assert(!/Species not set<\/option>/.test(elementFor("#log").innerHTML), "a catch with a species offers no blank option");
+  run("editingLogIndex = null");
+  context.renderLog();
+  const newForm = elementFor("#log").innerHTML;
+  assert(!/Species not set<\/option>/.test(newForm) && !/<input name="fly" value="" /.test(newForm),
+    "a new catch still starts from the water's fly and a species");
+  run("logFormOpen = false");
+
+  // B9: switching the form to an edit drops a Snap a bug photo held for a new catch.
+  run("pendingCatchPhoto = 'data:image/jpeg;base64,AAAA'");
+  action("[data-edit-log]")({ dataset: { editLog: "0" } });
+  assert(run("pendingCatchPhoto") === "", "Edit releases a bug photo attached to a new-catch draft");
+  run("pendingCatchPhoto = 'data:image/jpeg;base64,AAAA'; lastFishOnEntry = getLogs()[0]");
+  context.openFishOnDetails();
+  assert(run("pendingCatchPhoto") === "", "and so does Fish on!'s Add details");
+  run("editingLogIndex = null; logFormOpen = false; lastFishOnEntry = null");
+
+  // B7: the fly list is frozen for the session and the position counts up.
+  app.setLogs([]);
+  run("openOnWater()");
+  const order = run("onWaterFlies(waterById('crooked'))").slice();
+  const worked = order[1];
+  run(`flyFeedback[${JSON.stringify(worked)}] = "worked"`);
+  const positions = [];
+  const shown = [];
+  for (let step = 0; step < order.length; step += 1) {
+    context.renderTrip();
+    const markup = elementFor("#trip").innerHTML;
+    positions.push((markup.match(/Next fly to try - (\d+) of (\d+)/) || []).slice(1).join("/"));
+    shown.push(context.onWaterCurrentFly(crooked));
+    context.nextOnWaterFly("crooked");
+  }
+  assert(positions.join(",") === order.map((fly, index) => `${index + 1}/${order.length}`).join(","),
+    `"Next fly to try" counts 1 of N, 2 of N... (${positions.join(", ")})`);
+  assert(shown.join("|") === order.join("|"), "and walks the order frozen when the view opened, with no fly sliding in");
+  assert(context.onWaterCurrentFly(crooked) === order[0], "after the last fly it comes round to the first");
+  assert(run(`flyFeedback[${JSON.stringify(worked)}]`) === "worked", `"Not working" leaves a fly marked Worked as Worked (${worked})`);
+  assert(order.filter((fly) => fly !== worked).every((fly) => run(`flyFeedback[${JSON.stringify(fly)}]`) === "ignored"),
+    "and still marks the others ignored, as documented");
+  run("Object.keys(flyFeedback).forEach((fly) => delete flyFeedback[fly]); writeStoredObject(FLY_FEEDBACK_KEY, flyFeedback)");
+  // A fly proven on this water by the journal is skipped, never ignored.
+  const proven = order[0];
+  app.setLogs([1, 2, 3].map((index) => entry({ fly: proven, notes: `p${index}`, loggedAt: `2026-06-2${index}T18:00:00.000Z` })));
+  run("openOnWater()");
+  const provenFirst = context.onWaterCurrentFly(crooked);
+  context.nextOnWaterFly("crooked");
+  assert(provenFirst === proven && run(`flyFeedback[${JSON.stringify(proven)}]`) === undefined && context.onWaterCurrentFly(crooked) !== proven,
+    `a fly proven here is skipped for the session without being marked ignored (${proven})`);
+  run("Object.keys(flyFeedback).forEach((fly) => delete flyFeedback[fly]); writeStoredObject(FLY_FEEDBACK_KEY, flyFeedback)");
+  app.setLogs([]);
+
+  // B8: the locate button's disabled attribute is an attribute.
+  run("onWaterLocating = true");
+  context.renderTrip();
+  assert(/data-on-water-locate disabled>/.test(elementFor("#trip").innerHTML) && !/data-on-water-locatedisabled/.test(elementFor("#trip").innerHTML),
+    "while locating, the button renders as disabled, not as data-on-water-locatedisabled");
+  run("onWaterLocating = false");
+
+  // B5: a rough fix, a late fix and the fix age.
+  const geolocation = context.navigator.geolocation;
+  let pending = null;
+  let options = null;
+  context.navigator.geolocation = { getCurrentPosition(success, failure, opts) { pending = { success, failure }; options = opts; } };
+  const metolius = app.waterCoordinates.metolius;
+  const fix = (accuracy) => ({ coords: { latitude: metolius.lat + .0005, longitude: metolius.lon, accuracy } });
+  context.locateOnWater();
+  assert(options?.maximumAge === 0, `"Which water am I on?" asks for a fresh fix (maximumAge ${options?.maximumAge})`);
+  pending.success(fix(8000));
+  assert(run("activeWater") === "crooked" && /too rough/.test(run("onWaterNotice")),
+    `an 8 km fix picks no water and says why (${run("onWaterNotice")})`);
+  context.locateOnWater();
+  const late = pending;
+  context.closeOnWater();
+  late.success(fix(15));
+  assert(run("activeWater") === "crooked" && run("onWaterNotice") === "" && run("onWaterLocating") === false,
+    "a fix that arrives after Exit changes nothing");
+  run("openOnWater()");
+  context.locateOnWater();
+  const failedLate = pending;
+  context.closeOnWater();
+  failedLate.failure({ code: 3 });
+  assert(run("onWaterNotice") === "", "and neither does a failure that arrives after Exit");
+  run("openOnWater()");
+  context.locateOnWater();
+  pending.success(fix(15));
+  assert(run("activeWater") === "metolius" && /You look to be on/.test(run("onWaterNotice")), "a precise fix still finds the water");
+  context.closeOnWater();
+  context.navigator.geolocation = geolocation;
+  run("saveActiveWater('crooked')");
+
+  // B10: a legacy entry known only by name keeps its readings when its water is unchanged.
+  assert(/const originalWaterId = \(waterById\(original\.waterId\) \|\| waters\.find\(\(item\) => item\.name === original\.waterName\)\)\?\.id;/.test(html)
+    && /if \(waterField && waterField !== originalWaterId\)/.test(html),
+    "an edit compares the chosen water with the water the entry resolves to");
+}
+
 console.log(`\n${checks - failures}/${checks} checks passed`);
 process.exit(failures ? 1 : 0);
