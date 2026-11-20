@@ -272,11 +272,29 @@ season, light wind").
   The one automatic fetch is after the daily sync, and only for waters with a
   great-day alert turned on.
 - **Typical closures.** `SEASONAL_ACCESS_CLOSURES` lists the Cascade Lakes
-  Highway (OR-46) beyond Mt. Bachelor, roughly mid-November to late May, and
-  the high Santiam Pass, Three Creek, Olallie and Willamette Pass hike-in lakes,
-  roughly mid-November to late June. A day inside a window reads "Typically
-  snowed in - check ODOT TripCheck / USFS", is never scored and is never the
-  best day. These are typical dates, worded as typical; snow sets the real ones.
+  Highway (OR-46) beyond Mt. Bachelor, roughly mid-November to late May; Paulina
+  Lake Road (Forest Road 21) into the Newberry Caldera - East Lake, Paulina Lake
+  and Paulina Creek - gated at the 10 Mile Sno-Park from about mid-November to
+  Memorial Day weekend (Deschutes County Road Department's seasonal-closure
+  notices); and the high Santiam Pass, Three Creek, Olallie and Willamette Pass
+  hike-in lakes, roughly mid-November to late June. A day inside a window reads
+  "Typically snowed in - check ODOT TripCheck / USFS", is never scored and is
+  never the best day. These are typical dates, worded as typical; snow sets the
+  real ones. A water with another way in is listed in `partialAccess` (Crane
+  Prairie: OR-46 cuts only its north access): its days are scored and say
+  "north access typically closed", and it is never called snowed in.
+- **Snowed in today, everywhere.** `seasonalClosureFor` is not only the
+  planner's. A water typically snowed in today ranks after every water that
+  can be reached and before the closed-season ones, is never Today's top pick
+  while anything else can be fished, and carries "Typically snowed in" on its
+  rank card, saved and recent chips, why-card, Trip hero and Today hero the way
+  a closed season carries "Closed season (ODFW)" (`waterClosedLabel`). Neither
+  shows a prime window or countdown.
+- **Best day.** Today stops being offered as the best day once the Pacific
+  hour is past the water's prime window, or 5 PM when it has none. A water
+  with no best day says why: "Closed season (ODFW) all week", "Typically
+  snowed in all week", "Closed or snowed in all week" or "No open day this
+  week".
 - **Offline or no forecast** says so and shows no day. Nothing is invented.
 
 ## Fishing regulations
@@ -310,10 +328,13 @@ apply - check ODFW before you fish."
   the newest "20XX Oregon Sport Fishing Regulations" it names in
   `riseRegsCheck.v1`. It is marked done only when it read a year; a failed or
   offline attempt retries on a later open, at most once a day. If ODFW names a
-  newer booklet, or it is past March 1 of the year after the bundled booklet
-  whether or not a check got through, every Regulations block says the summary
-  may be out of date, treats the water as one to verify, and the season labels
-  read "(2026 rules)". The gate keeps running on the bundled rules.
+  newer booklet, every Regulations block says the summary may be out of date.
+  A new booklet takes effect Jan 1, so from Jan 1 of any later Pacific year the
+  calendar alone says so ("ODFW's 2027 regulations took effect Jan 1. This
+  summary is from 2026 - check ODFW before you fish.") whether or not a check
+  got through; the network check itself still waits for March 1. Either way the
+  block treats the water as one to verify and the season labels read "(2026
+  rules)". The gate keeps running on the bundled rules.
 - **Annual re-verification.** When ODFW publishes a new booklet (usually
   before the new year), re-read every water against it, update
   `ODFW_REGULATIONS`, its `year` and `checked`, and write a new
@@ -342,6 +363,25 @@ threshold; `requestPermission` only when an alert was just turned on),
 `status`. The container answers with `window.riseAlertsResult` and, if WebKit
 evicted the page's storage, hands its copy back with `window.riseAlertsRestore`.
 Unsaving a water removes its alert.
+
+- **Permission.** An angler's edit asks for permission (`requestPermission`)
+  whenever it leaves a rule the container can act on and iOS has not answered
+  yet, so a toggle turned on over an invalid range still asks once the range
+  is fixed. The page asks for `status` again whenever it becomes visible, and
+  a reply that turns permission on - at the prompt or later in iOS Settings -
+  re-sends the great-day schedule. A reply that changes nothing repaints
+  nothing; one that does, while an alert field has focus, patches the status
+  line in place so the keyboard stays up.
+- **Order.** The container runs alert messages one after another on one
+  chained task, so a schedule never reads rules that `setRules` has not
+  written yet. Great-day notifications fire on a time interval to the 6 PM
+  Pacific instant, so a phone that changes time zone still fires at that
+  instant, and a new plan withdraws only the days it no longer holds.
+- **Hidden waters.** Hiding a saved water pauses its alerts: its rules are
+  kept, but it is not sent to the container (which withdraws what it held),
+  not scheduled and not fetched for. The planner lists it as "(hidden - alerts
+  paused)", *Set alerts* shows hidden waters so its card is there, and showing
+  it again resumes them.
 
 Natively, `RiseAlerts.swift` (Foundation-only, tested by
 `scripts/test-rise-store.sh`) validates the rules, stores them as JSON in

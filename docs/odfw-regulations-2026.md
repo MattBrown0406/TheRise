@@ -25,7 +25,17 @@ from, so a human can audit it line by line.
 | ODFW Recreation Report, Central Zone | https://myodfw.com/recreation-report/fishing-report/central-zone | Linked from the app (thermal sanctuaries, conditions) |
 
 Source links in the app use a URL text fragment (`#:~:text=...`) so Safari
-scrolls to the water's heading on the eRegulations page. Every source link is
+scrolls to the water's heading on the eRegulations page. A fragment matches the
+first occurrence on the page, so a heading that also appears earlier in
+another water's rule carries a suffix (`,-...`) naming the line under it:
+`Metolius%20River,-The%20following` (not the "cable car crossing on the
+Metolius River" line under Lake Billy Chinook), `Lake%20Billy%20Chinook,-Metolius%20Arm`
+(not "Lake Billy Chinook to Benham Falls"), `Lake%20Simtustus,-Confederated`
+(not "See Lake Simtustus."), `Odell%20Lake,-Open%20Apr%2022` (not "...West
+Davis Lake campground to Odell Lake") and `Central%20Zone%20Regulations,-Species`
+for the zone table. The behaviour suite checks that every Central Zone
+fragment matches exactly once in `scripts/fixtures/eregulations-central-zone-2026.txt`,
+the page text as read on 2026-11-20. Every source link is
 on `eregulations.com` or `myodfw.com`; the behaviour suite fails on any other
 host.
 
@@ -44,6 +54,17 @@ From the Central Zone page, "Central Zone Regulations" table:
   trout over 20 inches are considered steelhead in streams. No limit on size or
   number of brook or brown trout in streams unless noted. Closed to angling for
   bull trout unless noted under Exceptions.
+- Salmon and steelhead: only hatchery steelhead may be taken.
+
+The app's zone-stream summary (`ODFW_CZ_STREAM`) quotes the trout line with
+both stream sentences: "Rainbow trout over 20 inches are considered steelhead
+in streams; only hatchery steelhead may be taken." and "No limit on size or
+number of brook or brown trout in streams unless noted under Exceptions." A
+water whose exception says "No harvest of rainbow trout over 20 inches"
+(Middle Deschutes, Crooked, Whychus, Ochoco Creek) uses the same summary
+without "only 1 over 20 inches" (`ODFW_CZ_STREAM_NO_BIG_RAINBOW`), so it never
+prints both. The app summarises trout rules; salmon and steelhead seasons are
+left to ODFW.
 - Kokanee: 10 per day unless noted. No size limit. Open all year.
 - Bass, lakes: 5 per day, no more than 3 over 15 inches. Streams: no limit.
 - Released trout, salmon and steelhead must be unharmed and should not be
@@ -72,7 +93,7 @@ Section names are the booklet's own.
 
 | App id | Water | Zone | Season (2026) | Facts | Source (fragment) | Confidence |
 | --- | --- | --- | --- | --- | --- | --- |
-| lower-deschutes | Lower Deschutes (Pelton Rereg. Dam to Maupin) | Central | Sections: Sherars Falls to N. boundary of Warm Springs Reservation open all year (trout, hatchery steelhead); N. boundary to Pelton Regulating Reservoir open Apr 22 - Dec 31 | 2 rainbow trout/day, 10" min, 13" max. No angling from a floating device. Closed from Pelton Regulating Dam downstream ~600 ft to ODFW markers. Where the river borders the Reservation, anglers are restricted to the eastern half. Artificial flies and lures (zone stream rule; bait only below Sherars Falls, outside this reach). | CZ "Sherars Falls to Northern Boundary"; CZ "Confederated Tribes of Warm Springs" | confirmed |
+| lower-deschutes | Lower Deschutes (Pelton Rereg. Dam to Maupin) | Central | Sections: Sherars Falls to N. boundary of Warm Springs Reservation open all year (trout); N. boundary to Pelton Regulating Reservoir open Apr 22 - Dec 31 (trout). The booklet's lines also open these reaches for hatchery steelhead, but ODFW's in-season update closes steelhead Aug 15 - Dec 31, 2026, so the app states the trout season only. | 2 rainbow trout/day, 10" min, 13" max. No angling from a floating device. Closed from Pelton Regulating Dam downstream ~600 ft to ODFW markers. Where the river borders the Reservation, anglers are restricted to the eastern half. Artificial flies and lures (zone stream rule; bait only below Sherars Falls, outside this reach). | CZ "Sherars Falls to Northern Boundary"; CZ "Confederated Tribes of Warm Springs" | confirmed |
 | middle-deschutes | Middle Deschutes (Bend to Lake Billy Chinook) | Central | Open all year for trout ("Lake Billy Chinook to Benham Falls") | No harvest of rainbow trout over 20". Zone stream: 2 trout/day, 8" min, artificial flies and lures. | CZ "Lake Billy Chinook to Benham Falls" | confirmed |
 | upper-deschutes | Upper Deschutes (Wickiup to Bend) | Central | Sections: Benham Falls down to Bend open all year (part of "LBC to Benham Falls"); Wickiup down to Benham Falls open May 22 - Sep 30 (part of "Benham Falls to Little Lava Lake") | Below Benham Falls: no harvest of rainbow over 20", zone 2/day 8". Above Benham Falls: 2 trout/day, 8" min, wild rainbow trout must be released. Artificial flies and lures. | CZ "Benham Falls to Little Lava Lake" | confirmed |
 | metolius | Metolius River | Central | Sections: cable car crossing near mouth to Bridge 99/Lower Bridge (NF-1270) open all year, artificial flies and lures only; Bridge 99 to Allingham Campground Bridge (NF-1217) open all year, fly fishing only, barbless; above Allingham Campground Bridge open May 22 - Oct 31, fly fishing only, barbless | Catch-and-release for trout, including bull trout. Tributaries closed except Lake Cr (zone rules). | CZ "Metolius River" | confirmed |
@@ -87,7 +108,7 @@ Section names are the booklet's own.
 | hosmer | Hosmer Lake | Central | Open all year (zone lake) | Catch-and-release for all species. Fly fishing only, barbless hooks required. | CZ "Hosmer Lake" | confirmed |
 | lava | Lava Lake | Central | Open all year (zone lake) | Not listed: zone lake rules. (On the Central Zone map.) | CZ zone table | confirmed |
 | little-lava | Little Lava Lake | Central | Open all year (zone lake) | Not listed: zone lake rules. The Deschutes River below it ("Benham Falls to Little Lava Lake") is open May 22 - Sep 30. | CZ zone table | confirmed |
-| wickiup | Wickiup Reservoir | Central | Apr 22 - Oct 31 | Deschutes River Arm closed from Gull Point Campground boat ramp to ODFW markers near Sheeps Bridge Sep 1 - Apr 21; Deschutes River rules above those markers. Zone lake bag. | CZ "Wickiup Reservoir" | confirmed |
+| wickiup | Wickiup Reservoir | Central | Sections: reservoir except the Deschutes River Arm, Apr 22 - Oct 31; Deschutes River Arm (Gull Point Campground boat ramp to ODFW markers near Sheeps Bridge), Apr 22 - Aug 31 (the booklet closes it Sep 1 - Apr 21) | Deschutes River Arm closed from Gull Point Campground boat ramp to ODFW markers near Sheeps Bridge Sep 1 - Apr 21; Deschutes River rules above those markers. Zone lake bag. | CZ "Wickiup Reservoir" | confirmed |
 | davis | Davis Lake | Central | Open all year (zone lake) | Catch-and-release for trout. Fly fishing only, barbless hooks required. No limit on size or number of bass. Odell Cr channel defined as upstream to the boat ramp at West Davis Lake Campground. | CZ "Davis Lake and Odell Creek Channel" | confirmed |
 | three-creek | Three Creek Lake | Central | Open all year (zone lake) | Not listed: zone lake rules. | CZ zone table | confirmed |
 | north-twin | North Twin Lake | Central | Open all year (zone lake) | Not listed: zone lake rules. (On the Central Zone map.) | CZ zone table | confirmed |
@@ -103,7 +124,7 @@ Section names are the booklet's own.
 | haystack | Haystack Reservoir | Central | Open all year (zone lake) | Not listed: zone lake rules. | CZ zone table | confirmed |
 | blue-lake | Blue Lake (Santiam Pass) | Central? | Lakes open all year in both candidate zones | Two different "Blue" lakes: a Blue Lake by Suttle Lake is on the Central Zone map and is not listed (zone lake rules); a Willamette NF "Blue" lake is in the Willamette Zone "Cascade Lakes" exception (bait allowed, no limit on brook trout). Which one the app means is not confirmed. | CZ zone table; WZ "Cascade Lakes" | **verify** |
 | big-lake | Big Lake (Santiam Pass) | Willamette? | Lakes open all year in both candidate zones | Not named in the Central or Willamette Zone exceptions, and its zone is not stated on either page. | CZ / WZ zone tables | **verify** |
-| scout-lake | Scout Lake (Metolius basin) | Central | Open all year (zone lake) | Not listed: zone lake rules. | CZ zone table | confirmed |
+| scout-lake | Scout Lake (Metolius basin) | Central? | Lakes open all year | Not listed. The Metolius River entry closes its tributaries except Lake Cr; Scout Lake's drainage and whether that applies are not confirmed (the same doubt as Square Lake). | CZ "Metolius River" | **verify** |
 | clear-lake | Clear Lake (McKenzie headwaters) | Willamette | Open all year (zone lake) | Willamette Zone McKenzie River, "Above Tamolitch Falls (Blue Pool) including Carmen Reservoir and Clear Lake: Willamette Zone regulations apply, including no limit on the size or number of brook trout." Zone lake: 5 trout/day, 8" min, 1 over 20"; bull trout closed. (The "Clear Lake" on the Central Zone map is a different lake near Mt. Hood.) | WZ "Above Tamolitch Falls" | confirmed |
 | walton | Walton Lake | Central | Open all year (zone lake) | Not listed: zone lake rules. | CZ zone table | confirmed |
 | ollalie | Olallie Lake | Central | Open all year (zone lake) | Shown on the Central Zone map (PDF p. 58); not listed under Central or Willamette exceptions: zone lake rules. | CZ zone table | confirmed |
@@ -122,7 +143,7 @@ Section names are the booklet's own.
 | spring-river | Spring River | Central | May 22 - Oct 31 (zone stream) | Not listed: zone stream rules. | CZ zone table | confirmed |
 | paulina-creek | Paulina Creek | Central | May 22 - Oct 31 (zone stream) | Not listed: zone stream rules. | CZ zone table | confirmed |
 | bridge-creek | Bridge Creek (Ochoco Mountains) | ? | Not recorded | Not named in the Central or Northeast Zone exceptions. A Bridge Creek in the Ochocos may drain to the John Day (Northeast Zone); a Bridge Creek near Bend drains to Tumalo Creek (Central). Which one, and its zone, not confirmed. | - | **verify** |
-| ochoco-creek | Ochoco Creek (Prineville) | Central | Mouth to Ochoco Dam: open all year | No harvest of rainbow trout over 20". Zone stream: 2/day, 8" min, artificial flies and lures. Above Ochoco Reservoir the zone stream season (May 22 - Oct 31) applies. | CZ "Ochoco Creek" | confirmed |
+| ochoco-creek | Ochoco Creek (Prineville) | Central | Sections: Mouth to Ochoco Dam, open all year; Above Ochoco Reservoir, May 22 - Oct 31 (zone stream season: the exception names only the reach below the dam) | No harvest of rainbow trout over 20". Zone stream: 2/day, 8" min, artificial flies and lures. | CZ "Ochoco Creek" | confirmed |
 | firemans-pond | Fireman's Pond (Redmond) | ? | Not recorded | Not named anywhere in the 2026 booklet; youth-only status not confirmed. | - | **verify** |
 | prineville-youth | Prineville Youth Pond | Central | Open all year (zone lake) | 2 fish per day. Youth (17 and under) only. | CZ "Prineville Youth Pond" | confirmed |
 | jefferson-county-pond | Jefferson County Pond | Central | Open all year (zone lake) | 2 fish per day. Youth (17 and under) and disabled anglers only. | CZ "Jefferson County Pond" | confirmed |
@@ -135,9 +156,9 @@ Section names are the booklet's own.
 | little-three-creeks | Little Three Creeks Lake | Central | Open all year (zone lake) | Not listed: zone lake rules. | CZ zone table | confirmed |
 | yoran-lake | Yoran Lake | Central | Lakes open all year | Not listed. Same Odell Lake tributary question as Rosary Lakes. | CZ "Odell Lake" | **verify** |
 
-Totals: 62 waters. 52 `confirmed`, 10 `verify` (blue-lake, big-lake,
-elkhorn-lake, shelvock-pond, hat-rock-pond, bridge-creek, firemans-pond,
-rosary-lakes, square-lake, yoran-lake).
+Totals: 62 waters. 51 `confirmed`, 11 `verify` (blue-lake, big-lake,
+scout-lake, elkhorn-lake, shelvock-pond, hat-rock-pond, bridge-creek,
+firemans-pond, rosary-lakes, square-lake, yoran-lake).
 
 The app never computes a season status from a `verify` entry: its status is
 `unknown`, it is labelled "Season not confirmed - check ODFW", and it is
@@ -150,8 +171,8 @@ neither ranked down nor treated as closed.
   Wickiup, Odell Lake (season ended Oct 31).
 - **Partly open:** Upper Deschutes (open below Benham Falls), Metolius (open
   below Allingham Campground Bridge), Fall River (open above the falls), Lake
-  Billy Chinook (Metolius Arm closed).
-- Everything else confirmed is open; the 10 `verify` waters are `unknown`.
+  Billy Chinook (Metolius Arm closed), Ochoco Creek (open below Ochoco Dam).
+- Everything else confirmed is open; the 11 `verify` waters are `unknown`.
 
 ## Annual re-verification
 

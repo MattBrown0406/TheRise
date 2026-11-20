@@ -1395,7 +1395,7 @@ group("ODFW regulations: status on boundary dates, on Oregon's clock");
   const closedExpected = ["whychus", "tumalo", "little-deschutes", "crane-prairie", "wickiup", "odell-lake", "crescent-creek", "spring-river", "paulina-creek"];
   assert(JSON.stringify([...(byStatus.closed || [])].sort()) === JSON.stringify([...closedExpected].sort()),
     `closed on Nov 18, 2026: ${(byStatus.closed || []).join(", ")}`);
-  assert(JSON.stringify([...(byStatus.partial || [])].sort()) === JSON.stringify(["fall-river", "lake-billy-chinook", "metolius", "upper-deschutes"]),
+  assert(JSON.stringify([...(byStatus.partial || [])].sort()) === JSON.stringify(["fall-river", "lake-billy-chinook", "metolius", "ochoco-creek", "upper-deschutes"]),
     `partly open on Nov 18, 2026: ${(byStatus.partial || []).join(", ")}`);
   const verifyIds = Object.entries(app.ODFW_REGULATIONS).filter(([, entry]) => entry.confidence === "verify").map(([id]) => id).sort();
   assert(JSON.stringify([...(byStatus.unknown || [])].sort()) === JSON.stringify(verifyIds), `unknown is exactly the verify waters (${(byStatus.unknown || []).length})`);
@@ -1524,9 +1524,16 @@ group("ODFW regulations: the March 1 check for a new booklet");
   const water = (id) => app.waters.find((item) => item.id === id);
   const stale = context.regulationsStaleness;
   assert(stale("2026-11-18", {}) === null, "no warning in the booklet's own year");
-  assert(stale("2027-02-28", {}) === null, "nor before Mar 1 of the next year");
-  assert(stale("2027-03-01", {})?.kind === "calendar" && stale("2027-03-01", {}).message === "This summary is from 2026; ODFW's current rules may differ. Check ODFW before you fish.",
-    "from Mar 1 the calendar alone warns, even if no check ever got through");
+  assert(stale("2026-12-31", {}) === null, "nor on Dec 31 of that year");
+  // D9: the new booklet takes effect Jan 1, so the calendar warning starts
+  // then, while the network check still waits for March 1.
+  const jan1 = stale("2027-01-01", {});
+  assert(jan1?.kind === "calendar" && jan1.message === "ODFW's 2027 regulations took effect Jan 1. This summary is from 2026 - check ODFW before you fish.",
+    `from Jan 1 of the next year the calendar alone warns (${jan1?.message})`);
+  assert(stale("2027-02-28", {})?.kind === "calendar", "including before the Mar 1 check");
+  assert(context.regulationStatusLabel("closed", jan1) === "Closed season (2026 rules)", "and season labels say they are the 2026 rules from Jan 1");
+  assert(due({}, "2027-01-01") === false, "while the network check still waits for Mar 1");
+  assert(stale("2027-03-01", {})?.kind === "calendar", "from Mar 1 the calendar warns even if no check ever got through");
   assert(stale("2028-01-15", {})?.kind === "calendar", "and keeps warning in later years");
   const newer = stale("2026-12-20", { publishedYear: 2027 });
   assert(newer?.kind === "newer" && newer.message === "ODFW has published 2027 regulations. This summary is from 2026 and may be out of date - check ODFW before you fish.",
@@ -1766,6 +1773,307 @@ group("Apple Watch: catches merge once, in order, without moving anyone's index"
 
   context.webkit = undefined;
   app.setLogs([]);
+}
+
+group("Audit round 2 (A4, A9, A10): the week planner's summary, partial access and today's best day");
+{
+  const water = (id) => app.waters.find((item) => item.id === id);
+  const summary = context.plannerSummaryLine;
+  assert(summary({ best: null, days: [] }) === "No forecast", "no forecast says so");
+  assert(summary({ best: null, days: [{ regulationClosed: true }, { regulationClosed: true }] }) === "Closed season (ODFW) all week",
+    "a week closed by the ODFW season says so, not snowed in");
+  assert(summary({ best: null, days: [{ closure: {} }, { closure: {} }] }) === "Typically snowed in all week", "an all-snow week says snowed in");
+  assert(summary({ best: null, days: [{ regulationClosed: true }, { closure: {} }] }) === "Closed or snowed in all week", "a mixed week says both");
+  assert(summary({ best: null, days: [{ score: 6 }] }) === "No open day this week", "a week whose only open day is over has no best day");
+
+  // Whychus in November: every day is closed by ODFW, none by snow.
+  const coords = app.waterCoordinates.whychus;
+  app.setNwsGrid(`${coords.lat.toFixed(4)},${coords.lon.toFixed(4)}`, "https://api.weather.gov/gridpoints/PDT/31,77/forecast/hourly");
+  app.setPlannerForecasts({ "https://api.weather.gov/gridpoints/PDT/31,77/forecast": { fetchedAt: new Date().toISOString(),
+    days: ["2026-11-20", "2026-11-21", "2026-11-22"].map((date) => ({ date, highF: 45, windMph: 6, forecast: "Cloudy" })) } });
+  const whychusPlan = context.plannerForWater(water("whychus"), "2026-11-20");
+  assert(summary(whychusPlan) === "Closed season (ODFW) all week", `Whychus in November reads closed season (${summary(whychusPlan)})`);
+
+  // A9: Crane Prairie keeps a south way in; the OR-46 window is partial for it.
+  const crane = water("crane-prairie");
+  const access = context.seasonalClosureFor(crane, "2026-05-01");
+  assert(access?.id === "cascade-lakes-highway" && access.partial === true && access.accessNote === "north access typically closed",
+    `Crane Prairie's closure is partial (${JSON.stringify(access && { partial: access.partial, note: access.accessNote })})`);
+  assert(context.snowedInClosureFor(crane, "2026-05-01") === null && context.snowedInClosureFor(water("hosmer"), "2026-05-01") !== null,
+    "a partial closure is not snowed in; a full one is");
+  const craneCoords = app.waterCoordinates["crane-prairie"];
+  app.setNwsGrid(`${craneCoords.lat.toFixed(4)},${craneCoords.lon.toFixed(4)}`, "https://api.weather.gov/gridpoints/PDT/20,30/forecast/hourly");
+  app.setPlannerForecasts({ "https://api.weather.gov/gridpoints/PDT/20,30/forecast": { fetchedAt: new Date().toISOString(),
+    days: ["2026-04-21", "2026-04-22", "2026-04-23"].map((date) => ({ date, highF: 55, windMph: 6, forecast: "Cloudy" })) } });
+  const cranePlan = context.plannerForWater(crane, "2026-04-21");
+  assert(cranePlan.days[0].score === null && cranePlan.days[0].regulationClosed, "Apr 21 is still closed by ODFW");
+  assert(cranePlan.days[1].score !== null && cranePlan.days[1].closure === null && /north access typically closed$/.test(cranePlan.days[1].reason),
+    `from Apr 22 the season is open and the day is scored, saying which access is closed (${cranePlan.days[1].reason})`);
+  assert(cranePlan.best && cranePlan.best.date >= "2026-04-22", "and can be the best day");
+  assert(context.waterClosedLabel(crane, "2026-05-01") === "", "Crane Prairie in May is not labelled closed or snowed in");
+
+  // A10: today is not the best day once its fishing is over.
+  const metolius = water("metolius");
+  const realKey = context.pacificDateKey;
+  const realHour = context.currentHour;
+  context.pacificDateKey = (date) => (date ? realKey(date) : "2026-07-10");
+  const mCoords = app.waterCoordinates.metolius;
+  app.setNwsGrid(`${mCoords.lat.toFixed(4)},${mCoords.lon.toFixed(4)}`, "https://api.weather.gov/gridpoints/PDT/30,60/forecast/hourly");
+  app.setPlannerForecasts({ "https://api.weather.gov/gridpoints/PDT/30,60/forecast": { fetchedAt: new Date().toISOString(),
+    days: [{ date: "2026-07-10", highF: 70, windMph: 6, forecast: "Mostly Cloudy" }, { date: "2026-07-11", highF: 70, windMph: 25, forecast: "Sunny" }] } });
+  const window = context.primeWindowHours(metolius);
+  context.currentHour = () => (window ? window[0] : 9);
+  assert(context.plannerForWater(metolius, "2026-07-10").best?.date === "2026-07-10", "before the window ends, today can be the best day");
+  context.currentHour = () => (window ? window[1] : 17);
+  const evening = context.plannerForWater(metolius, "2026-07-10");
+  assert(evening.best?.date === "2026-07-11", `after the window ends, the best day is a later one (${evening.best?.date})`);
+  assert(evening.days[0].score !== null, "today keeps its score; it is just not offered as the best day");
+  context.currentHour = realHour;
+  context.pacificDateKey = realKey;
+  app.setPlannerForecasts({});
+}
+
+group("Audit round 2 (D2, D10, D11): a typically snowed-in or closed water is never presented as fishable");
+{
+  const water = (id) => app.waters.find((item) => item.id === id);
+  const ids = ["east-lake", "paulina", "paulina-creek"];
+  for (const id of ids) {
+    assert(context.seasonalClosureFor(water(id), "2026-01-15")?.id === "newberry-caldera", `${id} is behind the Newberry gate in January`);
+    assert(context.seasonalClosureFor(water(id), "2026-07-04") === null, `${id} is open in July`);
+  }
+  assert(context.seasonalClosureFor(water("east-lake"), "2026-11-14") === null && context.seasonalClosureFor(water("east-lake"), "2026-11-15") !== null,
+    "the Newberry window typically starts mid-November");
+  assert(context.seasonalClosureFor(water("east-lake"), "2026-05-25") !== null && context.seasonalClosureFor(water("east-lake"), "2026-05-26") === null,
+    "and ends at Memorial Day weekend");
+  const newberry = app.SEASONAL_ACCESS_CLOSURES.find((closure) => closure.id === "newberry-caldera");
+  assert(/typically/i.test(newberry.typical) && /10 Mile Sno-Park/.test(newberry.typical), `the closure is worded as typical and names the gate (${newberry.typical})`);
+
+  const realKey = context.pacificDateKey;
+  for (const day of ["2026-11-19", "2026-12-15", "2027-02-10"]) {
+    context.pacificDateKey = (date) => (date ? realKey(date) : day);
+    const ranked = context.rankedWatersForCurrentMode(app.waters);
+    const group = (item) => (context.regulationSeasonStatus(item, day) === "closed" ? 2 : context.snowedInClosureFor(item, day) ? 1 : 0);
+    const groups = ranked.map(group);
+    assert(groups.every((value, index) => index === 0 || value >= groups[index - 1]),
+      `${day}: reachable open waters rank first, then snowed-in, then closed-season ones`);
+    const top = context.topRecommendedWater();
+    assert(group(top) === 0, `${day}: the top pick is reachable and open (${top.id})`);
+    assert(!["east-lake", "hosmer", "paulina"].includes(top.id), `${day}: not East Lake, Hosmer or Paulina`);
+  }
+  context.pacificDateKey = (date) => (date ? realKey(date) : "2026-11-19");
+  const hosmer = water("hosmer");
+  const ranked = context.rankedWatersForCurrentMode(app.waters);
+  const reachable = ranked.filter((item) => context.regulationSeasonStatus(item, "2026-11-19") !== "closed" && !context.snowedInClosureFor(item, "2026-11-19")).length;
+  assert(ranked.indexOf(hosmer) >= reachable, `Hosmer on Nov 19 ranks after every reachable water (#${ranked.indexOf(hosmer) + 1}, ${reachable} reachable)`);
+  assert(context.fishabilitySummary(hosmer) === "Typically snowed in", `and is labelled (${context.fishabilitySummary(hosmer)})`);
+  const card = context.waterRankCard(hosmer, 9);
+  assert(/regs-flag regs-snow/.test(card) && /Typically snowed in - check ODOT TripCheck \/ USFS/.test(card), "its rank card carries the snowed-in flag");
+  assert(!/Prime window|passed for today|now, until/.test(card.match(/water-summary-row[\s\S]*?<\/div>/)?.[0] || ""), "and shows no prime window");
+  const chip = context.waterChipCard("hosmer", "Saved");
+  assert(/Typically snowed in/.test(chip), "a saved-water chip says it is snowed in");
+  context.pacificDateKey = (date) => (date ? realKey(date) : "2026-11-18");
+  const craneChip = context.waterChipCard("crane-prairie", "Recent");
+  assert(/Closed season \(ODFW\)/.test(craneChip), "a recent-water chip for a closed water says so");
+  assert(/Closed season \(ODFW\)/.test(context.whyThisWaterCard(water("crane-prairie"))), "and so does the why-this-water card");
+  assert(context.waterChipCard("crooked", "Saved").indexOf("regs-flag") === -1, "an open water's chip carries no flag");
+  assert(context.primeWindowOrClosed(water("crane-prairie")) === "Closed season (ODFW)", "a closed water has no prime window to show");
+
+  // Trip hero for a closed water.
+  const realActive = context.getWater;
+  context.getWater = () => water("crane-prairie");
+  context.renderTrip();
+  const trip = elementFor("#trip").innerHTML;
+  const hero = trip.match(/<section class="trip-hero[\s\S]*?<\/section>/)?.[0] || "";
+  assert(/trip-closed-flag">Closed season \(ODFW\)/.test(hero) && /Fishability if open/.test(hero), "the Trip hero labels a closed water");
+  const now = trip.match(/trip-card trip-now[\s\S]*?<\/strong>/)?.[0] || "";
+  assert(/Closed season \(ODFW\)/.test(now) && !/now, until|passed for today|\d (AM|PM)-/.test(now), `and its prime-window card counts down nothing (${now.replace(/\s+/g, " ").slice(-80)})`);
+  context.getWater = realActive;
+
+  // Today hero for a closed home water, and command cards for a closed top pick.
+  const realHome = context.getHomeWater;
+  const realTop = context.topRecommendedWater;
+  context.getHomeWater = () => water("crane-prairie");
+  context.renderToday();
+  let today = elementFor("#today").innerHTML;
+  const title = today.match(/<h1 class="prime-title">([\s\S]*?)<\/h1>/)?.[1] || "";
+  assert(title === "Crane Prairie Reservoir: Closed season (ODFW)" || /: Closed season \(ODFW\)$/.test(title), `a closed home water's headline is the closure, not a prime window (${title})`);
+  assert(!/Best option now<\/span>[\s\S]*?Closed season/.test(today.match(/command-card primary[\s\S]*?<\/div>/)?.[0] || ""), "an open top pick's card is not labelled closed");
+  context.topRecommendedWater = () => water("crane-prairie");
+  context.renderToday();
+  today = elementFor("#today").innerHTML;
+  const best = today.match(/<div class="command-card primary"[^>]*data-go="waters">[\s\S]*?<\/div>/)?.[0] || "";
+  assert(/Every water on your list is closed/.test(best) && /Closed season \(ODFW\) - /.test(best), `when even the top pick is closed the card says so (${best.replace(/\s+/g, " ").slice(0, 160)})`);
+  assert(!/Fish Crane Prairie/.test(today), "and Trip mode does not say Fish it");
+  context.topRecommendedWater = realTop;
+  context.getHomeWater = realHome;
+  context.pacificDateKey = realKey;
+}
+
+group("Audit round 2 (D14): recommendation reasons quote only usable, measured readings");
+{
+  const deschutes = app.waters.find((item) => item.id === "lower-deschutes");
+  const hosmer = app.waters.find((item) => item.id === "hosmer");
+  const old = new Date(Date.now() - 24 * 45 * 3600000).toISOString();
+  const savedDeschutes = app.liveReports.byWater[deschutes.id];
+  const savedHosmer = app.liveReports.byWater[hosmer.id];
+  app.liveReports.byWater[deschutes.id] = { status: "ready", fromCache: true, cachedAt: old, usgs: { flow: "1,500 cfs", waterTemp: "41 F" }, nws: { forecast: "Cloudy", wind: "20 mph" } };
+  const reason = context.liveRecommendationReason(deschutes);
+  assert(!/1,500 cfs|Adjusted from|41 F/.test(reason), `an expired report is not quoted (${reason})`);
+  assert(/too old/.test(reason), "and the reason says why");
+  app.liveReports.byWater[hosmer.id] = { status: "ready", fromCache: true, cachedAt: old, usgs: {}, nws: { forecast: "Cloudy", wind: "20 mph" } };
+  assert(/^Low light and edges/.test(context.flyRecommendationReason(hosmer, "Balanced Leech #10")), "an expired forecast's wind does not pick the wind-lane reason");
+  delete app.liveReports.byWater[hosmer.id];
+  const seedWind = hosmer.wind;
+  hosmer.wind = "15 mph W";
+  assert(/^Low light and edges/.test(context.flyRecommendationReason(hosmer, "Balanced Leech #10")), "nor does the seed wind");
+  assert(!/58 F/.test(context.flyRecommendationReason(hosmer, "Chironomid #16")), "and the seed water temperature is not quoted as today's");
+  app.liveReports.byWater[hosmer.id] = { status: "ready", cachedAt: new Date().toISOString(), usgs: {}, nws: { forecast: "Cloudy", wind: "15 mph" } };
+  assert(/^Wind lanes/.test(context.flyRecommendationReason(hosmer, "Balanced Leech #10")), "a current measured wind still does");
+  hosmer.wind = seedWind;
+  if (savedHosmer) app.liveReports.byWater[hosmer.id] = savedHosmer; else delete app.liveReports.byWater[hosmer.id];
+  if (savedDeschutes) app.liveReports.byWater[deschutes.id] = savedDeschutes; else delete app.liveReports.byWater[deschutes.id];
+}
+
+group("Audit round 2 (A1, A5, A6, A8): alerts ask, pause and load what they need");
+{
+  const posted = [];
+  context.webkit = { messageHandlers: { riseAlerts: { postMessage: (message) => posted.push(JSON.parse(JSON.stringify(message))) } } };
+  for (const id of ["lower-deschutes", "metolius"]) if (!app.savedWatersNow().includes(id)) context.toggleSavedWater(id);
+
+  // A8: a toggle over an invalid range sends no rule; the edit that makes
+  // it valid asks for permission.
+  context.setAlertField("lower-deschutes", "flowMin", "5000");
+  context.setAlertField("lower-deschutes", "flowMax", "4000");
+  posted.length = 0;
+  context.toggleAlert("lower-deschutes", "flow");
+  assert(posted[0]?.action === "setRules" && !posted[0].rules.some((rule) => rule.waterId === "lower-deschutes"), "an invalid range sends no flow rule");
+  posted.length = 0;
+  context.setAlertField("lower-deschutes", "flowMax", "6000");
+  assert(posted[0]?.action === "setRules" && posted[0].requestPermission === true && posted[0].rules.some((rule) => rule.waterId === "lower-deschutes"),
+    `the edit that makes it valid asks for permission (${JSON.stringify(posted[0])?.slice(0, 120)})`);
+  context.riseAlertsResult({ action: "permission", status: "denied" });
+  posted.length = 0;
+  context.setAlertField("lower-deschutes", "flowMax", "6100");
+  assert(posted[0]?.requestPermission === false, "once iOS has answered, an edit does not ask again");
+
+  // A1: permission given later re-sends the great-day schedule.
+  context.toggleAlert("metolius", "greatDay");
+  const today = context.pacificDateKey();
+  const addDays = (count) => {
+    const [y, m, d] = today.split("-").map(Number);
+    return new Date(Date.UTC(y, m - 1, d + count)).toISOString().slice(0, 10);
+  };
+  const mCoords = app.waterCoordinates.metolius;
+  app.setNwsGrid(`${mCoords.lat.toFixed(4)},${mCoords.lon.toFixed(4)}`, "https://api.weather.gov/gridpoints/PDT/30,60/forecast/hourly");
+  app.setPlannerForecasts({ "https://api.weather.gov/gridpoints/PDT/30,60/forecast": { fetchedAt: new Date().toISOString(),
+    days: [0, 1, 2].map((offset) => ({ date: addDays(offset), highF: 55, windMph: 8, forecast: "Cloudy" })) } });
+  context.riseAlertsResult({ action: "permission", status: "notDetermined" });
+  posted.length = 0;
+  context.riseAlertsResult({ action: "permission", status: "notDetermined" });
+  assert(posted.length === 0, "an unchanged permission posts nothing");
+  context.riseAlertsResult({ action: "permission", status: "granted" });
+  assert(posted.some((message) => message.action === "scheduleGreatDays" && message.waters.some((entry) => entry.waterId === "metolius")),
+    "permission granted re-sends the great-day schedule the prompt may have swallowed");
+  posted.length = 0;
+  context.riseAlertsResult({ action: "permission", status: "granted" });
+  assert(!posted.length, "and a repeated granted reply sends nothing again");
+  assert(/postAlertsMessage\(\{ action: "status" \}\)/.test(html.slice(html.indexOf("function startDailyOpenSyncWatcher"), html.indexOf("function activateTab"))),
+    "returning to the app asks for the permission status again");
+
+  // A5: hiding a water pauses its alerts.
+  const realOnline = context.navigator.onLine;
+  context.navigator.onLine = false;
+  posted.length = 0;
+  context.toggleHiddenWater("metolius");
+  assert(!context.alertRulesForNative().some((rule) => rule.waterId === "metolius"), "a hidden water's alerts are not sent to the container");
+  assert(posted.some((message) => message.action === "setRules" && !message.rules.some((rule) => rule.waterId === "metolius")), "hiding it re-sends the rules without it");
+  assert(!context.greatDayAlertWaters().some((item) => item.id === "metolius") && !context.greatDaySchedule().some((item) => item.waterId === "metolius"),
+    "and it is not scheduled or fetched for");
+  assert(app.alertRulesNow().metolius?.greatDay?.enabled === true, "but its rule is kept");
+  assert(/Metolius \(hidden - alerts paused\)/.test(context.alertsOverview()), "the planner's list says its alerts are paused");
+  assert(/alerts are paused/.test(context.alertEditor(app.waters.find((item) => item.id === "metolius"))), "and so does its editor");
+  posted.length = 0;
+  context.toggleHiddenWater("metolius");
+  assert(context.alertRulesForNative().some((rule) => rule.waterId === "metolius" && rule.greatDay), "showing it again resumes its alerts");
+  assert(posted.some((message) => message.action === "scheduleGreatDays"), "and re-sends its great days");
+  context.navigator.onLine = realOnline;
+
+  // A6: a load for another water during a load in flight still fetches it.
+  const crooked = app.waters.find((item) => item.id === "crooked");
+  const cCoords = app.waterCoordinates.crooked;
+  app.setNwsGrid(`${cCoords.lat.toFixed(4)},${cCoords.lon.toFixed(4)}`, "https://api.weather.gov/gridpoints/PDT/50,50/forecast/hourly");
+  app.setPlannerForecasts({});
+  const realFetch = context.fetch;
+  const fetched = [];
+  context.fetch = async (url) => {
+    fetched.push(String(url));
+    await new Promise((done) => setTimeout(done, 20));
+    const periods = [0, 1, 2].map((offset) => ({ startTime: `${addDays(offset)}T06:00:00-08:00`, isDaytime: true, temperature: 50, temperatureUnit: "F", windSpeed: "5 mph", shortForecast: "Cloudy" }));
+    return { ok: true, status: 200, json: async () => ({ properties: { periods } }) };
+  };
+  const first = context.loadPlannerForecasts({ waterList: [app.waters.find((item) => item.id === "metolius")], render: false });
+  const second = context.loadPlannerForecasts({ waterList: [crooked], render: false });
+  await Promise.all([first, second]);
+  assert(fetched.some((url) => url.includes("/50,50/forecast")) && context.plannerForWater(crooked).days.length > 0,
+    `the second water is fetched after the first load finishes (${fetched.join(", ")})`);
+  fetched.length = 0;
+  await Promise.all([context.loadPlannerForecasts({ waterList: [crooked], render: false }), context.loadPlannerForecasts({ waterList: [crooked], render: false })]);
+  assert(fetched.length === 0, `a fresh forecast is not fetched again (${fetched.length})`);
+  context.fetch = realFetch;
+  app.setPlannerForecasts({});
+
+  context.toggleSavedWater("lower-deschutes");
+  context.toggleSavedWater("metolius");
+  context.webkit = undefined;
+}
+
+group("Audit round 2 (D3, D4, D6, D7, D8, D15): regulation text matches its source");
+{
+  const regs = app.ODFW_REGULATIONS;
+  const water = (id) => app.waters.find((item) => item.id === id);
+  const stream = regs.tumalo.summary.join(" ");
+  assert(/Rainbow trout over 20 inches are considered steelhead in streams/.test(stream) && /only hatchery steelhead may be taken/.test(stream)
+    && /No limit on size or number of brook or brown trout in streams unless noted under Exceptions/.test(stream),
+    "the zone stream summary carries the steelhead and brook/brown trout rules");
+  assert(/steelhead/.test(regs.tumalo.harvest) && /brook or brown/.test(regs.tumalo.harvest), `and so does its harvest line (${regs.tumalo.harvest})`);
+  const contradicted = Object.entries(regs).filter(([, entry]) => {
+    const text = [...entry.summary, entry.harvest].join(" ");
+    return /No harvest of rainbow trout over 20 inches|no rainbow over 20/i.test(text) && /only 1 over 20 inches/.test(text);
+  }).map(([id]) => id);
+  assert(!contradicted.length, `no water says both "no rainbow over 20" and "only 1 over 20" (${contradicted.join(", ") || "none"})`);
+  assert(!("zoneRules" in app.ODFW_REGULATIONS_META), "the unused zone rules list is gone");
+
+  // D4: every eRegulations Central Zone fragment matches exactly once in
+  // the page text, so Safari cannot scroll to another water's rule.
+  const excerpt = readFileSync(join(root, "scripts/fixtures/eregulations-central-zone-2026.txt"), "utf8").split("\n").slice(1).join("\n").replace(/\s+/g, " ");
+  const escapeRe = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const fragmentCount = (url) => {
+    const directive = decodeURIComponent(url.split("#:~:text=")[1] || "");
+    const parts = directive.split(",");
+    const suffix = parts.length > 1 && parts[parts.length - 1].startsWith("-") ? parts.pop().slice(1) : "";
+    const pattern = new RegExp(`\\b${escapeRe(parts[0])}${suffix ? `\\s*${escapeRe(suffix)}` : ""}`, "gi");
+    return (excerpt.match(pattern) || []).length;
+  };
+  const sources = Object.entries(regs).filter(([, entry]) => entry.source.startsWith("https://www.eregulations.com/oregon/fishing/central-zone#:~:text="));
+  assert(sources.length > 20, `the Central Zone fragments are checked (${sources.length})`);
+  const ambiguous = sources.filter(([, entry]) => fragmentCount(entry.source) !== 1).map(([id, entry]) => `${id}=${fragmentCount(entry.source)}`);
+  assert(!ambiguous.length, `every fragment matches exactly once on the page (${ambiguous.join(", ") || "all unique"})`);
+  assert(fragmentCount("https://www.eregulations.com/oregon/fishing/central-zone#:~:text=Metolius%20River") > 1, "a bare name that occurs earlier is caught by this check");
+
+  // D6, D7: sections from the source.
+  assert(context.regulationSeasonStatus(water("ochoco-creek"), "2026-12-01") === "partial", "Ochoco Creek above the reservoir closes after Oct 31");
+  assert(context.regulationSeasonStatus(water("ochoco-creek"), "2026-06-01") === "open", "and is open in June");
+  assert(context.regulationSeasonStatus(water("wickiup"), "2026-08-31") === "open", "Wickiup is wholly open through Aug 31");
+  assert(context.regulationSeasonStatus(water("wickiup"), "2026-09-01") === "partial", "its Deschutes River Arm closes Sep 1");
+  assert(context.regulationSeasonStatus(water("wickiup"), "2026-11-01") === "closed", "and the whole reservoir after Oct 31");
+  // D8: the app summarises trout rules; steelhead is left to ODFW.
+  assert(!regs["lower-deschutes"].summary.some((line) => /hatchery steelhead/.test(line)), "the Lower Deschutes summary affirms no steelhead season");
+  // D15: Scout Lake has the same Metolius-basin doubt as Square Lake.
+  assert(regs["scout-lake"].confidence === "verify" && /Lake Creek/.test(regs["scout-lake"].uncertain), "Scout Lake is verify, like Square Lake");
+  const counts = Object.values(regs).reduce((memo, entry) => ({ ...memo, [entry.confidence]: (memo[entry.confidence] || 0) + 1 }), {});
+  assert(counts.confirmed === 51 && counts.verify === 11, `51 confirmed and 11 verify (${counts.confirmed}, ${counts.verify})`);
+  const doc = readFileSync(join(root, "docs/odfw-regulations-2026.md"), "utf8");
+  assert(/51 `confirmed`, 11 `verify`/.test(doc), "the audit document states the same counts");
 }
 
 console.log(`\n${checks - failures}/${checks} checks passed`);

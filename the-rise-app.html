@@ -3078,6 +3078,20 @@
       color: #a23a1d;
     }
 
+    .regs-flag.regs-snow,
+    .water-chip-card.closed .regs-flag,
+    .why-card .regs-flag {
+      display: block;
+      font-style: normal;
+      color: #8a3a1d;
+    }
+
+    .trip-closed-flag {
+      margin: 6px 0 0;
+      font-weight: 800;
+      color: #a23a1d;
+    }
+
     /* On the water keeps its own black-on-white block for sun. */
     .on-water .regs-compact {
       border: 3px solid #0b0f0c;
@@ -5173,20 +5187,6 @@
       year: 2026,
       checked: "2026-11-18",
       booklet: "2026 Oregon Sport Fishing Regulations",
-      zoneRules: {
-        Central: [
-          "Lakes: open all year. 5 trout per day, 8 inch minimum length, only 1 over 20 inches.",
-          "Streams: open May 22 - Oct 31 unless an exception says otherwise. 2 trout per day, 8 inch minimum length, only 1 over 20 inches.",
-          "Streams: artificial flies and lures only unless an exception allows bait.",
-          "Closed to angling for bull trout unless an exception says otherwise.",
-          "Kokanee: 10 per day, no size limit, unless an exception says otherwise.",
-          "Released trout must be unharmed and should not be removed from the water."
-        ],
-        Willamette: [
-          "Lakes: open all year. 5 trout per day, 8 inch minimum length, only 1 over 20 inches.",
-          "Closed to angling for bull trout."
-        ]
-      },
       links: {
         regulations: "https://myodfw.com/articles/oregon-fishing-hunting-regulations-and-updates",
         centralZone: "https://www.eregulations.com/oregon/fishing/central-zone",
@@ -5197,9 +5197,15 @@
     };
 
     const ODFW_CZ_LAKE = "Central Zone lake rules: 5 trout per day, 8 inch minimum, only 1 over 20 inches; bull trout closed.";
-    const ODFW_CZ_STREAM = "Central Zone stream rules: 2 trout per day, 8 inch minimum, only 1 over 20 inches; bull trout closed.";
+    // The zone's stream trout rules as the booklet's table states them. Where
+    // an exception says no rainbow trout over 20 inches may be kept, the
+    // "only 1 over 20 inches" clause is left out rather than contradicted.
+    const ODFW_CZ_STREAM_STEELHEAD = "Rainbow trout over 20 inches are considered steelhead in streams; only hatchery steelhead may be taken.";
+    const ODFW_CZ_STREAM_BROOK_BROWN = "No limit on size or number of brook or brown trout in streams unless noted under Exceptions.";
+    const ODFW_CZ_STREAM = `Central Zone stream rules: 2 trout per day, 8 inch minimum, only 1 over 20 inches; bull trout closed. ${ODFW_CZ_STREAM_STEELHEAD} ${ODFW_CZ_STREAM_BROOK_BROWN}`;
+    const ODFW_CZ_STREAM_NO_BIG_RAINBOW = `Central Zone stream rules: 2 trout per day, 8 inch minimum; bull trout closed. ${ODFW_CZ_STREAM_STEELHEAD} ${ODFW_CZ_STREAM_BROOK_BROWN}`;
     const ODFW_CZ_STREAM_GEAR = "Artificial flies and lures only (Central Zone streams).";
-    const ODFW_CZ_TABLE = "https://www.eregulations.com/oregon/fishing/central-zone#:~:text=Central%20Zone%20Regulations";
+    const ODFW_CZ_TABLE = "https://www.eregulations.com/oregon/fishing/central-zone#:~:text=Central%20Zone%20Regulations,-Species";
 
     function odfwEntry(entry) {
       return { year: ODFW_REGULATIONS_META.year, checked: ODFW_REGULATIONS_META.checked, zone: "Central", notes: "", ...entry };
@@ -5224,7 +5230,7 @@
         season: { from: "05-22", to: "10-31" },
         summary: ["Not listed under Central Zone exceptions: zone rules apply.", "Open May 22 - Oct 31 (Central Zone streams).", ODFW_CZ_STREAM_GEAR, ODFW_CZ_STREAM],
         gear: ODFW_CZ_STREAM_GEAR,
-        harvest: "2 trout per day, 8 inch minimum, only 1 over 20 inches.",
+        harvest: "2 trout per day, 8 inch minimum, only 1 over 20 inches; rainbow trout over 20 inches are steelhead (hatchery steelhead only); no limit on brook or brown trout.",
         source: ODFW_CZ_TABLE,
         confidence: "confirmed",
         ...extra
@@ -5266,8 +5272,8 @@
           { name: "Northern boundary of the Warm Springs Reservation to the Pelton Regulating Reservoir", from: "04-22", to: "12-31" }
         ] },
         summary: [
-          "Sherars Falls up to the northern boundary of the Warm Springs Reservation: open all year for trout and hatchery steelhead.",
-          "Reservation boundary up to the Pelton Regulating Reservoir: open Apr 22 - Dec 31 for trout and hatchery steelhead.",
+          "Sherars Falls up to the northern boundary of the Warm Springs Reservation: open all year for trout.",
+          "Reservation boundary up to the Pelton Regulating Reservoir: open Apr 22 - Dec 31 for trout.",
           "2 rainbow trout per day, 10 inch minimum and 13 inch maximum length.",
           "No angling from a floating device.",
           "Closed from Pelton Regulating Dam downstream about 600 ft to ODFW markers.",
@@ -5275,7 +5281,7 @@
         ],
         gear: "Artificial flies and lures only; no angling from a floating device.",
         harvest: "2 rainbow trout per day, 10-13 inches.",
-        notes: "Salmon and steelhead rules on this river differ by reach and change in season.",
+        notes: "Salmon and steelhead rules on this river differ by reach and change in season - check ODFW's in-season changes before fishing for them.",
         source: "https://www.eregulations.com/oregon/fishing/central-zone#:~:text=Sherars%20Falls%20to%20Northern%20Boundary",
         confidence: "confirmed"
       }),
@@ -5285,7 +5291,7 @@
           "Lake Billy Chinook to Benham Falls: open all year for trout.",
           "No harvest of rainbow trout over 20 inches.",
           ODFW_CZ_STREAM_GEAR,
-          ODFW_CZ_STREAM
+          ODFW_CZ_STREAM_NO_BIG_RAINBOW
         ],
         gear: ODFW_CZ_STREAM_GEAR,
         harvest: "2 trout per day, 8 inch minimum; no rainbow over 20 inches.",
@@ -5322,7 +5328,7 @@
         ],
         gear: "Fly fishing only, barbless hooks, above Bridge 99; artificial flies and lures below.",
         harvest: "Catch-and-release for trout, including bull trout.",
-        source: "https://www.eregulations.com/oregon/fishing/central-zone#:~:text=Metolius%20River",
+        source: "https://www.eregulations.com/oregon/fishing/central-zone#:~:text=Metolius%20River,-The%20following",
         confidence: "confirmed"
       }),
       crooked: odfwEntry({
@@ -5331,7 +5337,7 @@
           "Below Bowman Dam: open all year.",
           "No harvest of rainbow trout over 20 inches.",
           ODFW_CZ_STREAM_GEAR,
-          ODFW_CZ_STREAM
+          ODFW_CZ_STREAM_NO_BIG_RAINBOW
         ],
         gear: ODFW_CZ_STREAM_GEAR,
         harvest: "2 trout per day, 8 inch minimum; no rainbow over 20 inches.",
@@ -5355,7 +5361,7 @@
         confidence: "confirmed"
       }),
       whychus: odfwZoneStream({
-        summary: ["Open May 22 - Oct 31 (Central Zone streams).", "No harvest of rainbow trout over 20 inches.", ODFW_CZ_STREAM_GEAR, ODFW_CZ_STREAM],
+        summary: ["Open May 22 - Oct 31 (Central Zone streams).", "No harvest of rainbow trout over 20 inches.", ODFW_CZ_STREAM_GEAR, ODFW_CZ_STREAM_NO_BIG_RAINBOW],
         harvest: "2 trout per day, 8 inch minimum; no rainbow over 20 inches.",
         source: "https://www.eregulations.com/oregon/fishing/central-zone#:~:text=Whychus%20Creek"
       }),
@@ -5390,7 +5396,10 @@
         notes: "The Deschutes River below the lake (Benham Falls to Little Lava Lake) is open May 22 - Sep 30."
       }),
       wickiup: odfwEntry({
-        season: { from: "04-22", to: "10-31" },
+        season: { sections: [
+          { name: "Reservoir, except the Deschutes River Arm", from: "04-22", to: "10-31" },
+          { name: "Deschutes River Arm, Gull Point Campground boat ramp to ODFW markers near Sheeps Bridge", from: "04-22", to: "08-31" }
+        ] },
         summary: [
           "Open Apr 22 - Oct 31.",
           "Deschutes River Arm closed from the Gull Point Campground boat ramp to ODFW markers near Sheeps Bridge, Sep 1 - Apr 21; Deschutes River rules apply above those markers.",
@@ -5445,12 +5454,12 @@
         ],
         gear: "No special gear rule on the reservoir.",
         harvest: "5 trout per day (may include 1 bull trout, 24 inch min.); no rainbow over 20 or kokanee over 16 inches.",
-        source: "https://www.eregulations.com/oregon/fishing/central-zone#:~:text=Lake%20Billy%20Chinook",
+        source: "https://www.eregulations.com/oregon/fishing/central-zone#:~:text=Lake%20Billy%20Chinook,-Metolius%20Arm",
         confidence: "confirmed"
       }),
       simtustus: odfwZoneLake({
         summary: ["Confederated Tribes of Warm Springs angling permit required.", "No limit on the size or number of bass.", "No season exception listed: open all year (Central Zone lakes).", ODFW_CZ_LAKE],
-        source: "https://www.eregulations.com/oregon/fishing/central-zone#:~:text=Lake%20Simtustus",
+        source: "https://www.eregulations.com/oregon/fishing/central-zone#:~:text=Lake%20Simtustus,-Confederated",
         notes: "Tribal angling permit required as well as an Oregon license."
       }),
       "prineville-reservoir": odfwZoneLake({
@@ -5465,7 +5474,9 @@
       "big-lake": odfwVerifyLake("Big Lake is not named in the Central or Willamette Zone exceptions and its zone is not stated. Confirm its zone and rules with ODFW.", {
         zone: "Not confirmed"
       }),
-      "scout-lake": odfwZoneLake(),
+      "scout-lake": odfwVerifyLake("Not listed. The Metolius River's tributaries are closed except Lake Creek; Scout Lake's drainage and whether that applies are not confirmed. Confirm with ODFW.", {
+        source: "https://www.eregulations.com/oregon/fishing/central-zone#:~:text=Metolius%20River,-The%20following"
+      }),
       "clear-lake": odfwEntry({
         zone: "Willamette",
         season: { allYear: true },
@@ -5521,7 +5532,7 @@
         ],
         gear: "No special gear rule.",
         harvest: "25 kokanee; 1 lake trout over 24 inches; no bull trout.",
-        source: "https://www.eregulations.com/oregon/fishing/central-zone#:~:text=Odell%20Lake",
+        source: "https://www.eregulations.com/oregon/fishing/central-zone#:~:text=Odell%20Lake,-Open%20Apr%2022",
         confidence: "confirmed"
       }),
       "crescent-creek": odfwZoneStream(),
@@ -5529,16 +5540,19 @@
       "paulina-creek": odfwZoneStream(),
       "bridge-creek": odfwUnlisted("Not named in the Central or Northeast Zone exceptions. A Bridge Creek in the Ochocos may drain to the John Day (Northeast Zone); confirm which creek and its zone with ODFW."),
       "ochoco-creek": odfwEntry({
-        season: { allYear: true },
+        season: { sections: [
+          { name: "Mouth to Ochoco Dam", allYear: true },
+          { name: "Above Ochoco Reservoir", from: "05-22", to: "10-31" }
+        ] },
         summary: [
           "Mouth to Ochoco Dam: open all year.",
+          "Above Ochoco Reservoir: open May 22 - Oct 31 (Central Zone streams).",
           "No harvest of rainbow trout over 20 inches.",
           ODFW_CZ_STREAM_GEAR,
-          ODFW_CZ_STREAM
+          ODFW_CZ_STREAM_NO_BIG_RAINBOW
         ],
         gear: ODFW_CZ_STREAM_GEAR,
         harvest: "2 trout per day, 8 inch minimum; no rainbow over 20 inches.",
-        notes: "Above Ochoco Reservoir the Central Zone stream season (May 22 - Oct 31) applies.",
         source: "https://www.eregulations.com/oregon/fishing/central-zone#:~:text=Ochoco%20Creek",
         confidence: "confirmed"
       }),
@@ -5560,14 +5574,14 @@
       "doris-lake": odfwZoneLake(),
       "lucky-lake": odfwZoneLake(),
       "rosary-lakes": odfwVerifyLake("Not listed. Odell Lake's rules close its tributaries; whether that reaches lakes in Odell's drainage is not stated. Confirm with ODFW.", {
-        source: "https://www.eregulations.com/oregon/fishing/central-zone#:~:text=Odell%20Lake"
+        source: "https://www.eregulations.com/oregon/fishing/central-zone#:~:text=Odell%20Lake,-Open%20Apr%2022"
       }),
       "square-lake": odfwVerifyLake("Not listed. The Metolius River's tributaries are closed except Lake Creek; Square Lake's drainage and whether that applies are not confirmed. Confirm with ODFW.", {
-        source: "https://www.eregulations.com/oregon/fishing/central-zone#:~:text=Metolius%20River"
+        source: "https://www.eregulations.com/oregon/fishing/central-zone#:~:text=Metolius%20River,-The%20following"
       }),
       "little-three-creeks": odfwZoneLake(),
       "yoran-lake": odfwVerifyLake("Not listed. Odell Lake's rules close its tributaries; whether that reaches Yoran Lake is not stated. Confirm with ODFW.", {
-        source: "https://www.eregulations.com/oregon/fishing/central-zone#:~:text=Odell%20Lake"
+        source: "https://www.eregulations.com/oregon/fishing/central-zone#:~:text=Odell%20Lake,-Open%20Apr%2022"
       })
     };
 
@@ -5674,8 +5688,8 @@
     }
 
     /* Whether the bundled summary may be out of date: ODFW names a newer
-       booklet, or the calendar is past the next booklet's March whether or
-       not a check ever got through. */
+       booklet, or the calendar is in a later year than the bundled booklet
+       (each booklet takes effect Jan 1) whether or not a check got through. */
     function regulationsStaleness(dateKey = pacificDateKey(), record = readRegulationsCheck()) {
       const bundled = ODFW_REGULATIONS_META.year;
       const today = regulationDateParts(dateKey);
@@ -5685,10 +5699,12 @@
           message: `ODFW has published ${record.publishedYear} regulations. This summary is from ${bundled} and may be out of date - check ODFW before you fish.`
         };
       }
-      if (today && (today.year > bundled + 1 || (today.year > bundled && today.month >= REGS_CHECK_MONTH))) {
+      // A new booklet takes effect Jan 1, so the calendar warning starts
+      // then; the network check still waits for March 1.
+      if (today && today.year > bundled) {
         return {
           kind: "calendar",
-          message: `This summary is from ${bundled}; ODFW's current rules may differ. Check ODFW before you fish.`
+          message: `ODFW's ${today.year} regulations took effect Jan 1. This summary is from ${bundled} - check ODFW before you fish.`
         };
       }
       return null;
@@ -6817,6 +6833,15 @@
         saveActiveWater(nextWater.id);
       }
       if (hiddenWaterIds.includes(expandedWaterId)) expandedWaterId = null;
+      // Hiding pauses the water's alerts and showing it resumes them.
+      if (alertRules[waterId] && savedWaterIds.includes(waterId)) {
+        syncAlertsToNative(false);
+        const water = waterById(waterId);
+        if (!hiddenWaterIds.includes(waterId) && alertRules[waterId].greatDay.enabled) {
+          if (plannerForWater(water).days.length || navigator.onLine === false) postGreatDaySchedule();
+          else loadPlannerForecasts({ waterList: [water] });
+        }
+      }
     }
 
     // The Worked/Ignore buttons toggle. On the water sets a value outright:
@@ -6921,10 +6946,12 @@
     function waterChipCard(waterId, label) {
       const water = waterById(waterId);
       if (!water) return "";
+      const closedLabel = waterClosedLabel(water);
       return `
-        <button class="water-chip-card" data-water="${water.id}">
+        <button class="water-chip-card ${closedLabel ? "closed" : ""}" data-water="${water.id}">
           <span>${label}</span>
           <strong>${water.name}</strong>
+          ${closedLabel ? `<em class="regs-flag">${esc(closedLabel)}</em>` : ""}
           <small>${fishScore(water)} fishability${distanceLabel(water) ? ` - ${distanceLabel(water)}` : ""}</small>
         </button>
       `;
@@ -7690,6 +7717,12 @@
       return `Prime window: ${label} - passed for today`;
     }
 
+    // The prime-window line for a water that can be fished today; a closed or
+    // snowed-in water has no window to count down to, and says why instead.
+    function primeWindowOrClosed(water) {
+      return waterClosedLabel(water) || primeWindowFor(water).replace("Prime window: ", "");
+    }
+
     // 1 inside the window, tapering to 0 four hours out. Used by the score.
     function timeOfDayFit(water) {
       const window = primeWindowHours(water);
@@ -7704,7 +7737,8 @@
     }
 
     function fishabilitySummary(water) {
-      if (regulationSeasonStatus(water) === "closed") return regulationStatusLabel("closed");
+      const closedLabel = waterClosedLabel(water);
+      if (closedLabel) return closedLabel;
       const score = Number(fishScore(water));
       if (score >= 8) return "Strong day to fish";
       if (score >= 6.5) return "Good, with windows";
@@ -7732,12 +7766,15 @@
 
     /* A water in a closed ODFW season is never ranked as fishable: it sorts
        after every water that is open, partly open or not confirmed, in its
-       own score order. "unknown" is not closed. */
+       own score order. "unknown" is not closed. A water typically snowed in
+       today sorts after every water that can be reached and before the
+       closed-season ones. */
     function rankedWatersForCurrentMode(list = visibleWaters()) {
       const today = pacificDateKey();
-      const closed = new Map(list.map((water) => [water.id, regulationSeasonStatus(water, today) === "closed"]));
+      const closed = new Map(list.map((water) => [water.id,
+        regulationSeasonStatus(water, today) === "closed" ? 2 : snowedInClosureFor(water, today) ? 1 : 0]));
       return visibleWaters(list).sort((a, b) => {
-        const closedDelta = Number(closed.get(a.id)) - Number(closed.get(b.id));
+        const closedDelta = closed.get(a.id) - closed.get(b.id);
         if (closedDelta) return closedDelta;
         const scoreDelta = rankedScore(b) - rankedScore(a);
         if (Math.abs(scoreDelta) > .05) return scoreDelta;
@@ -9145,6 +9182,7 @@
     const TRIPCHECK_URL = "https://www.tripcheck.com/";
     const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
     const SNOWED_IN_REASON = "Typically snowed in - check ODOT TripCheck / USFS";
+    const SNOWED_IN_LABEL = "Typically snowed in";
 
     /* Typical seasonal closures, not a road report. Snow decides the real
        dates every year, so these windows are deliberately described as
@@ -9159,7 +9197,22 @@
         from: [11, 15],
         to: [5, 25],
         waters: ["spark-lake", "devils", "elk-lake", "hosmer", "lava", "little-lava", "cultus", "little-cultus", "crane-prairie", "todd-lake", "deer-lake", "doris-lake", "blow-lake", "lucky-lake"],
-        note: { "crane-prairie": "north access via OR-46" }
+        note: { "crane-prairie": "north access via OR-46" },
+        // Only one way in is cut: the water is still scored, and the day
+        // says which access is typically closed.
+        partialAccess: { "crane-prairie": "north access typically closed" }
+      },
+      {
+        id: "newberry-caldera",
+        label: "Newberry Caldera: Paulina Lake Road (Forest Road 21) to Paulina and East Lakes",
+        // Deschutes County Road Department notices: closed at the 10 Mile
+        // Sno-Park gate from about mid-November to Memorial Day weekend,
+        // with the Forest Service; the date moves with the snow.
+        typical: "Typically gated at the 10 Mile Sno-Park from about mid-November to late May (Memorial Day weekend) - check Deschutes County roads / USFS Deschutes National Forest.",
+        from: [11, 15],
+        to: [5, 25],
+        waters: ["east-lake", "paulina", "paulina-creek"],
+        note: {}
       },
       {
         id: "high-hike-in-lakes",
@@ -9224,12 +9277,31 @@
     }
 
     // The typical closure covering this water on this Pacific date, if any.
+    // A water with another way in comes back with `partial: true` and the
+    // access that is typically closed; it is not snowed in.
     function seasonalClosureFor(water, dateKey = pacificDateKey()) {
       const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(dateKey || ""));
       if (!water || !match) return null;
       const month = Number(match[2]);
       const day = Number(match[3]);
-      return SEASONAL_ACCESS_CLOSURES.find((closure) => closure.waters.includes(water.id) && monthDayInWindow(month, day, closure)) || null;
+      const closure = SEASONAL_ACCESS_CLOSURES.find((item) => item.waters.includes(water.id) && monthDayInWindow(month, day, item)) || null;
+      const accessNote = closure?.partialAccess?.[water.id];
+      return accessNote ? { ...closure, partial: true, accessNote } : closure;
+    }
+
+    // Typically cut off by snow on this date: a full closure, not a partial one.
+    function snowedInClosureFor(water, dateKey = pacificDateKey()) {
+      const closure = seasonalClosureFor(water, dateKey);
+      return closure && !closure.partial ? closure : null;
+    }
+
+    /* One label for a water that cannot be fished on this date: a closed ODFW
+       season first, then a typical snow closure. Empty when it can be. */
+    function waterClosedLabel(water, dateKey = pacificDateKey()) {
+      if (!water) return "";
+      if (regulationSeasonStatus(water, dateKey) === "closed") return regulationStatusLabel("closed");
+      if (snowedInClosureFor(water, dateKey)) return SNOWED_IN_LABEL;
+      return "";
     }
 
     function weekdayLabel(dateKey) {
@@ -9345,7 +9417,10 @@
         .filter((day) => day.date >= today)
         .slice(0, PLANNER_DAYS)
         .map((day) => {
-          const closure = seasonalClosureFor(water, day.date);
+          const access = seasonalClosureFor(water, day.date);
+          // A partial closure leaves another way in: scored, and said.
+          const closure = access && !access.partial ? access : null;
+          const accessNote = access?.partial ? access.accessNote : "";
           // A day outside the ODFW season is closed to fishing, whatever the
           // weather: no score, never the best day.
           const regulationClosed = regulationSeasonStatus(water, day.date) === "closed";
@@ -9355,16 +9430,55 @@
             closure,
             regulationClosed,
             score: closure || regulationClosed ? null : plannerDayScore(water, day),
-            reason: regulationClosed ? regulationStatusLabel("closed") : closure ? SNOWED_IN_REASON : plannerDayReason(water, day)
+            reason: regulationClosed
+              ? regulationStatusLabel("closed")
+              : closure ? SNOWED_IN_REASON : [plannerDayReason(water, day), accessNote].filter(Boolean).join(", ")
           };
         });
-      const best = days.reduce((top, day) => (day.score !== null && (!top || day.score > top.score) ? day : top), null);
+      // Today stops being a best day once its fishing is over: past the
+      // water's prime window, or 5 PM when it has none.
+      const window = primeWindowHours(water);
+      const todayOver = today === pacificDateKey() && currentHour() >= (window ? window[1] : 17);
+      const best = days.reduce((top, day) => (day.score !== null && !(todayOver && day.date === today) && (!top || day.score > top.score) ? day : top), null);
       return { water, days, best, fetchedAt: forecast.fetchedAt };
+    }
+
+    // The week's one-line summary: the best day, or why there is none.
+    function plannerSummaryLine(plan) {
+      if (plan.best) return `Best: ${plan.best.label} ${plan.best.score.toFixed(1)}`;
+      if (!plan.days.length) return "No forecast";
+      if (plan.days.every((day) => day.regulationClosed)) return `${regulationStatusLabel("closed")} all week`;
+      if (plan.days.every((day) => day.closure)) return "Typically snowed in all week";
+      if (plan.days.every((day) => day.regulationClosed || day.closure)) return "Closed or snowed in all week";
+      return "No open day this week";
+    }
+
+    // A forecast fetched recently enough to reuse - or, for a forced
+    // refresh, fetched since `since`.
+    function plannerForecastFresh(water, since = null) {
+      const url = cachedDailyForecastUrl(water);
+      const entry = url ? plannerForecasts[url] : null;
+      const age = entry ? hoursSince(entry.fetchedAt) : null;
+      if (age === null || age >= PLANNER_FORECAST_FRESH_HOURS) return false;
+      return since === null || Date.parse(entry.fetchedAt) >= since;
     }
 
     async function loadPlannerForecasts(options = {}) {
       const { force = false, waterList = plannerWaters(), render = true } = options;
-      if (plannerInFlight) return plannerInFlight;
+      if (plannerInFlight) {
+        /* A load already running may be for other waters - turning on a
+           great-day alert for one water during a load for another used to
+           return the other's promise and never fetch it. Wait for it to
+           finish, then load whatever this call asked for that it did not
+           bring in. */
+        const askedAt = Date.now();
+        while (plannerInFlight) {
+          await plannerInFlight.catch(() => false);
+          await Promise.resolve();
+        }
+        const missing = waterList.filter((water) => !plannerForecastFresh(water, force ? askedAt : null));
+        return missing.length ? loadPlannerForecasts({ ...options, waterList: missing }) : true;
+      }
       if (navigator.onLine === false) {
         plannerStatus = { state: "offline", message: "Offline - no forecast could be loaded. Nothing is shown in its place." };
         if (render) renderScreens("today");
@@ -9488,7 +9602,7 @@
               <details class="planner-water" data-planner-water="${attr(plan.water.id)}" ${index === 0 ? "open" : ""}>
                 <summary>
                   <strong>${esc(plan.water.name)}</strong>
-                  <span>${plan.best ? `Best: ${esc(plan.best.label)} ${esc(plan.best.score.toFixed(1))}` : plan.days.length ? "Typically snowed in all week" : "No forecast"}</span>
+                  <span>${esc(plannerSummaryLine(plan))}</span>
                 </summary>
                 ${plan.days.length
                   ? `<ol class="planner-days">${plan.days.map((day) => plannerDayRow(day, plan.best)).join("")}</ol>`
@@ -9570,9 +9684,16 @@
     }
 
     // What the container needs: site id, water name and the range, per water.
+    /* A hidden water's alerts are paused, not deleted: its rules stay here,
+       but it is not sent to the container, scheduled or fetched for, so the
+       container withdraws what it held. Unhiding it resumes them. */
+    function alertsPaused(waterId) {
+      return hiddenWaterIds.includes(waterId);
+    }
+
     function alertRulesForNative() {
       return Object.entries(alertRules)
-        .filter(([waterId]) => savedWaterIds.includes(waterId))
+        .filter(([waterId]) => savedWaterIds.includes(waterId) && !alertsPaused(waterId))
         .map(([waterId, rule]) => {
           const water = waterById(waterId);
           const flowActive = rule.flow.enabled && hasGauge(water) && flowRangeValid(rule);
@@ -9605,10 +9726,17 @@
       return postAlertsMessage({ action: "setRules", rules: alertRulesForNative(), requestPermission });
     }
 
+    /* An angler's edit asks for permission whenever it leaves a rule the
+       container can act on and iOS has not been answered yet: a toggle turned
+       on over an invalid range sends no rule, so the edit that makes the range
+       valid is the first chance to ask. The container asks only if iOS never
+       has. */
     function setAlertRules(next, options = {}) {
       alertRules = normalizeAlertRules(next);
       writeStoredObject(ALERT_RULES_KEY, alertRules);
-      syncAlertsToNative(Boolean(options.requestPermission));
+      const unanswered = !["granted", "provisional", "denied"].includes(alertPermission);
+      const ask = Boolean(options.requestPermission) || (Boolean(options.userEdit) && unanswered && alertRulesForNative().length > 0);
+      syncAlertsToNative(ask);
     }
 
     function toggleAlert(waterId, kind) {
@@ -9617,7 +9745,7 @@
       if (kind === "flow" && !hasGauge(water)) return;
       const rule = alertRuleFor(waterId);
       const turningOn = !rule[kind].enabled;
-      setAlertRules({ ...alertRules, [waterId]: { ...rule, [kind]: { ...rule[kind], enabled: turningOn } } }, { requestPermission: turningOn });
+      setAlertRules({ ...alertRules, [waterId]: { ...rule, [kind]: { ...rule[kind], enabled: turningOn } } }, { requestPermission: turningOn, userEdit: true });
       if (kind === "greatDay") {
         if (turningOn && !plannerForWater(water).days.length) {
           loadPlannerForecasts({ waterList: [water] });
@@ -9638,8 +9766,11 @@
       else if (field === "flowMax") next.flow.max = finiteOrNull(value);
       else if (field === "threshold") next.greatDay.threshold = Number(value);
       else return;
-      setAlertRules({ ...alertRules, [waterId]: next });
+      setAlertRules({ ...alertRules, [waterId]: next }, { userEdit: true });
       if (field === "threshold") postGreatDaySchedule();
+      // Saved without a repaint so the keyboard stays up; the planner's
+      // alert list on Today is now out of date, so it repaints when shown.
+      if (activeScreenId() !== "today") dirtyScreens.add("today");
     }
 
     // A water that is no longer saved keeps no alert.
@@ -9651,7 +9782,7 @@
 
     function greatDayAlertWaters() {
       return Object.keys(alertRules)
-        .filter((waterId) => alertRules[waterId].greatDay.enabled && savedWaterIds.includes(waterId) && waterCoordinates[waterId])
+        .filter((waterId) => alertRules[waterId].greatDay.enabled && savedWaterIds.includes(waterId) && !alertsPaused(waterId) && waterCoordinates[waterId])
         .map(waterById)
         .filter(Boolean);
     }
@@ -9727,7 +9858,7 @@
               ${saved.map((waterId) => `
                 <li>
                   <div>
-                    <b>${esc(waterById(waterId).name)}</b>
+                    <b>${esc(waterById(waterId).name)}${alertsPaused(waterId) ? ` ${esc(alertRuleSummary(waterId) === "No alerts" ? "(hidden)" : "(hidden - alerts paused)")}` : ""}</b>
                     <span>${esc(alertRuleSummary(waterId))}</span>
                   </div>
                   <button class="ghost-btn" data-edit-alerts="${attr(waterId)}">Set alerts</button>
@@ -9785,16 +9916,31 @@
             </div>
             <small>Uses the Plan the week day score - forecast weather and season, not gauges. Sent about 6 PM the evening before.</small>
           </div>
+          ${alertsPaused(water.id) ? `<p class="subtle alert-paused">This water is hidden, so its alerts are paused. Show it again to resume them.</p>` : ""}
           <p class="subtle alert-editor-status">${esc(alertPermissionLine())}</p>
         </div>
       `;
     }
 
     // Answers to setRules and status requests from the container.
+    /* Every setRules gets a reply, so most replies change nothing and must
+       not rebuild the alert editor under the angler's finger. A permission
+       that has just been given - at the prompt, or later in iOS Settings -
+       re-sends the great-day schedule: one sent while the prompt was up was
+       dropped by the container. */
     window.riseAlertsResult = function(result) {
       if (result?.action !== "permission") return;
       const status = String(result.status || "");
-      alertPermission = ["granted", "denied", "notDetermined", "provisional"].includes(status) ? status : "unknown";
+      const next = ["granted", "denied", "notDetermined", "provisional"].includes(status) ? status : "unknown";
+      if (next === alertPermission) return;
+      const wasDeliverable = ["granted", "provisional"].includes(alertPermission);
+      alertPermission = next;
+      if (!wasDeliverable && ["granted", "provisional"].includes(next)) postGreatDaySchedule();
+      if (document.activeElement?.matches?.("[data-alert-field]")) {
+        document.querySelectorAll(".alert-editor-status").forEach((line) => { line.textContent = alertPermissionLine(); });
+        renderScreens(...["today", "waters"].filter((id) => id !== activeScreenId()));
+        return;
+      }
       renderScreens("today", "waters");
     };
 
@@ -9941,10 +10087,13 @@
     function flyRecommendationReason(water, fly) {
       const text = String(fly || "").toLowerCase();
       const hatches = predictedHatches(water).join(" / ");
-      const report = liveReports.byWater[water.id];
+      // Only a report the app may still reason from, and only what it
+      // measured: an expired forecast or the seed wind is not today's.
+      const report = usableReport(water);
       const forecast = `${report?.nws?.forecast || ""}`.toLowerCase();
-      const wind = numberFromText(report?.nws?.wind || water.wind);
-      const temp = liveDisplayValue(water, "temp");
+      const wind = numberFromText(report?.nws?.wind);
+      const measuredTemp = ["measured", "stale"].includes(valueProvenance(water, "temp"));
+      const temp = measuredTemp ? liveDisplayValue(water, "temp") : "";
       const intel = localIntelForWater(water);
       if (intel.flies?.includes(fly)) return `Local report signal mentioned this pattern; pair with ${hatches}.`;
       if (text.includes("leech") || text.includes("bugger") || text.includes("minnow") || text.includes("muddler")) {
@@ -9954,7 +10103,7 @@
       }
       if (text.includes("chironomid") || text.includes("chromie") || text.includes("midge") || text.includes("zebra")) {
         return water.type === "Lake"
-          ? `Stillwater depth control pick for ${temp} water and suspended fish.`
+          ? `Stillwater depth control pick for ${temp ? `${temp} water and ` : ""}suspended fish.`
           : `Cold clear water pick when small midges matter more than profile size.`;
       }
       if (text.includes("damsel")) return "Matches damsel movement around weed beds, reeds, and warm stillwater shallows.";
@@ -10267,6 +10416,7 @@
             <div>
               <span>Why this water today</span>
               <strong>${water.name}</strong>
+              ${waterClosedLabel(water) ? `<em class="regs-flag">${esc(waterClosedLabel(water))}</em>` : ""}
             </div>
             <b>${fishScore(water)}</b>
           </div>
@@ -11213,6 +11363,8 @@
       if (report.status === "loading") return "Checking USGS gauge and NWS forecast now.";
       if (report.status === "error") return `Live pull failed: ${report.error}`;
       if (report.refreshing) return "Updating from signal now while keeping the saved local report available.";
+      // An expired report is not quoted as what the river is doing now.
+      if (!usableReport(water)) return "The saved readings for this water are too old to use. Update with signal to compare gauge and forecast against the seasonal hatch profile.";
       const parts = [];
       if (report.usgs?.flow) parts.push(`${report.usgs.flow} from USGS`);
       if (report.usgs?.waterTemp) parts.push(`${report.usgs.waterTemp} water`);
@@ -11448,13 +11600,15 @@
       const reason = flyRecommendationReason(water, selectedFly);
       const visibleFlies = uniqueItems([selectedFly, ...flies]).slice(0, 3);
       const seasonStatus = regulationSeasonStatus(water);
+      const snowedIn = seasonStatus !== "closed" && Boolean(snowedInClosureFor(water));
       return `
-        <div class="${cardClass} ${seasonStatus === "closed" ? "regs-closed-card" : ""} water-type-${water.type.toLowerCase()} ${water.id === activeWater ? "active" : ""} ${isHidden ? "hidden-water" : ""}" data-water="${water.id}">
+        <div class="${cardClass} ${seasonStatus === "closed" ? "regs-closed-card" : ""} ${snowedIn ? "snowed-in-card" : ""} water-type-${water.type.toLowerCase()} ${water.id === activeWater ? "active" : ""} ${isHidden ? "hidden-water" : ""}" data-water="${water.id}">
           <div class="water-card-main">
             <div class="water-top">
               <div>
                 <div class="water-rank-label">${seasonStatus === "closed" ? `${isTop ? "" : `#${rank} - `}${regulationStatusLabel("closed")}` : isTop ? "Top Water Today" : `#${rank} Today`}</div>
                 ${seasonStatus === "partial" || seasonStatus === "unknown" ? `<div class="regs-flag regs-${seasonStatus}">${esc(regulationStatusLabel(seasonStatus))}</div>` : ""}
+                ${snowedIn ? `<div class="regs-flag regs-snow">${esc(SNOWED_IN_REASON)}</div>` : ""}
                 ${isTop ? `<h2>${water.name}</h2>` : `<strong>${water.name}</strong>`}
                 <div class="subtle">${water.section}</div>
               </div>
@@ -11466,7 +11620,7 @@
             </div>
             <div class="water-summary-row">
               <b>${summaryScore}</b>
-              <span>${primeWindowFor(water).replace("Prime window: ", "")}</span>
+              <span>${esc(primeWindowOrClosed(water))}</span>
               <span>${distance || "Use location"}</span>
               <span>${confidenceForWater(water)}</span>
             </div>
@@ -11490,6 +11644,9 @@
     function renderToday() {
       const home = getHomeWater();
       const topPick = topRecommendedWater();
+      // Ranking puts every reachable open water first, so a closed top pick
+      // means nothing on the list can be fished today; the cards say so.
+      const topPickClosed = waterClosedLabel(topPick);
       const best = hiddenWaterIds.includes(home.id) ? topPick : home;
       const topPickFlies = liveRecommendedFlies(topPick).slice(0, 3);
       const score = fishScore(best);
@@ -11567,7 +11724,7 @@
                   .map((water) => `<option value="${water.id}" ${water.id === best.id ? "selected" : ""}>${esc(water.name)} - ${esc(water.section)}</option>`).join("")}
               </select>
             </div>
-            <h1 class="prime-title">${primeWindowFor(best)}</h1>
+            <h1 class="prime-title">${waterClosedLabel(best) ? `${esc(best.name)}: ${esc(waterClosedLabel(best))}` : primeWindowFor(best)}</h1>
             <div class="condition-line">${liveTemp} ${provenanceTag(best, "temp")} water - ${liveWind} ${provenanceTag(best, "wind")} - clarity ${clarity.label}</div>
             ${dataStatusStrip("today")}
             <div class="fishability-card">
@@ -11596,18 +11753,18 @@
 
             <div class="command-grid">
               <div class="command-card primary" role="button" tabindex="0" data-water="${topPick.id}" data-go="waters">
-                <span>Best option now</span>
+                <span>${topPickClosed ? "Every water on your list is closed" : "Best option now"}</span>
                 <strong>${topPick.name}</strong>
-                <small>${fishScore(topPick)} fishability${distanceLabel(topPick) ? ` - ${distanceLabel(topPick)} away` : ""} - ${confidenceForWater(topPick)}</small>
+                <small>${topPickClosed ? `${esc(topPickClosed)} - ` : ""}${fishScore(topPick)} fishability${distanceLabel(topPick) ? ` - ${distanceLabel(topPick)} away` : ""} - ${confidenceForWater(topPick)}</small>
               </div>
               <div class="command-card primary" role="button" tabindex="0" data-trip-mode="${topPick.id}">
                 <span>Trip mode</span>
-                <strong>Fish ${topPick.name}</strong>
-                <small>Field view with rating, flies, window, update, and quick log.</small>
+                <strong>${topPickClosed ? esc(topPick.name) : `Fish ${topPick.name}`}</strong>
+                <small>${topPickClosed ? `${esc(topPickClosed)}. ` : ""}Field view with rating, flies, window, update, and quick log.</small>
               </div>
               <div class="command-card">
                 <span>Prime window</span>
-                <strong>${primeWindowFor(topPick).replace("Prime window: ", "")}</strong>
+                <strong>${esc(primeWindowOrClosed(topPick))}</strong>
                 <small>${fishabilityReason(topPick)}</small>
               </div>
               <div class="command-card">
@@ -11711,7 +11868,7 @@
         <div>
           <p class="eyebrow">Waters</p>
           <h1>${esc(state.topWater.name)}</h1>
-          <p class="subtle">${regulationSeasonStatus(state.topWater) === "closed" ? regulationStatusLabel("closed") : waterSortMode === "Near" && userLocation ? "Best nearby water" : "Highest rated today"} - ${esc(state.topWater.section)}</p>
+          <p class="subtle">${waterClosedLabel(state.topWater) ? esc(waterClosedLabel(state.topWater)) : waterSortMode === "Near" && userLocation ? "Best nearby water" : "Highest rated today"} - ${esc(state.topWater.section)}</p>
         </div>
         <div class="waters-score-badge"><strong>${fishScore(state.topWater)}</strong><span>Fishability</span></div>
       `;
@@ -11802,6 +11959,7 @@
       const hatches = predictedHatches(water);
       const clarity = clarityFor(water);
       const score = fishScore(water);
+      const tripClosed = waterClosedLabel(water);
       const currentFly = selectedWaterFly(water);
       const currentRef = flyRefFor(currentFly);
       const checklist = water.type === "Lake"
@@ -11814,10 +11972,11 @@
               <p class="eyebrow">Trip Mode</p>
               <h1>${water.name}</h1>
               <p class="subtle">${water.section}</p>
+              ${tripClosed ? `<p class="trip-closed-flag">${esc(tripClosed)}</p>` : ""}
             </div>
             <div class="trip-score">
               <strong>${score}</strong>
-              <span>Fishability</span>
+              <span>${tripClosed ? "Fishability if open" : "Fishability"}</span>
             </div>
           </section>
 
@@ -11835,7 +11994,7 @@
           <div class="trip-card trip-now">
             <div>
               <span class="trip-label">Prime window</span>
-              <strong>${primeWindowFor(water).replace("Prime window: ", "")}</strong>
+              <strong>${esc(primeWindowOrClosed(water))}</strong>
               <p>${fishabilityReason(water)}</p>
             </div>
             <div class="trip-fly-image" style="background-image:url('${currentRef.plate}');background-position:${currentRef.pos};background-size:${currentRef.size || "200% 200%"};" role="img" aria-label="${attr(currentFly)} artificial fly reference"></div>
@@ -13583,6 +13742,8 @@
         if (hasSubscriptionBridge() && !subscriptionLoading && !subscriptionActionPending) {
           postSubscriptionMessage({ action: "status" });
         }
+        // Notifications may have been allowed in iOS Settings meanwhile.
+        if (hasAlertsBridge()) postAlertsMessage({ action: "status" });
       });
       window.addEventListener("online", checkDailyOpenSync);
     }
@@ -14043,6 +14204,8 @@
       ["[data-edit-alerts]", (element) => {
         const waterId = element.dataset.editAlerts;
         if (!waterById(waterId)) return;
+        // A hidden water's card is not on the list unless hidden waters are.
+        if (hiddenWaterIds.includes(waterId)) showHiddenWaters = true;
         waterQuery = "";
         waterFilter = "All";
         expandedWaterId = waterId;

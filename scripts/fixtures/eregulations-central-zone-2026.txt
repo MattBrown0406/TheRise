@@ -1,0 +1,319 @@
+# Text of https://www.eregulations.com/oregon/fishing/central-zone (2026 Oregon Sport Fishing Regulations, "Last Updated: January 6, 2026"), read 2026-11-20, page start through the last Central Zone exception. Used by test-app-logic.mjs to check that each source link's text fragment lands on its own water.
+
+Central Zone - Oregon Fishing | eRegulations
+Skip to main content
+Menu
+Oregon
+Fishing
+Oregon
+›
+Fishing
+›
+Central Zone
+General Info
+Definitions
+Oregon Department of Fish & Wildlife
+Columbia River Basin Endorsement
+Advisories & Consumption Guidelines
+Licenses, Permits & Fees
+License Information
+License, Tag & Permit Fees
+Angling Tag Instructions & Codes
+Disabilities Hunting & Fishing Permit Info
+Fishing Regulations
+Bag & Possession Limits
+General Statewide Regulations
+Management Designations for Marine Areas
+Species
+Fish Species Identification
+Select Groundfish Species
+Chinook & Coho Salmon Identification
+Clam & Crab Identification
+Angling Zones
+Angling Zones & Fish District Contacts
+Northeast Zone
+Southeast Zone
+Willamette Zone
+Marine Zone
+Northwest Zone
+Central Zone
+Southwest Zone
+Snake River Zone
+Columbia River Zone
+PDF Downloads
+Fish & Wildlife Transfer Record
+Columbia River Zone Map
+Snake River Zone Map
+Southwest Zone Map
+Northwest Zone Map
+Central Zone Map
+Willamette Zone Map
+Southeast Zone Map
+2026 Oregon Fishing Regulations PDF
+Northeast Zone Map
+Central Zone
+Last Updated: January 6, 2026
+Description
+The Central Zone is all waters draining into the Columbia River from Bonneville Dam up to and including the Deschutes River.
+Central Zone Regulations
+Angling for all species is restricted to artificial flies and lures in streams. See Exceptions where use of bait is allowed.
+A valid Columbia River Basin Endorsement must be in possession when fishing for salmon, steelhead, or sturgeon in the mainstem Columbia River from Buoy 10 upstream and in all the rivers and their tributaries that flow into the Columbia River.
+The lower reaches of Eagle Creek, Herman Creek and the Deschutes River have been designated as thermal angling sanctuaries and may have additional regulations in place during Jul 15 - Sep 15. Check the Central Zone Fishing Report for the most current information.
+See Health Advisory .
+Central Zone Regulations
+Species
+Bag Limit
+Size Limit and Other Specifications
+Season
+Trout
+Lakes: 5 per day, 3 daily limits in possession.
+Streams: 2 per day, 3 daily limits in possession.
+Angling restricted to artificial flies and lures in streams. See Exceptions where use of bait is allowed.
+8 inch minimum length.
+Only 1 trout over 20 inches in length may be taken per day.
+Rainbow trout over 20 inches are considered steelhead in streams.
+Salmon under 15 inches are considered trout, except coho salmon, which are always considered salmon regardless of size.
+No limit on size or number of brook or brown trout in streams unless noted under Exceptions .
+Closed to angling for bull trout unless noted under Exceptions .
+Lakes: Open all year.
+Streams: Open May 22 - Oct 31, unless noted under Exceptions .
+Kokanee
+10 per day unless noted under Exceptions.
+No size limit
+Open all year.
+Salmon and Steelhead
+In the aggregate: 2 adult salmon or steelhead per day, 20 per year. 5 jack salmon per day, 2 daily jack limits in possession, with the exception that one additional hatchery steelhead may be retained per day for a total aggregate of 3 adult fish harvested daily.
+Closed for coho salmon, except as listed under the Deschutes River and hatchery coho salmon as listed under Eagle Creek, Herman Creek and Hood River.
+Only hatchery steelhead may be taken.
+See Exceptions in Central Zone under Deschutes or Hood River basins to determine where harvest of Chinook and coho salmon is allowed. Harvest of wild steelhead is not permitted in the Central Zone. There is no annual limit on hatchery salmon or hatchery steelhead so long as the appropriate number of Hatchery Harvest Tags have been purchased to record the catch.
+Angling restricted to artificial flies and lures in streams. See Exceptions where use of bait is allowed.
+Note: Changes to salmon regulations for the Columbia River system are available on the MyODFW website . Be sure to check for updates before you fish.
+Closed in all waters unless noted by species under Exceptions .
+Sturgeon
+Catch-and-release only.
+Sturgeon may not be removed from the water and must be immediately released unharmed.
+Only one single-point, barbless hook may be used for sturgeon.
+Angling restricted to artificial flies and lures in streams. See Exceptions where use of bait is allowed.
+Lakes: Open all year.
+Streams: Open during trout, salmon or steelhead seasons.
+Bass
+Lakes: 5 per day, 3 daily limits in possession unless noted under Exceptions .
+Streams: No limit.
+No more than 3 over 15 inches in length in lakes.
+No minimum length in streams.
+Angling restricted to artificial flies and lures in streams. See Exceptions where use of bait is allowed.
+Lakes: Open all year.
+Streams: Open during trout, salmon or steelhead seasons only, except portions of Columbia River tributaries flooded by Bonneville and The Dalles dams are open all year.
+Bluegill, Catfish, Crappie, Other Sunfish, Walleye, Yellow Perch, Whitefish, Sucker, Northern Pikeminnow, Carp, Chub, Sculpin and other Nongame Fish
+No limit.
+Angling restricted to artificial flies and lures in streams. See Exceptions where use of bait is allowed.
+Catch-and-release
+All trout, salmon and steelhead that are released must be unharmed and should not be removed from the water.
+Exceptions to Central Zone Regulations
+Bakeoven Creek and Tributaries
+Closed .
+Bend Pine Nursery Pond
+2 fish per day.
+Browns Creek
+Closed .
+Buck Hollow Creek and Tributaries
+Closed .
+Chenoweth Creek and Tributaries
+Catch-and-release for trout.
+Clear Branch Hood River
+Closed .
+Crane Prairie Reservoir
+Open Apr 22 - Oct 31.
+Wild rainbow trout must be released.
+Crescent Lake
+1 lake trout per day, 24 inch minimum length.
+Crooked River
+Below Bowman Dam
+Open all year.
+No harvest of rainbow trout over 20 inches.
+Davis Lake and Odell Creek Channel
+Catch-and-release for trout.
+No limit on size or number of bass.
+Fly fishing only, barbless hooks required.
+Odell Cr channel is defined as upstream to the boat ramp at West Davis Lake Campground.
+Deschutes River
+I-84 bridge to Sherars Falls
+Open all year for trout and hatchery steelhead.
+2 rainbow trout per day, 10 inch minimum and 13 inch maximum length.
+Open for Chinook salmon Aug 1 - Oct 31.
+Open for coho salmon Aug 1 - Dec 31.
+Bait allowed only from Sherars Falls downstream to upper trestle (approx. 3 Mi).
+No angling from a floating device.
+Closed from Sherars Falls downstream to Buck Hollow Cr (approx. 1 Mi) Apr 1 - Jul 31.
+Sherars Falls to Northern Boundary of the Warm Springs Reservation (including White River upstream to first falls)
+Open all year for trout and hatchery steelhead.
+2 rainbow trout per day, 10 inch minimum and 13 inch maximum length.
+Open for coho salmon Aug 1 - Dec 31.
+No angling from a floating device.
+Northern Boundary of the Warm Springs Reservation to the Pelton Regulating Reservoir.
+Open Apr 22 - Dec 31 for trout and hatchery steelhead.
+2 rainbow trout per day, 10 inch minimum and 13 inch maximum length.
+Open for coho salmon Aug 1 - Dec 31.
+No angling from a floating device.
+See Lake Simtustus.
+Closed from Pelton Regulating Dam downstream approx. 600 ft to ODFW markers.
+Lake Billy Chinook to Benham Falls
+Open all year for trout.
+No harvest of rainbow trout over 20 inches.
+Benham Falls to Little Lava Lake
+Open May 22 - Sep 30.
+2 trout per day, 8 inch minimum length
+Wild rainbow trout must be released.
+Other regulations
+See the Confederated Tribes of Warm Springs information.
+East Lake
+Catch-and-release for tiger trout.
+Eagle Creek
+Above mainline railroad bridge
+Open for hatchery steelhead Jan 1 - Mar 31, May 22 - Aug 15, and Dec 1-31.
+Open for Chinook and hatchery coho salmon May 22 - Aug 15.
+Catch-and-release for trout.
+Use of bait allowed.
+See Columbia River Zone for regulations below mainline RR bridge.
+Elk Lake
+25 kokanee per day. No size limits.
+Fall River
+Above Fall River Falls
+Open all year.
+Fly fishing only, barbless hooks required.
+Wild rainbow trout must be released.
+Below Fall River Falls
+Open May 22 - Sep 30.
+Fly fishing only, barbless hooks required.
+Wild rainbow trout must be released.
+Fifteen Mile Creek and Tributaries
+Catch-and-release for trout.
+Closed from the RR bridge to 200 ft above fishway at Seufert Falls.
+See Columbia Zone for area below the mainline RR bridge.
+Herman Creek
+Above mainline railroad bridge
+Catch-and-release for trout May 22 - Aug 15.
+Open for Chinook salmon, hatchery coho salmon and hatchery steelhead Jan 1 - Mar 31, May 22 - Aug 15, and Dec 1-31.
+Use of bait allowed.
+Closed below hatchery dam Aug 16 - Nov 30.
+See Columbia Zone for area below the mainline RR bridge.
+Hood River, Mainstem
+From the tips of the jetties to the confluence of the East and West Fork Hood River
+Catch-and-release for trout.
+Open for hatchery Chinook salmon from Apr 15 - Jun 30. Daily limit is 1 adult hatchery spring Chinook salmon per day.
+Open all year for hatchery coho salmon and hatchery steelhead.
+Use of bait allowed for salmon and steelhead.
+Tributaries
+Catch-and-release for trout.
+Hood River, East Fork, Middle Fork, and Tributaries not listed
+Catch-and-release for trout.
+Hood River, West Fork and Tributaries
+Confluence with East Fork upstream to angling deadline 200 ft downstream Punchbowl Falls
+Mainstem Hood River regulations apply.
+Upstream of angling deadline 200 ft below Punchbowl Falls
+Closed .
+Hosmer Lake
+Catch-and-release for all species.
+Fly fishing only, barbless hooks required.
+Jefferson County Pond
+2 fish per day.
+Youth angling (ages 17 and under) and disabled anglers only.
+Lake Billy Chinook
+Metolius Arm - East boundary is a line running from the west abutment of Round Butte Dam to the southern land point where the Deschutes and Metolius arms intersect; West boundary is the cable car crossing
+Open Mar 1 - Oct 31.
+All regulations for the balance of the reservoir (below) apply.
+Tribal angling permits are required. See the Confederated Tribes of Warm Springs information.
+Closed to all angling from the cable car crossing on the Metolius River to markers downstream.
+Balance of reservoir
+Trout limit may include 1 bull trout, 24 inch minimum length.
+All bull trout not retained in the bag limit must be released immediately unharmed.
+Rainbow trout over 20 inches and kokanee/ sockeye salmon over 16 inches must be released.
+No limit on size or number of bass or brown trout.
+Stream regulations apply above ODFW markers on Crooked River and Deschutes River Arms.
+Laurance Lake
+Open Apr 22 - Oct 31.
+Wild trout must be released.
+No limit on size or number of bass.
+Artificial flies and lures only.
+Closed between ODFW markers and the mouth of Clear Branch Creek.
+Closed between ODFW markers and the mouth of Pinnacle Creek.
+Link Creek
+Closed .
+McKay Creek
+No harvest of rainbow trout over 20 inches.
+Metolius River
+The following apply to open sections below: *
+Catch-and-release for trout, including bull trout.
+* Cable car crossing near mouth to Bridge 99/Lower Bridge (NF-1270)
+Open all year.
+Artificial flies and lures only.
+* Bridge 99/Lower Bridge (NF-1270) to Allingham Campground Bridge (NF-1217)
+Open all year.
+Fly fishing only, barbless hooks required.
+* Above Allingham Campground Bridge (NF-1217)
+Open May 22 - Oct 31.
+Fly fishing only, barbless hooks required.
+Tributaries
+Closed with the exception of Lake Cr, which is managed under zone regulations.
+Metolius Pond
+Open May 1 - Oct 31.
+2 fish per day.
+Youth angling (ages 17 and under) and disabled anglers only.
+Mill Creek and Tributaries (Wasco Co.)
+Catch-and-release for trout.
+Ochoco Creek
+Mouth to Ochoco Dam
+Open all year.
+No harvest of rainbow trout over 20 inches.
+Odell Creek
+Boat ramp at West Davis Lake campground to Odell Lake
+Catch-and-release for trout.
+Odell Lake
+Open Apr 22 - Oct 31.
+25 kokanee per day. No size limits.
+1 lake trout per day, 24 inch minimum length.
+Harvest of bull trout prohibited.
+Closed between ODFW markers and the mouth of Trapper Cr.
+Closed between ODFW markers and Odell Cr outlet.
+Closed to angling on tributaries.
+Paulina Lake
+Catch-and-release for tiger trout.
+Pelton Regulating Reservoir
+Closed .
+Pinnacle Creek
+Closed .
+Prineville Reservoir
+5 bass per day, only 1 bass over 15 inches may be harvested.
+Prineville Youth Pond
+2 fish per day.
+Youth angling (ages 17 and under) only.
+Shevlin Pond
+2 fish per day.
+Youth angling (ages 17 and under) and disabled anglers only.
+Lake Simtustus
+Confederated Tribes of Warm Springs Reservation angling permit required. See the Confederated Tribes of Warm Springs Reservation information.
+No limit on the size or number of bass.
+Sparks Lake and Tributaries
+Mouth to Cascade Lake Hwy
+Fly fishing only, barbless hooks required.
+Suttle Lake
+25 kokanee per day.
+Kokanee/sockeye over 16 inches must be released.
+No limit on the number or size of bass.
+Trout Creek and Tributaries
+Catch-and-release for trout.
+The Confederated Tribes of Warm Springs Reservation
+Anglers are restricted to the eastern half of the river where it borders the Reservation. For more information and exceptions call (541) 553-2002 , or visit the Tribal Fishing Permits page .
+Oregon angling license and tribal fishing permits are required on the Metolius Arm of Lake Billy Chinook, Lake Simtustus, and on the Reservation portions of the Deschutes River.
+Taking of crayfish from Reservation waters is prohibited.
+The Reservation borders the Deschutes River for approx. 31 mi from Two Springs Ranch (4 mi below the North Junction RR Bridge) up to the Pelton Reregulation.
+White River and Tributaries
+Mouth to first falls
+Deschutes River regulations apply.
+Above first falls
+Open all year for trout.
+Whychus Creek
+No harvest of rainbow trout over 20 inches.
+Wickiup Reservoir
+Open Apr 22 - Oct 31.
+The Deschutes River Arm is closed from the boat ramp at Gull Point Campground to ODFW markers near Sheeps Bridge from Sep 1 to Apr 21. Deschutes River regulations apply above ODFW markers near Sheeps Bridge.
