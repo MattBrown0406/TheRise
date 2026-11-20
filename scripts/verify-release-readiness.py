@@ -388,6 +388,26 @@ def main() -> int:
         "if (added.length && !setLogs(next))" in web,
         "Watch catches can be acknowledged without a confirmed journal write",
     )
+    require(
+        "rememberWatchAckedIds(ids)" in web and "acked.has(entry.watchId)" in web
+        and '"watch-acked-ids.json"' in watch_bridge and "RiseWatchInbox.split(incoming" in watch_bridge,
+        "a Watch catch deleted on the phone can come back when it is delivered again",
+    )
+    require(
+        "regulation: watchPackRegulation(water, now)" in web and "access: watchPackAccess(water, now)" in web
+        and "if (watchPackSyncing()) return false;" in web,
+        "the Watch pack does not carry the ODFW season and snow access, or is posted mid-sync",
+    )
+    watch_views = (watch_dir / "RiseWatchViews.swift").read_text(encoding="utf-8")
+    details_view = watch_views[watch_views.index("struct RiseCatchDetailsView"):]
+    require(
+        "onDismiss:" in watch_views and ".onDisappear" not in details_view,
+        "the Watch details sheet seals its catch from onDisappear, which fires when Next swaps the steps",
+    )
+    require(
+        "RiseWatchBridge.shared.appDidBecomeActive()" in (ROOT / "ios/TheRise/TheRise/AppDelegate.swift").read_text(encoding="utf-8"),
+        "held Watch catches are not offered again when the app returns to the foreground",
+    )
 
     # --- The planner is forecast and season, never invented water ------------
     planner_start = web.index("function plannerDayScore(")
