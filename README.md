@@ -217,7 +217,11 @@ those confirmed answers are scored.
 - The photo goes through `readPhotoCanvas`, the same decode and 1600px bound
   as catch photos, and stays in memory. It is stored only if the angler taps
   **Attach photo to a catch**, and then by the normal `storePhoto` path when
-  the catch is saved.
+  the catch is saved. Closing the form, or switching it to an edit, drops it.
+- On screen the photo is one `blob:` URL, made when it loads and revoked on
+  Clear or replace; the JPEG data URL is kept only for the attach path.
+  Inlining the data URL in the workspace and every result card put megabytes
+  of HTML into each repaint of a trait tap.
 - A tap is mapped to the photo by its fraction of the displayed image, so CSS
   scaling and `devicePixelRatio` both cancel out; a ~3pt patch is averaged.
 - `classifyBugColour` is a short HSL rule list, documented where it is
@@ -299,8 +303,9 @@ season, light wind").
 
 ## Fishing regulations
 
-Every water's Regulations block (the expanded Waters card, Trip, and a compact
-version on On the water) is a summary of ODFW's published rules for that water,
+Every water's Regulations block (the expanded Waters card, Trip, and a short
+version on On the water - status, gear, the summary note and the ODFW links,
+placed under the controls so it never pushes **Fish on!** down) is a summary of ODFW's published rules for that water,
 not the law, and says so: "Summary only. Regulations change and in-season rules
 apply - check ODFW before you fish."
 
@@ -414,6 +419,10 @@ hour band of the day on Oregon's clock, top flies by fish, and best months. It
 replaced the old "Your local memory" card; the worked/ignored and last-catch
 lines live on at its foot. It is free and is not in `PRO_FEATURES`.
 
+A save, edit or delete on the Log screen marks every screen the journal feeds
+stale (`renderScreens`), so the card, the bonus and the proven-fly order never
+lag the journal.
+
 Nothing is stated below its sample. Under 3 catches the card says how many
 more it needs. A flow or temperature band counts only entries whose
 `flowSource`/`tempSource` is `measured` or `stale`: a reference value is the
@@ -432,17 +441,36 @@ characters, and every fly view escapes it.
 ## On the water
 
 Trip > **On the water** is the field view: 64pt-plus targets, black on white
-for sun, a live prime-window countdown, readings with provenance, "Next fly to
-try" with **Not working - next fly** (which marks the fly ignored in the
-existing fly feedback and remembers its place for the session), one-tap
-**Fish on!** with Undo and Add details, and **Which water am I on?** (nearest
-mapped water within 2 miles, else it says it could not tell).
+for sun, a live prime-window countdown, one-tap **Fish on!** with Undo and Add
+details directly under it, "Next fly to try" with **Not working - next fly**,
+readings with provenance, **Which water am I on?**, and a short Regulations
+block last. The DOM suite holds **Fish on!** wholly above the tab bar at
+390x844 with the notch and home-indicator insets.
+
+- **Next fly.** The fly list is frozen when the view opens (per water, for
+  the session), so "N of M" counts up and no fly slides in mid-walk.
+  **Not working** marks the fly ignored in the existing fly feedback, except a
+  fly marked Worked or proven on that water in the journal: that one is only
+  skipped for the session, never overwritten.
+- **Which water am I on?** asks for a fresh fix (`maximumAge` 0), takes the
+  nearest mapped water within 2 miles, and says it could not tell when there
+  is none or the fix is rougher than about a mile (`coords.accuracy` over
+  1600 m). An answer that arrives after Exit, or after a newer request, is
+  dropped.
+- **Undo** keeps its cell, disabled, when it expires after 8 seconds, so Add
+  details never moves under a thumb aimed at Undo.
+- **A quick log for another water ends the session** rather than moving it:
+  the view, its timer and the Live Activity must never disagree about which
+  water the next Fish on! lands on. Picking the water from All Waters, or
+  Which water am I on?, does move it.
 
 - **Fish on!** stamps exactly what `writeLogEntry` stamps, prepends through
   `setLogs` (fails closed, error on screen), ignores a second tap inside two
   seconds, and shifts an open edit form's index with the insert. Undo and Add
-  details find the entry by identity, never by position. Species is left blank
-  rather than guessed.
+  details find the entry by identity, never by position; an Update from Add
+  details re-points the Logged card at the edited catch. Species is left blank
+  rather than guessed, and editing a catch with no species or fly keeps them
+  blank ("Species not set") until the angler picks one.
 - **One timer, owned in one place.** `syncOnWaterLifecycle()` is the only code
   that starts or stops the countdown interval and the screen wake lock. It is
   idempotent and runs on render, on `activateTab` and on `visibilitychange`

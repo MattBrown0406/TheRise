@@ -2656,9 +2656,11 @@
       font-weight: 700;
     }
 
+    /* Two fixed columns: Undo keeps its cell (disabled) when it expires, so
+       Add details never moves under a thumb aimed at Undo. */
     .on-water-logged-actions {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 10px;
     }
 
@@ -3112,7 +3114,8 @@
     .regs-compact .regs-checked,
     .regs-compact .regs-check-line,
     .regs-compact .regs-sections,
-    .regs-compact .regs-verify {
+    .regs-compact .regs-verify,
+    .regs-compact .regs-disclaimer {
       color: #2b332d;
       font-size: 15px;
     }
@@ -5808,7 +5811,7 @@
     /* The Regulations block on the water card, Trip and On the water. A
        summary, said to be one, with the source and ODFW's current changes a
        tap away. Links open in Safari (RiseViewController decidePolicyFor). */
-    function regulationsBlock(water, { compact = false } = {}) {
+    function regulationsBlock(water, { compact = false, brief = false } = {}) {
       const entry = regulationFor(water);
       const detail = regulationSeasonDetail(water);
       const status = detail.status;
@@ -5833,8 +5836,12 @@
             ${sectionLine}
             <small>${esc(entry?.gear || "Gear rule not confirmed - check ODFW.")}</small>
             ${verifyNote}
-            <p class="regs-checked">${esc(regulationCheckedLine(entry))}. ${esc(ODFW_REGULATIONS_META.disclaimer)}</p>
-            ${checkLine}
+            ${brief
+              // On the water: status, gear and links, short enough to sit
+              // under the controls. The dated detail is on Trip.
+              ? `<p class="regs-disclaimer">${esc(ODFW_REGULATIONS_META.disclaimer)}</p>`
+              : `<p class="regs-checked">${esc(regulationCheckedLine(entry))}. ${esc(ODFW_REGULATIONS_META.disclaimer)}</p>
+            ${checkLine}`}
             <div class="regs-links">
               ${regulationLink(entry?.source || links.centralZone, "ODFW rules for this water")}
               ${regulationLink(links.updates, "ODFW in-season changes")}
@@ -6189,7 +6196,11 @@
     // Snap a bug lives in memory only. A photo of a bug is not the angler's
     // data until they attach it to a catch, so nothing here is persisted.
     const SNAP_NO_TRAITS = Object.freeze({ color: "", size: "", shape: "", tails: "" });
-    let snapBug = { status: "idle", photo: "", error: "", sample: null, autoColor: "" };
+    // photo is the JPEG data URL, kept for "Attach photo to a catch" (storePhoto
+    // needs it). photoUrl is a blob: URL of the same bytes for display: the
+    // workspace and every result card show the photo, and inlining a data URL
+    // in each put megabytes of HTML into every repaint of a trait tap.
+    let snapBug = { status: "idle", photo: "", photoUrl: "", error: "", sample: null, autoColor: "" };
     let snapTraits = { ...SNAP_NO_TRAITS };
     let snapSampleCanvas = null;
     let snapPhotoSequence = 0;
@@ -7097,7 +7108,10 @@
     // One fix from the device, in the shape saveUserLocation stores. Shared by
     // the Waters sort and the On the water "Which water am I on?" button, so
     // both ask the same way and the fix keeps the same expiry.
-    function getDevicePosition(onFix, onFail) {
+    // maximumAge defaults to the Waters sort's five minutes; "Which water am
+    // I on?" asks for a fresh fix, because a cached one is where the angler
+    // parked, not where they are standing.
+    function getDevicePosition(onFix, onFail, { maximumAge = 5 * 60 * 1000 } = {}) {
       if (!navigator.geolocation) {
         onFail();
         return;
@@ -7112,7 +7126,7 @@
       }, () => onFail(), {
         enableHighAccuracy: true,
         timeout: 10000,
-        maximumAge: 5 * 60 * 1000
+        maximumAge
       });
     }
 
@@ -11158,9 +11172,36 @@
       return `${strength} match on ${matched} of ${result.answered} trait${result.answered === 1 ? "" : "s"}`;
     }
 
+    // One blob: URL per photo, made when it loads and revoked when it is
+    // cleared or replaced. Falls back to the data URL where blob URLs are
+    // unavailable.
+    function snapPhotoObjectUrl(dataUrl) {
+      try {
+        const [head, body] = String(dataUrl).split(",");
+        const type = (head.match(/^data:([^;,]+)/) || [])[1] || "image/jpeg";
+        const bytes = atob(body);
+        const array = new Uint8Array(bytes.length);
+        for (let index = 0; index < bytes.length; index += 1) array[index] = bytes.charCodeAt(index);
+        return URL.createObjectURL(new Blob([array], { type })) || dataUrl;
+      } catch {
+        return dataUrl;
+      }
+    }
+
+    function snapPhotoSrc() {
+      return snapBug.photoUrl || snapBug.photo;
+    }
+
     function clearSnapBug() {
       snapPhotoSequence += 1;
-      snapBug = { status: "idle", photo: "", error: "", sample: null, autoColor: "" };
+      if (snapBug.photoUrl && snapBug.photoUrl.startsWith("blob:")) {
+        try {
+          URL.revokeObjectURL(snapBug.photoUrl);
+        } catch {
+          // Already gone.
+        }
+      }
+      snapBug = { status: "idle", photo: "", photoUrl: "", error: "", sample: null, autoColor: "" };
       snapTraits = { ...SNAP_NO_TRAITS };
       snapSampleCanvas = null;
     }
@@ -11177,7 +11218,8 @@
         if (sequence !== snapPhotoSequence) return;
         if (!canvas) throw new Error("No photo");
         snapSampleCanvas = canvas;
-        snapBug = { ...snapBug, status: "ready", photo: canvas.toDataURL("image/jpeg", .82) };
+        const photo = canvas.toDataURL("image/jpeg", .82);
+        snapBug = { ...snapBug, status: "ready", photo, photoUrl: snapPhotoObjectUrl(photo) };
       } catch {
         if (sequence !== snapPhotoSequence) return;
         snapBug = { ...snapBug, status: "error", error: "That photo could not be opened. Try another one." };
@@ -11236,7 +11278,7 @@
         <div class="snap-result">
           <div class="snap-compare">
             <figure>
-              <img src="${attr(snapBug.photo)}" alt="Your photo">
+              <img src="${attr(snapPhotoSrc())}" alt="Your photo">
               <figcaption>Your photo</figcaption>
             </figure>
             <figure>
@@ -11289,7 +11331,7 @@
           <div class="snap-photo-column">
             <span class="snap-step-label">1. Colour - tap the bug's body</span>
             <div class="snap-photo-frame">
-              <img class="snap-photo" src="${attr(snapBug.photo)}" data-snap-sample alt="Your bug photo. Tap the bug's body to sample its colour.">
+              <img class="snap-photo" src="${attr(snapPhotoSrc())}" data-snap-sample alt="Your bug photo. Tap the bug's body to sample its colour.">
               ${sample ? `<i class="snap-marker" style="left:${(sample.fx * 100).toFixed(2)}%;top:${(sample.fy * 100).toFixed(2)}%"></i>` : ""}
             </div>
             <div class="snap-colour-row">
@@ -12071,9 +12113,20 @@
     let onWaterNotice = "";
     let onWaterError = "";
     let onWaterLocating = false;
+    // Bumped by every "Which water am I on?" request and by Exit, so a fix
+    // that arrives after the view closed, or after a newer request, is dropped.
+    let onWaterLocateToken = 0;
+    // A fix less precise than this cannot say which of two nearby waters the
+    // angler is standing on (about a mile).
+    const ON_WATER_MAX_ACCURACY_M = 1600;
     // Session-only, by water: the flies the angler has said are not working
     // today, so "next fly" keeps its place while they move around the app.
-    const onWaterTriedFlies = {};
+    let onWaterTriedFlies = {};
+    // Session-only, by water: the fly list "Next fly" walks, frozen when the
+    // view first shows that water. The live list re-sorts as feedback lands,
+    // so walking it put every "next" fly back at position 1 and let a fifth
+    // fly slide in.
+    let onWaterFlyOrder = {};
     let lastFishOnAt = 0;
     let lastFishOnEntry = null;
     let fishOnUndo = null;
@@ -12197,22 +12250,31 @@
       return { state: "after", text: "Prime window has passed for today", range, start, end };
     }
 
+    function onWaterFlies(water) {
+      if (!onWaterOpen) return liveRecommendedFlies(water);
+      if (!onWaterFlyOrder[water.id]) onWaterFlyOrder[water.id] = liveRecommendedFlies(water);
+      return onWaterFlyOrder[water.id];
+    }
+
     function onWaterCurrentFly(water) {
-      const flies = liveRecommendedFlies(water);
+      const flies = onWaterFlies(water);
       const tried = onWaterTriedFlies[water.id] || [];
       return flies.find((fly) => !tried.includes(fly)) || flies[0] || "";
     }
 
     // "Not working - next fly": marks the fly ignored in the same fly
-    // feedback the Worked/Ignore buttons write, and moves on. Once every fly
-    // on the list has been tried, it starts again from the top.
+    // feedback the Worked/Ignore buttons write, and moves on. A fly that has
+    // caught fish - marked Worked, or proven on this water in the journal - is
+    // only skipped for this session: one slow hour must not overwrite that.
+    // Once every fly on the list has been tried, it starts again from the top.
     function nextOnWaterFly(waterId) {
       const water = waterById(waterId) || tripWater();
       const current = onWaterCurrentFly(water);
       if (!current) return;
-      setFlyFeedback(current, "ignored", { toggle: false });
+      const proven = provenFliesFor(water).some((item) => item.fly === current);
+      if (flyFeedback[current] !== "worked" && !proven) setFlyFeedback(current, "ignored", { toggle: false });
       const tried = uniqueItems([...(onWaterTriedFlies[water.id] || []), current]);
-      const flies = liveRecommendedFlies(water);
+      const flies = onWaterFlies(water);
       onWaterTriedFlies[water.id] = flies.every((fly) => tried.includes(fly)) ? [] : tried;
       onWaterError = "";
       renderScreens("today", "waters", "bugs", "trip");
@@ -12334,8 +12396,13 @@
       editingLogIndex = index;
       logFormOpen = true;
       logSaveMessage = "";
+      // A bug photo waiting for a new catch belongs to that draft, not to
+      // this edit, and must not ride on to a later, unrelated catch.
+      pendingCatchPhoto = "";
       renderLog();
       activateTab("log");
+      // Undo is gone; On the water must not still offer it when it is back.
+      renderScreens("trip");
       scrollAppTo("#logForm");
     }
 
@@ -12355,11 +12422,24 @@
       onWaterLocating = true;
       onWaterNotice = "";
       onWaterError = "";
+      const token = ++onWaterLocateToken;
       renderScreens("trip");
+      // Only an answer to this request, with the view still open, may act:
+      // after Exit it would change the water behind the angler's back.
+      const current = () => token === onWaterLocateToken && onWaterOpen && onWaterLocating;
       getDevicePosition((location) => {
+        if (!current()) return;
+        onWaterLocating = false;
+        // A coarse fix (cell or Wi-Fi only) can be miles out. It cannot pick
+        // between waters, and "under 0.1 mi" from it would be false.
+        if (!Number.isFinite(location.accuracy) || location.accuracy > ON_WATER_MAX_ACCURACY_M) {
+          onWaterNotice = "Couldn't tell which water you're on - the GPS fix is too rough. Try again in the open, or pick it from All Waters.";
+          renderScreens("trip");
+          if (activeScreenId() === "trip") scrollAppToTop();
+          return;
+        }
         saveUserLocation(location);
         locationStatus = "ready";
-        onWaterLocating = false;
         const match = nearestWaterWithin();
         if (match) {
           saveActiveWater(match.water.id);
@@ -12372,11 +12452,12 @@
         // The answer is the water name and the notice under it, at the top.
         if (activeScreenId() === "trip") scrollAppToTop();
       }, () => {
+        if (!current()) return;
         onWaterLocating = false;
         onWaterNotice = "Couldn't get your location. Check Location permission, or pick the water from All Waters.";
         renderScreens("trip");
         if (activeScreenId() === "trip") scrollAppToTop();
-      });
+      }, { maximumAge: 0 });
     }
 
     function fishTodayOn(water) {
@@ -12444,18 +12525,28 @@
       onWaterOpen = true;
       onWaterNotice = "";
       onWaterError = "";
+      // A new session walks a fresh fly list from the top.
+      onWaterFlyOrder = {};
+      onWaterTriedFlies = {};
       renderScreens("trip");
       scrollAppToTop();
     }
 
-    function closeOnWater() {
+    // Ends the session without painting: Exit paints Trip, and a quick log
+    // for another water (which ends it too) paints everything.
+    function endOnWaterSession() {
       onWaterOpen = false;
       onWaterNotice = "";
       onWaterError = "";
       onWaterLocating = false;
+      onWaterLocateToken += 1;
       clearFishOnUndo();
       syncOnWaterLifecycle();
       syncLiveActivity(tripWater());
+    }
+
+    function closeOnWater() {
+      endOnWaterSession();
       renderScreens("trip");
       scrollAppToTop();
     }
@@ -12472,7 +12563,7 @@
 
     function onWaterMarkup(water) {
       const countdown = primeWindowCountdown(water);
-      const flies = liveRecommendedFlies(water);
+      const flies = onWaterFlies(water);
       const fly = onWaterCurrentFly(water);
       const position = flies.indexOf(fly) + 1;
       const profile = waterProfileFor(water);
@@ -12496,8 +12587,6 @@
             <small>${esc(countdown.range)}</small>
           </section>
 
-          ${regulationsBlock(water, { compact: true })}
-
           <button class="on-water-btn fish-on" data-fish-on="${attr(water.id)}" data-fish-on-fly="${attr(fly)}">Fish on!</button>
 
           ${logged ? `
@@ -12505,7 +12594,12 @@
               <strong>Logged ${esc(logged.fly || "a fish")} at ${esc(logged.time)}</strong>
               ${loggedReadings ? `<span>${esc(loggedReadings)}</span>` : ""}
               <div class="on-water-logged-actions">
-                ${undoable ? `<button class="on-water-btn secondary" data-fish-on-undo>Undo</button>` : ""}
+                ${undoable
+                  ? `<button class="on-water-btn secondary" data-fish-on-undo>Undo</button>`
+                  // Undo's cell stays, disabled, when it expires: letting Add
+                  // details stretch into it put the edit form under a tap
+                  // aimed at Undo.
+                  : `<button class="on-water-btn secondary" data-fish-on-undo-expired disabled aria-label="Undo no longer available">Undo</button>`}
                 <button class="on-water-btn secondary" data-fish-on-details>Add details</button>
               </div>
             </div>
@@ -12523,7 +12617,9 @@
             ${onWaterReading(water, "temp", "Water temp")}
           </section>
 
-          <button class="on-water-btn secondary wide" data-on-water-locate${onWaterLocating ? "disabled" : ""}>${onWaterLocating ? "Finding you..." : "Which water am I on?"}</button>
+          <button class="on-water-btn secondary wide" data-on-water-locate${onWaterLocating ? " disabled" : ""}>${onWaterLocating ? "Finding you..." : "Which water am I on?"}</button>
+
+          ${regulationsBlock(water, { compact: true, brief: true })}
 
           <p class="on-water-hint">${esc(profile.timeBand
             ? `Your best time on ${water.name}: ${timeBandLabel(profile.timeBand)} (${profile.timeBand.fish} of ${profile.timeBand.of} fish).`
@@ -13353,6 +13449,10 @@
       const selectedWater = editingWater || getWater();
       const editingFish = editingEntry?.fish || "";
       const keepEditingFish = Boolean(editingFish) && !nativeFish.includes(editingFish);
+      // Fish on! and the Watch leave species blank rather than guess. Editing
+      // such a catch keeps it blank until the angler picks one; defaulting to
+      // Redband Trout would write a guess on the next Update.
+      const blankEditingFish = Boolean(editingEntry) && !editingFish;
       const defaultFly = selectedWaterFly(selectedWater) || selectedWater.flies[0];
       $("#log").innerHTML = `
         <div class="log-screen">
@@ -13396,7 +13496,7 @@
                   <select name="water">${keepEditingWater ? `<option value="" selected>${esc(editingEntry.waterName || "Unknown water")}</option>` : ""}${waters.map((water) => `<option value="${attr(water.id)}" ${!keepEditingWater && water.id === selectedWater.id ? "selected" : ""}>${esc(water.name)}</option>`).join("")}</select>
                 </label>
                 <label>Native fish
-                  <select name="fish">${keepEditingFish ? `<option value="${attr(editingFish)}" selected>${esc(editingFish)}</option>` : ""}${nativeFish.map((fish) => `<option value="${attr(fish)}" ${!keepEditingFish && fish === (editingFish || "Redband Trout") ? "selected" : ""}>${esc(fish)}</option>`).join("")}</select>
+                  <select name="fish">${blankEditingFish ? `<option value="" selected>Species not set</option>` : ""}${keepEditingFish ? `<option value="${attr(editingFish)}" selected>${esc(editingFish)}</option>` : ""}${nativeFish.map((fish) => `<option value="${attr(fish)}" ${!keepEditingFish && !blankEditingFish && fish === (editingFish || "Redband Trout") ? "selected" : ""}>${esc(fish)}</option>`).join("")}</select>
                 </label>
                 <label>Length
                   <input name="length" type="number" min="0" step="0.25" inputmode="decimal" placeholder="Optional" value="${attr(editingEntry?.length || "")}">
@@ -13405,7 +13505,7 @@
                   <input name="count" type="number" min="1" value="${attr(editingEntry?.count || "1")}">
                 </label>
                 <label>Fly
-                  <input name="fly" value="${attr(editingEntry?.fly || defaultFly)}" autocomplete="off">
+                  <input name="fly" value="${attr(editingEntry ? editingEntry.fly || "" : defaultFly)}" autocomplete="off">
                 </label>
                 <label>Time
                   <input name="time" value="${attr(editingEntry?.time || zonedTimeLabel())}" autocomplete="off">
@@ -13999,7 +14099,8 @@
       }],
       ["[data-fly-feedback]", (element) => {
         setFlyFeedback(element.dataset.flyFeedback, element.dataset.feedbackValue);
-        renderScreens("today", "waters", "bugs");
+        // Trip shows the same fly cards with these buttons.
+        renderScreens("today", "waters", "trip", "bugs");
       }],
       ["[data-beginner-mode]", () => {
         setBeginnerMode(!beginnerMode);
@@ -14012,12 +14113,18 @@
       }],
       ["[data-quick-log]", (element) => {
         const water = waterById(element.dataset.quickLog) || topRecommendedWater();
+        // Logging a catch on another water is not "I am on that water now".
+        // An open On the water session ends rather than being silently moved
+        // to it, so its next Fish on! cannot land on a water it is not showing.
+        if (onWaterOpen && tripWater().id !== water.id) endOnWaterSession();
         saveActiveWater(water.id);
         activeWaterFlyByWater[water.id] = liveRecommendedFlies(water)[0];
         editingLogIndex = null;
         logFormOpen = true;
         logSaveMessage = "";
-        renderLog();
+        // The active water changed: every screen that shows it is stale.
+        // activateTab rebuilds the Log screen from the dirty set.
+        renderAll();
         activateTab("log");
         requestAnimationFrame(() => $("#logForm")?.scrollIntoView({ behavior: "smooth", block: "start" }));
       }],
@@ -14131,6 +14238,10 @@
       }],
       ["[data-edit-log]", (element) => {
         logSaveMessage = "";
+        // Switching the form to an edit discards a new catch's attached bug
+        // photo, as closing the form does; otherwise it rides on to the next
+        // unrelated new catch.
+        pendingCatchPhoto = "";
         editingLogIndex = Number(element.dataset.editLog);
         logFormOpen = true;
         renderLog();
@@ -14160,7 +14271,8 @@
           // form left on the old index would save onto the next catch.
           editingLogIndex -= 1;
         }
-        renderLog();
+        // As for a save: every screen built from the journal is now stale.
+        renderScreens("today", "waters", "trip", "bugs", "log");
       }],
       ["[data-billing]", () => {
         billing = billing === "annual" ? "monthly" : "annual";
@@ -14438,6 +14550,7 @@
         ...photoFields
       };
       let nextLogs;
+      let edited = null;
       if (existingEntry) {
         // An edit changes what the angler typed. It must never restate the
         // conditions: the readings belong to the moment the fish was caught,
@@ -14454,10 +14567,14 @@
         // were that water's gauge, and kept here they became one water's flow
         // labelled "measured" on another - a river reading on a reservoir.
         // What the new water read at the time cannot be known now.
-        if (waterField && waterField !== original.waterId) {
+        // Compared with the water the entry resolves to: a legacy entry kept
+        // by name alone has no waterId, and leaving its water as it was is
+        // not a move.
+        const originalWaterId = (waterById(original.waterId) || waters.find((item) => item.name === original.waterName))?.id;
+        if (waterField && waterField !== originalWaterId) {
           Object.assign(preservedReadings, { flow: "", flowSource: "unavailable", temp: "", tempSource: "unavailable" });
         }
-        const edited = {
+        edited = {
           ...original,
           ...entry,
           ...preservedReadings,
@@ -14488,6 +14605,10 @@
       }
       if (photoToDelete) deleteStoredPhoto(photoToDelete);
       if (!existingEntry) pendingCatchPhoto = "";
+      // The edit replaced the object Fish on! wrote. On the water's "Logged"
+      // card follows it, rather than losing it and offering Add details on a
+      // catch it can no longer find.
+      if (edited && lastFishOnEntry === existingEntry) lastFishOnEntry = edited;
       if (entry.fly && flyFeedback[entry.fly] !== "worked") {
         flyFeedback[entry.fly] = "worked";
         writeStoredObject(FLY_FEEDBACK_KEY, flyFeedback);
@@ -14496,7 +14617,9 @@
       logFormOpen = false;
       editingLogIndex = null;
       maybeCompleteOnboarding();
-      renderLog();
+      // The journal feeds the "Your <water>" card, the score bonus and the
+      // proven-fly order on every other screen, not just this one.
+      renderScreens("today", "waters", "trip", "bugs", "log");
     }
 
     function syncSubscriptionStatus() {

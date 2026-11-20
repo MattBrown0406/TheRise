@@ -2564,6 +2564,7 @@ try {
       return {
         status: snapBug.status,
         photo: document.querySelector("#bugs .snap-photo")?.getAttribute("src") || "",
+        data: snapBug.photo.slice(0, 22),
         error: document.querySelector("#bugs .snap-error")?.textContent || "",
         stored: Object.keys(localStorage).filter((key) => /data:image/.test(localStorage.getItem(key) || ""))
       };
@@ -2573,8 +2574,8 @@ try {
     assert(broken.status === "error" && /could not be opened/.test(broken.error), `an undecodable photo says so (${broken.error})`);
 
     const loaded = await feedPhoto("good");
-    assert(loaded.status === "ready" && loaded.photo.startsWith("data:image/jpeg"),
-      `a picked photo goes through the catch-photo decoder and is shown (${loaded.photo.slice(0, 22)})`);
+    assert(loaded.status === "ready" && loaded.data.startsWith("data:image/jpeg") && loaded.photo.startsWith("blob:"),
+      `a picked photo goes through the catch-photo decoder and is shown from one blob: URL, not inlined (${loaded.photo.slice(0, 22)})`);
     assert(!loaded.stored.length, `and nothing is written to storage (${loaded.stored.join(", ") || "nothing"})`);
 
     const tap = async (fraction) => {
@@ -2622,10 +2623,14 @@ try {
         document.querySelector(`#bugs [data-snap-choice="${key}"][data-snap-value="${value}"]`).click();
       }
       const cards = [...document.querySelectorAll("#bugs .snap-result")];
+      const markup = document.querySelector("#bugs").innerHTML;
       return {
         names: cards.map((card) => card.querySelector("strong").textContent),
         first: cards[0]?.textContent.replace(/\s+/g, " ") || "",
-        photos: cards.filter((card) => card.querySelector(".snap-compare img")?.getAttribute("src") === snapBug.photo).length,
+        photos: cards.filter((card) => card.querySelector(".snap-compare img")?.getAttribute("src") === snapBug.photoUrl).length,
+        markupBytes: markup.length,
+        inlined: markup.includes("data:image"),
+        urlCopies: markup.split(snapBug.photoUrl).length - 1,
         plates: cards.filter((card) => /bug-plates\//.test(card.querySelector(".snap-plate")?.getAttribute("style") || "")).length,
         flies: cards.every((card) => card.querySelector("[data-snap-fly]") && card.querySelector("[data-hatch-pick]")),
         pressed: document.querySelector('#bugs [data-snap-choice="size"][data-snap-value="s20"]').getAttribute("aria-pressed")
@@ -2639,6 +2644,8 @@ try {
     assert(results.photos === results.names.length && results.plates === results.names.length,
       "every result shows the angler's photo beside the bug plate");
     assert(results.flies, "and links to its flies and to the bug");
+    assert(!results.inlined && results.urlCopies === results.names.length + 1,
+      `a trait tap repaints Bugs with the one blob: URL, never the photo's data inlined (${results.urlCopies} references, ${Math.round(results.markupBytes / 1024)} KB of markup)`);
     assert(results.pressed === "true", "a chosen answer is marked pressed");
 
     const opened = await page.evaluate(async () => {
@@ -2715,11 +2722,21 @@ try {
     assert(kept.removed, "and Remove takes it off again");
 
     const cleared = await page.evaluate(() => {
+      window.__revoked = [];
+      const realRevoke = URL.revokeObjectURL.bind(URL);
+      URL.revokeObjectURL = (url) => { window.__revoked.push(url); realRevoke(url); };
       activateTab("bugs");
+      const url = snapBug.photoUrl;
       document.querySelector("#bugs [data-snap-clear]").click();
-      return { status: snapBug.status, photo: Boolean(document.querySelector("#bugs .snap-photo")), canvas: snapSampleCanvas };
+      return { status: snapBug.status, photo: Boolean(document.querySelector("#bugs .snap-photo")), canvas: snapSampleCanvas, revoked: window.__revoked.includes(url) };
     });
     assert(cleared.status === "idle" && !cleared.photo && !cleared.canvas, "Clear drops the photo and its pixels");
+    assert(cleared.revoked, "and revokes its blob: URL");
+    await feedPhoto("good");
+    const firstUrl = await page.evaluate(() => snapBug.photoUrl);
+    await feedPhoto("good");
+    const replaced = await page.evaluate((url) => ({ revoked: window.__revoked.includes(url), now: snapBug.photoUrl }), firstUrl);
+    assert(replaced.revoked && replaced.now.startsWith("blob:") && replaced.now !== firstUrl, "a replacement photo revokes the old URL and makes one new one");
     await page.close();
   }
 
@@ -2931,7 +2948,8 @@ try {
       const onWater = compact ? {
         status: compact.querySelector(".regs-status")?.textContent.trim(),
         gear: compact.querySelector("small")?.textContent.trim(),
-        checked: compact.querySelector(".regs-checked")?.textContent.trim(),
+        checked: compact.querySelector(".regs-checked")?.textContent.trim() || "",
+        disclaimer: compact.querySelector(".regs-disclaimer")?.textContent.trim() || "",
         links: linksOf(compact),
         linkHeights: [...compact.querySelectorAll("a")].map((link) => Math.round(link.getBoundingClientRect().height)),
         closedToday: regulationSeasonStatus(waterById("whychus")) === "closed"
@@ -2959,7 +2977,8 @@ try {
     assert(result.onWater, "On the water shows the compact Regulations block");
     assert(result.onWater && /Artificial flies and lures only/.test(result.onWater.gear), `with the gear rule (${result.onWater?.gear})`);
     assert(result.onWater && result.onWater.status === (result.onWater.closedToday ? "Closed season (ODFW)" : "Open season (ODFW)"), `and today's season status (${result.onWater?.status})`);
-    assert(result.onWater && /2026 ODFW regulations - checked Nov 18, 2026/.test(result.onWater.checked) && goodLinks(result.onWater.links), "and the checked date and ODFW links");
+    // Short on the water: the dated detail is on Trip, one tap away.
+    assert(result.onWater && /^Summary only\./.test(result.onWater.disclaimer) && !result.onWater.checked && goodLinks(result.onWater.links), "and that it is a summary, with the ODFW links");
     assert(result.onWater && result.onWater.linkHeights.every((height) => height >= 44), `its links are at least 44pt tall (${result.onWater?.linkHeights.join(", ")})`);
     await page.close();
   }
@@ -3423,6 +3442,341 @@ try {
     assert(result.afterRepaints === result.afterOpen, `an unchanged repaint posts nothing (${result.afterRepaints - result.afterOpen})`);
     assert(update?.action === "update" && update.fishToday === 1, `a catch posts an update (${JSON.stringify(update)})`);
     assert(end?.action === "end", "Exit ends the activity");
+    await page.close();
+  }
+
+  /* ---------------------------------------------------------------- */
+  group("Audit round 2, batch 2: the journal, On the water and Snap a bug");
+
+  {
+    // B2: Fish on! is the first thing under the countdown, wholly above the
+    // tab bar on a notched iPhone, with the regulations below the controls.
+    for (const viewport of [{ width: 390, height: 844 }, { width: 375, height: 667 }]) {
+      const page = await openApp(browser, { url: insetAppUrl, viewport });
+      const result = await page.evaluate(async (open) => {
+        eval(`(${open})`)();
+        await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)));
+        scrollAppToTop();
+        const fishOn = document.querySelector("#trip [data-fish-on]").getBoundingClientRect();
+        const bar = document.querySelector(".footer-tabs").getBoundingClientRect();
+        const view = document.querySelector("#trip [data-on-water-view]");
+        const order = [...view.children].map((child) => child.matches("[data-fish-on]") ? "fish-on"
+          : child.matches(".regs-compact") ? "regs"
+          : child.matches(".on-water-fly") ? "fly"
+          : child.matches(".on-water-readings") ? "readings"
+          : child.matches(".on-water-window") ? "window" : "");
+        const regs = view.querySelector(".regs-compact");
+        return {
+          fishOnTop: Math.round(fishOn.top), fishOnBottom: Math.round(fishOn.bottom), barTop: Math.round(bar.top),
+          order: order.filter(Boolean),
+          regsHeight: Math.round(regs.getBoundingClientRect().height),
+          regsText: regs.textContent.replace(/\s+/g, " "),
+          regsLinks: regs.querySelectorAll("a.regs-link").length
+        };
+      }, measuredCrooked.toString());
+      const label = `${viewport.width}x${viewport.height}`;
+      assert(result.fishOnTop >= 0 && result.fishOnBottom <= result.barTop,
+        `at ${label} with ${SAFE_AREA_TOP}/${SAFE_AREA_BOTTOM}pt insets, all of Fish on! is above the tab bar (${result.fishOnTop}-${result.fishOnBottom}px, bar at ${result.barTop}px)`);
+      if (viewport.width === 390) {
+        assert(result.order.join(",") === "window,fish-on,fly,readings,regs",
+          `Fish on! comes straight after the prime window, and the regulations after the fly and readings (${result.order.join(", ")})`);
+        assert(/Season|season/.test(result.regsText) && /Summary only/.test(result.regsText) && result.regsLinks === 2 && !/Next check for new ODFW|Checked for new ODFW|Couldn't check for new ODFW/.test(result.regsText),
+          `the On the water regulations are the short block: status, gear, the summary note and links (${result.regsHeight}px)`);
+      }
+      await page.close();
+    }
+  }
+
+  {
+    // B1: a catch saved and deleted on the Log screen reaches Trip's
+    // "Your <water>" card; Add details > Update keeps the Logged card honest.
+    const page = await openApp(browser);
+    await seedLogs(page, [sampleEntry({ notes: "A", flowSource: "measured", tempSource: "measured" }), sampleEntry({ notes: "B", flowSource: "measured", tempSource: "measured" })]);
+    const result = await page.evaluate(async () => {
+      const frame = () => new Promise((done) => requestAnimationFrame(done));
+      saveActiveWater("crooked");
+      renderAll();
+      activateTab("trip");
+      const headline = () => document.querySelector("#trip [data-your-water]")?.textContent.replace(/\s+/g, " ") || "";
+      const before = headline();
+      activateTab("log");
+      document.querySelector("[data-new-log]").click();
+      const form = document.querySelector("#logForm");
+      form.elements.water.value = "crooked";
+      form.elements.notes.value = "third";
+      await saveLogEntry(form);
+      activateTab("trip");
+      const afterSave = headline();
+      activateTab("log");
+      document.querySelector('#log [data-delete-log="0"]').click();
+      activateTab("trip");
+      const afterDelete = headline();
+      await frame();
+      return { before, afterSave, afterDelete, count: getLogs().length };
+    });
+    assert(/2 of 3 catches logged/.test(result.before) && /From your 3 catches/.test(result.afterSave),
+      `a catch saved on the Log screen updates Trip's "Your water" card (${result.before.slice(0, 60)} -> ${result.afterSave.slice(0, 60)})`);
+    assert(result.count === 2 && /2 of 3 catches logged/.test(result.afterDelete), "and so does a Delete");
+
+    const details = await page.evaluate(async (open) => {
+      eval(`(${open})`)();
+      document.querySelector("#trip [data-fish-on]").click();
+      document.querySelector("#trip [data-fish-on-details]").click();
+      const form = document.querySelector("#logForm");
+      form.elements.notes.value = "big one";
+      await saveLogEntry(form);
+      activateTab("trip");
+      const card = document.querySelector("#trip .on-water-logged");
+      const text = card?.textContent.replace(/\s+/g, " ") || "";
+      const undo = Boolean(card?.querySelector("[data-fish-on-undo]"));
+      card?.querySelector("[data-fish-on-details]")?.click();
+      return {
+        text, undo, error: document.querySelector("#trip .on-water-error")?.textContent || "",
+        tab: document.querySelector(".view.active").id,
+        editingNotes: getLogs()[editingLogIndex]?.notes
+      };
+    }, measuredCrooked.toString());
+    assert(/Logged/.test(details.text) && !details.undo,
+      `after Add details > Update, On the water still shows the catch and offers no Undo (${details.text.trim().slice(0, 60)})`);
+    assert(!details.error && details.tab === "log" && details.editingNotes === "big one",
+      `and Add details opens the edited catch again, not "no longer in your journal" (${details.error || details.editingNotes})`);
+    await page.close();
+  }
+
+  {
+    // B3: a quick log for another water ends On the water rather than
+    // silently moving it; one for the same water leaves it alone.
+    const before = `
+      window.__liveActivity = [];
+      window.webkit = { messageHandlers: { riseLiveActivity: { postMessage: (message) => window.__liveActivity.push(message.action) } } };
+    `;
+    const page = await openApp(browser, { before });
+    const result = await page.evaluate(async (open) => {
+      eval(`(${open})`)();
+      activateTab("trip");
+      const quickLog = (waterId) => {
+        const button = document.createElement("button");
+        button.dataset.quickLog = waterId;
+        document.querySelector("#today").appendChild(button);
+        button.click();
+        button.remove();
+      };
+      quickLog("crooked");
+      const same = { open: onWaterOpen, tab: document.querySelector(".view.active").id };
+      document.querySelector("[data-new-log]").click();
+      activateTab("trip");
+      quickLog("metolius");
+      const other = {
+        open: onWaterOpen, water: activeWater, tab: document.querySelector(".view.active").id,
+        formWater: document.querySelector("#logForm [name=water]")?.value
+      };
+      activateTab("trip");
+      return {
+        same, other,
+        tripView: Boolean(document.querySelector("#trip [data-on-water-view]")),
+        tripTitle: document.querySelector("#trip h1")?.textContent || "",
+        activity: window.__liveActivity.slice()
+      };
+    }, measuredCrooked.toString());
+    assert(result.same.open && result.same.tab === "log", "a quick log for the water On the water is showing keeps the session");
+    assert(!result.other.open && result.other.water === "metolius" && result.other.formWater === "metolius",
+      `a quick log for another water ends the session instead of retargeting it (${result.other.water})`);
+    assert(!result.tripView && /Metolius/.test(result.tripTitle), `and Trip shows the new water, not a stale field view (${result.tripTitle})`);
+    assert(result.activity[result.activity.length - 1] === "end", `the Live Activity is ended with it (${result.activity.join(", ")})`);
+    await page.close();
+  }
+
+  {
+    // B4: editing a Fish on! catch keeps a blank species and fly blank.
+    const page = await openApp(browser);
+    await seedLogs(page, [sampleEntry({ fish: "", fly: "", notes: "watch" })]);
+    const result = await page.evaluate(async () => {
+      activateTab("log");
+      document.querySelector('#log [data-edit-log="0"]').click();
+      const form = document.querySelector("#logForm");
+      const shown = { fish: form.elements.fish.value, label: form.elements.fish.selectedOptions[0]?.textContent, fly: form.elements.fly.value };
+      form.elements.notes.value = "edited";
+      await saveLogEntry(form);
+      const entry = getLogs()[0];
+      return { shown, fish: entry.fish, fly: entry.fly, notes: entry.notes, worked: Object.values(flyFeedback).filter((value) => value === "worked").length };
+    });
+    assert(result.shown.fish === "" && result.shown.label === "Species not set" && result.shown.fly === "",
+      `the edit form shows "Species not set" and an empty fly (${result.shown.label}, "${result.shown.fly}")`);
+    assert(result.fish === "" && result.fly === "" && result.notes === "edited" && result.worked === 0,
+      `and Update writes no guessed species or fly, and marks nothing worked (${result.fish || "blank"}, ${result.fly || "blank"})`);
+    await page.close();
+  }
+
+  {
+    // B5: a rough fix, and a fix that lands after Exit.
+    const before = `
+      window.__geo = [];
+      Object.defineProperty(navigator, "geolocation", {
+        configurable: true,
+        value: { getCurrentPosition: (success, failure, options) => window.__geo.push({ success, failure, options }) }
+      });
+    `;
+    const page = await openApp(browser, { before });
+    const result = await page.evaluate(async (open) => {
+      eval(`(${open})`)();
+      const target = waterCoordinates.metolius;
+      const fix = (accuracy) => ({ coords: { latitude: target.lat + .0005, longitude: target.lon, accuracy } });
+      document.querySelector("#trip [data-on-water-locate]").click();
+      const locating = document.querySelector("#trip [data-on-water-locate]");
+      const disabled = { property: locating.disabled, attributes: locating.getAttributeNames() };
+      window.__geo[0].success(fix(8000));
+      const rough = { water: activeWater, notice: document.querySelector("#trip .on-water-notice")?.textContent || "", maximumAge: window.__geo[0].options.maximumAge };
+      document.querySelector("#trip [data-on-water-locate]").click();
+      document.querySelector("#trip [data-on-water-close]").click();
+      window.__geo[1].success(fix(10));
+      const afterExit = { water: activeWater, open: onWaterOpen, notice: onWaterNotice, title: document.querySelector("#trip h1").textContent };
+      document.querySelector("[data-on-water-open]").click();
+      document.querySelector("#trip [data-on-water-locate]").click();
+      window.__geo[2].success(fix(10));
+      const good = { water: activeWater, notice: document.querySelector("#trip .on-water-notice")?.textContent || "" };
+      return { disabled, rough, afterExit, good };
+    }, measuredCrooked.toString());
+    assert(result.disabled.property && result.disabled.attributes.includes("disabled") && !result.disabled.attributes.includes("data-on-water-locatedisabled"),
+      `while finding you, the button is really disabled (${result.disabled.attributes.join(" ")})`);
+    assert(result.rough.maximumAge === 0, `it asks for a fresh fix, not one up to five minutes old (maximumAge ${result.rough.maximumAge})`);
+    assert(result.rough.water === "crooked" && /too rough/.test(result.rough.notice),
+      `an 8 km fix beside the Metolius picks nothing and says why (${result.rough.notice})`);
+    assert(result.afterExit.water === "crooked" && !result.afterExit.open && !result.afterExit.notice && /Crooked/.test(result.afterExit.title),
+      "a fix that arrives after Exit changes no water and leaves no notice");
+    assert(result.good.water === "metolius" && /You look to be on/.test(result.good.notice), "a precise fix still finds the water");
+    await page.close();
+  }
+
+  {
+    // B6: Ignore on Trip's fly cards shows at once, and a second tap undoes it.
+    const page = await openApp(browser);
+    const result = await page.evaluate(() => {
+      saveActiveWater("crooked");
+      renderAll();
+      activateTab("trip");
+      const button = () => document.querySelector('#trip [data-feedback-value="ignored"]');
+      const fly = button().dataset.flyFeedback;
+      button().click();
+      const afterFirst = { stored: flyFeedback[fly], active: [...document.querySelectorAll("#trip [data-feedback-value=ignored]")].some((item) => item.dataset.flyFeedback === fly && item.classList.contains("active")) };
+      [...document.querySelectorAll("#trip [data-feedback-value=ignored]")].find((item) => item.dataset.flyFeedback === fly).click();
+      return { fly, afterFirst, afterSecond: flyFeedback[fly] || null };
+    });
+    assert(result.afterFirst.stored === "ignored" && result.afterFirst.active,
+      `tapping Ignore on Trip marks the fly and the button shows it (${result.fly})`);
+    assert(result.afterSecond === null, "and the second tap clears it, as the button says");
+    await page.close();
+  }
+
+  {
+    // B7: "N of M" counts up over a frozen list; a fly that worked keeps Worked.
+    const page = await openApp(browser);
+    const result = await page.evaluate(async (open) => {
+      eval(`(${open})`)();
+      const label = () => document.querySelector("#trip .on-water-fly .on-water-label").textContent;
+      const shown = () => document.querySelector("#trip [data-on-water-fly]").textContent.trim();
+      const order = onWaterFlies(waterById("crooked")).slice();
+      flyFeedback[order[2]] = "worked";
+      renderTrip();
+      const walk = [];
+      for (let index = 0; index < order.length + 1; index += 1) {
+        walk.push({ label: label(), fly: shown() });
+        document.querySelector("#trip [data-on-water-next-fly]").click();
+      }
+      return { order, walk, worked: flyFeedback[order[2]], ignored: order.filter((fly, index) => index !== 2).every((fly) => flyFeedback[fly] === "ignored") };
+    }, measuredCrooked.toString());
+    const count = result.order.length;
+    assert(count >= 3 && result.walk.slice(0, count).map((step) => step.label).join("|") === result.order.map((fly, index) => `Next fly to try - ${index + 1} of ${count}`).join("|"),
+      `the position counts 1 of ${count} up to ${count} of ${count} (${result.walk.map((step) => step.label.replace("Next fly to try - ", "")).join(", ")})`);
+    assert(result.walk.slice(0, count).map((step) => step.fly).join("|") === result.order.join("|") && result.walk[count].fly === result.order[0],
+      "over the list frozen when the view opened, with no fly sliding in, and then round to the first");
+    assert(result.worked === "worked" && result.ignored,
+      `a fly marked Worked is skipped for the session but stays Worked (${result.order[2]})`);
+    await page.close();
+  }
+
+  {
+    // B9: a bug photo attached to a new catch does not ride on to an edit,
+    // or from there on to a later, unrelated catch.
+    const page = await openApp(browser);
+    await seedLogs(page, [sampleEntry({ notes: "A" })]);
+    const result = await page.evaluate(async () => {
+      const photo = document.createElement("canvas");
+      photo.width = 40;
+      photo.height = 40;
+      photo.getContext("2d").fillRect(0, 0, 40, 40);
+      proAccessActive = true;
+      snapBug = { status: "ready", photo: photo.toDataURL("image/jpeg"), photoUrl: "", error: "", sample: null, autoColor: "" };
+      renderAll();
+      activateTab("bugs");
+      document.querySelector("#bugs [data-snap-attach]").click();
+      const attached = Boolean(document.querySelector("#logForm [data-log-attached-photo] img"));
+      document.querySelector('#log [data-edit-log="0"]').click();
+      const editForm = document.querySelector("#logForm");
+      const onEdit = Boolean(editForm.querySelector("[data-log-attached-photo] img"));
+      await saveLogEntry(editForm);
+      document.querySelector("[data-new-log]").click();
+      const newForm = document.querySelector("#logForm");
+      const onNew = Boolean(newForm.querySelector("[data-log-attached-photo] img"));
+      await saveLogEntry(newForm);
+      return { attached, onEdit, onNew, photos: getLogs().filter((entry) => entry.photo || entry.photoId).length, count: getLogs().length };
+    });
+    assert(result.attached && !result.onEdit, "switching the form to Edit drops the bug photo held for a new catch");
+    assert(!result.onNew && result.count === 2 && result.photos === 0, `and the next new catch is saved without it (${result.photos} photos)`);
+    await page.close();
+  }
+
+  {
+    // B10: a legacy entry known only by name keeps its readings through an edit.
+    const page = await openApp(browser);
+    await seedLogs(page, [sampleEntry({ waterId: undefined, waterName: "Crooked River", flow: "235 cfs", flowSource: "measured", temp: "53 F", tempSource: "measured" })]);
+    const result = await page.evaluate(async () => {
+      activateTab("log");
+      document.querySelector('#log [data-edit-log="0"]').click();
+      const form = document.querySelector("#logForm");
+      const selected = form.elements.water.value;
+      form.elements.notes.value = "added a note";
+      await saveLogEntry(form);
+      const entry = getLogs()[0];
+      return { selected, flow: entry.flow, flowSource: entry.flowSource, temp: entry.temp, notes: entry.notes };
+    });
+    assert(result.selected === "crooked" && result.notes === "added a note", "a name-only legacy entry edits on the water it names");
+    assert(result.flow === "235 cfs" && result.flowSource === "measured" && result.temp === "53 F",
+      `and keeps the readings it was caught with (${result.flow} ${result.flowSource}, ${result.temp})`);
+    await page.close();
+  }
+
+  {
+    // B11a: when Undo expires, Add details stays where it was.
+    const page = await openApp(browser, { viewport: { width: 390, height: 844 } });
+    const result = await page.evaluate(async (open) => {
+      eval(`(${open})`)();
+      document.querySelector("#trip [data-fish-on]").click();
+      const rect = (selector) => {
+        const box = document.querySelector(selector)?.getBoundingClientRect();
+        return box ? [box.left, box.top, box.width, box.height].map(Math.round).join(",") : "";
+      };
+      const undoBefore = rect("#trip [data-fish-on-undo]");
+      const detailsBefore = rect("#trip [data-fish-on-details]");
+      // What the 8-second timer does when it fires.
+      clearTimeout(fishOnUndoTimer);
+      fishOnUndoTimer = null;
+      fishOnUndo = null;
+      renderScreens("trip");
+      const placeholder = document.querySelector("#trip [data-fish-on-undo-expired]");
+      const box = placeholder.getBoundingClientRect();
+      const hit = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
+      hit.click();
+      return {
+        undoBefore, detailsBefore, detailsAfter: rect("#trip [data-fish-on-details]"),
+        placeholder: rect("#trip [data-fish-on-undo-expired]"), disabled: placeholder.disabled,
+        tab: document.querySelector(".view.active").id, editing: editingLogIndex
+      };
+    }, measuredCrooked.toString());
+    assert(result.detailsBefore && result.detailsAfter === result.detailsBefore,
+      `Add details does not move when Undo expires (${result.detailsBefore} -> ${result.detailsAfter})`);
+    assert(result.placeholder === result.undoBefore && result.disabled,
+      `Undo's cell is kept by a disabled button (${result.placeholder})`);
+    assert(result.tab === "trip" && result.editing === null, "and a tap where Undo was opens nothing");
     await page.close();
   }
 
